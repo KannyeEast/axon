@@ -5,7 +5,7 @@
 #   /server/media/downloads        finished downloads, same filesystem so imports are instant
 {
   flake.modules.nixos.media =
-    { config, ... }:
+    { ... }:
     let
       media = "/server/media";
     in

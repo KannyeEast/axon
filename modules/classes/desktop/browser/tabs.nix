@@ -136,16 +136,10 @@ in
         };
 
         # ── admin ────────
-        "Documents" = {
-          id = "27b7c2ce-6856-43c3-b996-b99d4a8b8578";
-          url = "https://docs.proton.me/";
-          position = 301;
-          workspace = spaces."Admin".id;
-        };
         "Mail" = {
           id = "b2d84f19-5c73-4e0a-8f26-3d91c7a5e408";
           url = "https://mail.proton.me/";
-          position = 302;
+          position = 301;
           workspace = spaces."Admin".id;
         };
       };

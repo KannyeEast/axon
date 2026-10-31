@@ -168,6 +168,8 @@ in
           "browser.urlbar.quicksuggest.enabled" = false;
 
           "general.smoothScroll" = false;
+          # middle-click scrolling; Firefox leaves it off on Linux, where middle click pastes
+          "general.autoScroll" = true;
 
           "media.videocontrols.picture-in-picture.video-toggle.enabled" = false;
           "media.videocontrols.picture-in-picture.enabled" = false;

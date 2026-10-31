@@ -3,7 +3,7 @@
 { lib, ... }:
 {
   flake.modules.nixos.media =
-    { config, ... }:
+    { ... }:
     let
       apps = {
         radarr = 7878;

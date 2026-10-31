@@ -15,7 +15,8 @@
   perSystem =
     { pkgs, ... }:
     {
-      formatter = pkgs.nixfmt;
+      # the tree wrapper: bare nixfmt only formats the files it's given
+      formatter = pkgs.nixfmt-tree;
 
       # the host.toml and cluster.toml reference, generated from the schema pieces:
       # nix build .#options && cat result

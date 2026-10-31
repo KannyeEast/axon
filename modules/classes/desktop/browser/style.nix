@@ -98,8 +98,14 @@
           }
       }
 
-      /* Live folders are fetched, not owned: sync glyph, no rotation */
-      zen-folder:has(.reset-icon[live-folder-action]) .tab-group-folder-icon {
+      /* Live folders are fetched, not owned: sync glyph, no rotation. Zen marks the
+         folder only while it has an error (live-folder-action, e.g. logged out); once it
+         fetches, only its tabs say where they came from. The :not() keeps a plain folder
+         that merely contains a live folder on its chevron. */
+      zen-folder:is(
+          :has(.reset-icon[live-folder-action]),
+          :has(.tabbrowser-tab[zen-live-folder-item-id]):not(:has(zen-folder .tabbrowser-tab[zen-live-folder-item-id]))
+        ) .tab-group-folder-icon {
           mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M20 11a8.1 8.1 0 0 0-15.5-2m-.5-4v4h4'/><path d='M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4'/></svg>") !important;
           rotate: none !important;
       }

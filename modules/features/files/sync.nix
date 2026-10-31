@@ -13,7 +13,6 @@ let
     genAttrs
     head
     mkOption
-    optionalAttrs
     remove
     splitString
     types

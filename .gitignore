@@ -5,6 +5,3 @@ result-*
 _inputs/
 *.bak
 .claude/
-
-DECISIONS.md
-Axon NixOS Framework.html
