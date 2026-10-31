@@ -1,0 +1,22 @@
+[host]
+class = "desktop"
+features = ["dev", "files"]
+state = "26.11" # written once at install, never changed
+key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGdeeUjLnG85gfMOv8aVEf7Y/Wr5EBCfPTbwsuHLlfFD root@tower"
+
+[user]
+name = "gldn"
+email = "acc-git@vexelvault.com"
+key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDWtrZlzIeOQcvhJaSsMebSSXKFzTPEHWFGlW/R63G1q gldn@tower"
+
+[locale]
+timezone = "Europe/Berlin"
+keyboard = "us"
+
+[disk.boot]
+devices = ["/dev/disk/by-id/nvme-eui.00000000000000000026b768703e1015"]
+swap = 0
+reserve = 0
+
+[sync]
+id = "J2GKKBZ-FFSH7ZQ-PQDFCQQ-4ODQ6HP-O2Y6NVU-SJDKVHM-TXJMPBQ-WMRFBAZ"

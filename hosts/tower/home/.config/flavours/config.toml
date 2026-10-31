@@ -1,0 +1,32 @@
+[[items]]
+file = "~/.config/alacritty/alacritty.toml"
+template = "alacritty"
+
+[[items]]
+file = "~/.config/niri/colors.kdl"
+template = "niri"
+rewrite = true
+
+[[items]]
+file = "~/.config/system/zen.json"
+template = "nix"
+subtemplate = "zen"
+rewrite = true
+
+[[items]]
+file = "~/.config/system/grub/theme.txt"
+template = "nix"
+subtemplate = "grub"
+rewrite = true
+
+[[items]]
+file = "~/.config/system/plymouth/theme"
+template = "nix"
+subtemplate = "plymouth"
+rewrite = true
+
+[[items]]
+file = "~/.config/system/sddm/theme.conf"
+template = "nix"
+subtemplate = "sddm"
+rewrite = true

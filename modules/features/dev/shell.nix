@@ -71,6 +71,7 @@
         pkgs.eza
         pkgs.fd
         pkgs.fzf
+        pkgs.just
         pkgs.jq
         pkgs.ripgrep
         pkgs.starship

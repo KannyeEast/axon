@@ -1,0 +1,15 @@
+# Generated per host by `flavours apply`
+/.config/niri/colors.kdl
+/.config/system/zen.json
+/.config/system/grub/theme.txt
+/.config/system/plymouth/theme
+/.config/system/sddm/theme.conf
+
+# Different monitor setups
+/.config/niri/output.kdl
+
+# Laptop only
+/.config/kanshi
+
+# Desktop only
+/.config/system/refind

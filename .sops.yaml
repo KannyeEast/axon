@@ -1,0 +1,6 @@
+creation_rules:
+  - path_regex: hosts/tower/secrets\.json$
+    key_groups:
+      - age:
+          - age10fmk9usrnmqyfqfm7egnamkqzptf4cwe99ndd0m2s9mkpvhu6cuq23zsj2
+          - age1gr97nezu2se75m2nj3m38k2dx9a4ynqphr4aj8tk4r7dh8fpj36s86v3jw

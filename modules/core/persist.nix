@@ -66,9 +66,7 @@ in
 
         fileSystems."/persist".neededForBoot = true;
 
-        # the rollback below is a systemd initrd unit; with the scripted initrd it would be
-        # ignored and root would silently never be wiped
-        boot.initrd.systemd.enable = true;
+        # the rollback below runs in the initrd, which has only the tools listed here
         boot.initrd.systemd.initrdBin = [
           pkgs.btrfs-progs
           pkgs.coreutils

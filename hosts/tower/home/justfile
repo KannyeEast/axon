@@ -1,0 +1,35 @@
+flake := justfile_directory() / ".." / ".." / ".."
+me := shell("hostname -s")
+you := if me == "laptop" { "desktop" } else { "laptop" }
+
+keep := "--exclude-from=" + flake / "hosts" / me / "home" / ".rsyncignore"
+
+# ── overview ────────
+# This list
+[group("default")]
+default:
+    @just --list
+
+# Which host this is and where it syncs to
+[group("default")]
+whoami:
+    @echo "{{me}} -> {{you}}"
+
+# ── dotfiles ────────
+# Sync to host
+[group("dotfiles")]
+sync-out HOST=you *ARGS:
+    @mkdir -p "{{flake}}/hosts/{{HOST}}/home"
+    rsync -a --delete {{keep}} {{ARGS}} \
+        "{{flake}}/hosts/{{me}}/home/" "{{flake}}/hosts/{{HOST}}/home/"
+
+# Sync from host
+[group("dotfiles")]
+sync-in HOST=you *ARGS:
+    rsync -a --delete {{keep}} {{ARGS}} \
+        "{{flake}}/hosts/{{HOST}}/home/" "{{flake}}/hosts/{{me}}/home/"
+
+# What a sync would change
+[group("dotfiles")]
+sync-diff HOST=you:
+    @just sync-out {{HOST}} --dry-run --itemize-changes

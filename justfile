@@ -36,7 +36,7 @@ build *ARGS: _stage
 # Regenerate this machine's hardware report after a hardware change
 [group("system")]
 facter:
-  sudo nix run nixpkgs#nixos-facter -- -o {{flake}}/hosts/{{host}}/facter.json
+  sudo nix run nixpkgs#nixos-facter > {{flake}}/hosts/{{host}}/facter.json
 
 # Remove old generations and unused store paths
 [group("system")]

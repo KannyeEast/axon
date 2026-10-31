@@ -21,6 +21,11 @@ fi
 
 repo=$(cd "$(dirname "$0")" && pwd)
 cd "$repo"
+# sudo is called where it's needed; as root, hosts/<name> and the repo copy would be root-owned
+if [ "$EUID" -eq 0 ]; then
+  echo "install.sh: don't run as root; run it as your user, it calls sudo itself" >&2
+  exit 1
+fi
 target=${1:-}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -100,7 +105,7 @@ say "user"
 ask user "login name" gldn
 ask email "email (git identity, certificate contact)"
 ask_secret password "login password"
-ask_secret tailscale "Tailscale auth key (admin console: Settings → Keys)"
+ask tailscale "Tailscale auth key (admin console: Settings → Keys)"
 
 say "locale"
 ask timezone "time zone" Europe/Berlin
@@ -136,7 +141,7 @@ syncid=""
 if printf '%s\n' "${features[@]}" | grep -qx files; then
   # the device id is the certificate's; put the certificate where Syncthing will find it
   mkdir -p "$work/root/persist/var/lib/syncthing"
-  syncid=$(syncthing generate --home "$work/root/persist/var/lib/syncthing" 2>&1 | sed -n 's/.*Device ID: \([A-Z0-9-]*\).*/\1/p' | head -n1)
+  syncid=$(syncthing generate --home "$work/root/persist/var/lib/syncthing" 2>&1 | grep -oE '[A-Z0-9]{7}(-[A-Z0-9]{7}){7}' | head -n1)
   rm -f "$work/root/persist/var/lib/syncthing/config.xml"
   [ -n "$syncid" ] || die "couldn't generate a Syncthing id"
 fi
@@ -198,7 +203,7 @@ say "hardware report"
 if [ -n "$target" ]; then
   on_target nix --extra-experimental-features "nix-command flakes" run nixpkgs#nixos-facter >"hosts/$name/facter.json"
 else
-  sudo nix --extra-experimental-features "nix-command flakes" run nixpkgs#nixos-facter -- -o "hosts/$name/facter.json"
+  sudo nix --extra-experimental-features "nix-command flakes" run nixpkgs#nixos-facter >"hosts/$name/facter.json"
 fi
 
 git add --intent-to-add "hosts/$name" .sops.yaml
@@ -221,6 +226,11 @@ ask go "wipe $device and install? type the host name to go on"
 cp -r "$repo" "$work/root/home/$user/axon"
 rm -rf "$work/root/home/$user/axon/result"
 
+# a FAT backup boot sector survives disko's wipefs: blkid still sees vfat, disko skips
+# mkfs.vfat and mounting /boot fails. Zero the start of the disk first.
+on_target umount -R /mnt 2>/dev/null || true
+on_target dd if=/dev/zero of="$device" bs=1M count=1100 conv=fsync status=none
+
 if [ -n "$target" ]; then
   nixos-anywhere --flake ".#$name" --env-password \
     --extra-files "$work/root" \
@@ -228,7 +238,7 @@ if [ -n "$target" ]; then
     --chown /persist/var/lib/syncthing 1000:100 \
     --target-host "root@$target"
 else
-  sudo disko --mode destroy,format,mount --flake ".#$name"
+  sudo disko --mode destroy,format,mount --yes-wipe-all-disks --flake ".#$name"
   sudo cp -a "$work/root/." /mnt/
   sudo chown -R 1000:100 "/mnt/home/$user"
   [ -d /mnt/persist/var/lib/syncthing ] && sudo chown -R 1000:100 /mnt/persist/var/lib/syncthing

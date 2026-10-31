@@ -1,0 +1,34 @@
+// @TODO: Have a proper look at window/layer rules
+workspace "side" {
+    open-on-output "PNP(BNQ) ZOWIE XL LCD EBLAL01265SL0"
+}
+
+window-rule {
+    geometry-corner-radius 16
+    clip-to-geometry true
+}
+
+window-rule {
+    match at-startup=true app-id=r#"^org\.keepassxc\.KeePassXC$"#
+    open-on-workspace "side"
+}
+
+// Keep credentials out of screenshots and screen shares
+window-rule {
+    match app-id=r#"^org\.keepassxc\.KeePassXC$"#
+    match app-id=r#"^org\.gnome\.World\.Secrets$"#
+    block-out-from "screen-capture"
+}
+
+// Dialogs and pickers are transient by nature
+window-rule {
+    match app-id=r#"^org\.gnome\.Nautilus$"# title=r#"^(Open|Save|Rename)"#
+    open-floating true
+}
+
+// Password prompts should land in front and stay put
+window-rule {
+    match app-id=r#"^lxqt-policykit"#
+    open-floating true
+    open-focused true
+}

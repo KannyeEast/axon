@@ -24,6 +24,7 @@
           pkgs.gzip
           pkgs.jq
           pkgs.less
+          pkgs.nix
           pkgs.nodejs
           pkgs.python3
           pkgs.ripgrep
@@ -35,6 +36,14 @@
             "SSL_CERT_FILE=/etc/ssl/certs/ca-bundle.crt"
             "HOME=/home/sandbox"
             "TERM=xterm-256color"
+            # nix talks to the host's daemon (see the mounts below); its nix.conf isn't visible here
+            "NIX_REMOTE=daemon"
+            "NIX_CONFIG=experimental-features = nix-command flakes"
+            # commits made in here carry the user's identity; there is no key, so they're unsigned
+            "GIT_AUTHOR_NAME=${config.axon.user.name}"
+            "GIT_AUTHOR_EMAIL=${config.axon.user.email}"
+            "GIT_COMMITTER_NAME=${config.axon.user.name}"
+            "GIT_COMMITTER_EMAIL=${config.axon.user.email}"
           ];
           WorkingDir = "/work";
           Cmd = [ "bash" ];
@@ -55,8 +64,13 @@
           state="''${XDG_DATA_HOME:-$HOME/.local/share}/sandbox"
           mkdir -p "$state"
 
+          # the host's store, read-only, and its daemon: evals and builds use the host's cache
+          # instead of a second store. The store is world-readable on the host anyway; secrets
+          # never enter it.
           exec podman run --rm -it \
             --userns=keep-id \
+            --volume /nix/store:/nix/store:ro \
+            --volume /nix/var/nix/daemon-socket:/nix/var/nix/daemon-socket \
             --volume "$PWD:/work" \
             --volume "$state:/home/sandbox" \
             --workdir /work \

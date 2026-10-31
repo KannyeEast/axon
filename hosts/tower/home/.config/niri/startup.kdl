@@ -1,0 +1,5 @@
+// What runs with the session (stopgap until quickshell is rewritten).
+// mako starts by itself on the first notification; KeePassXC and the polkit agent are services.
+spawn-at-startup "waybar"
+spawn-at-startup "swaybg" "-i" "/home/gldn/Pictures/Wallpapers/48FBjzC.jpeg" "-m" "fill"
+spawn-at-startup "swayidle" "-w" "timeout" "300" "swaylock -f" "before-sleep" "swaylock -f"

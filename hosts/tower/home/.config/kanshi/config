@@ -1,0 +1,27 @@
+output "Acer Technologies QG271 M3 A4121352C3W01" {
+    mode 1920x1080@144
+    position 0,192
+    scale 1
+    alias $DESKTOP_01
+}
+
+output "GIGA-BYTE TECHNOLOGY CO., LTD. Gigabyte M32U 0x01010101" {
+    mode 3840x2160@144
+    position 1920,192
+    scale 1.25
+    alias $DESKTOP_02
+}
+
+output "PNP(BNQ) ZOWIE XL LCD EBLAL01265SL0" {
+    mode 1920x1080@180
+    position 4992,0
+    transform 90
+    scale 1
+    alias $DESKTOP_03
+}
+
+profile default {
+    output $DESKTOP_01 enable
+    output $DESKTOP_02 enable
+    output $DESKTOP_03 enable
+}

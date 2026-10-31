@@ -1,0 +1,22 @@
+scheme: "Dendrite"
+author: "KanyeSouth"
+
+# ── greyscale ramp ────────
+base00: "0C0C12" # default background
+base01: "1c1e27" # status bars, popups, inactive tabs
+base02: "323947" # selection background, active line highlight
+base03: "3f4757" # comments, disabled text, inactive borders
+base04: "6f7a8f" # muted foreground — status bar text, secondary labels
+base05: "a5b6cf" # default foreground — body text, cursor, punctuation
+base06: "cbced3" # bright foreground — emphasis, hover text
+base07: "e6e8ee" # lightest — near-white; the top of the ramp
+
+# ── accents ────────
+base08: "ff6b7a" # red — errors, deletions, urgent, close buttons
+base09: "e29a6c" # orange — numbers, constants, warnings, modified state
+base0A: "f1d8a5" # yellow — classes, search match background, bold
+base0B: "95d3af" # green — strings, additions, success, "ok" state
+base0C: "98d3ee" # cyan — escapes, regex, info, links in some tools
+base0D: "8aa2ff" # blue — the primary accent: focus, headings, functions
+base0E: "c79bf0" # magenta — keywords, changed state, italic
+base0F: "c296eb" # brown/violet — deprecated, embedded tags
