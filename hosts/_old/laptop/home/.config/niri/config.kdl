@@ -1,0 +1,52 @@
+include "input.kdl"
+include "output.kdl"
+include "bindings.kdl"
+include "layout.kdl"
+include "windows.kdl"
+
+// Quickshell bar, off while the stopgap tools run (see startup.kdl)
+// include "ricelin.kdl"
+
+// Generated files
+include "colors.kdl"
+include "startup.kdl"
+
+screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
+
+cursor {
+    xcursor-theme "Bibata-Modern-Ice"
+    xcursor-size 24
+    hide-when-typing
+    hide-after-inactive-ms 5000
+}
+
+overview {
+    workspace-shadow {
+        off
+    }
+}
+
+clipboard {
+    disable-primary
+}
+
+hotkey-overlay {
+    hide-not-bound
+}
+
+animations {
+    slowdown 0.25
+}
+
+gestures {
+    hot-corners {
+        off
+    }
+}
+
+recent-windows {
+    highlight {
+        padding 8
+        corner-radius 16
+    }
+}

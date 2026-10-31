@@ -1,0 +1,21 @@
+[host]
+class = "desktop"
+features = ["dev", "files"]
+state = "26.05"
+key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDHF7e6y27ESkc906EClcSPVd4cg/eDwcqZqgFbdzaIK root@laptop"
+
+[user]
+name  = "gldn"
+email = "acc-git@vexelvault.com"
+key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP1Tn9tQVyJwyxfN8Dmpam4x+wfA0AT0dsKVuRajcTRl gldn@laptop"
+
+[locale]
+timezone = "Europe/Berlin"
+
+[disk.boot]
+devices = ["/dev/disk/by-id/nvme-Micron_2400_MTFDKBA1T0QFM_23123FD2467D"] # TODO: real id, ls -l /dev/disk/by-id | grep nvme0n1$
+swap = 17
+reserve = 250
+
+[sync]
+id = "RRV6LVU-UV73C6W-HFGVYPJ-PHEK56P-HROXHBN-C3D4IZZ-VVVLQCD-VQSE5A7"

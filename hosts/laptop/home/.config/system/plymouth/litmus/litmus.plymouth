@@ -1,9 +1,0 @@
-[Plymouth Theme]
-Name=litmus
-Description=display kinda fireworks
-Comment=created By Aditya Shakya (@adi1090x)
-ModuleName=script
-
-[script]
-ImageDir=@THEME_DIR@
-ScriptFile=@THEME_DIR@/litmus.script

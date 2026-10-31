@@ -1,0 +1,114 @@
+# Nextcloud at cloud.<domain> on servers; the sync client on desktops. Files on the bulk disks, database and app state on the system SSD.
+# It's public (through the gateway's tunnel) so share links work for people without Tailscale;
+# its own login guards it. The first account is created by hand after install:
+#   nextcloud-occ user:add <you> && nextcloud-occ group:adduser admin <you>
+# then turn on two-factor in the web UI.
+# Major versions upgrade one at a time: bump the package by one, switch, repeat.
+{ lib, ... }:
+{
+  flake.modules.nixos.files =
+    { config, pkgs, ... }:
+    let
+      inherit (config.axon) cluster;
+      ph = config.sops.placeholder;
+      hostName = "cloud.${cluster.domain}";
+      data = "/server/data/nextcloud";
+      port = 8090;
+    in
+    lib.mkMerge [
+      # the desktop half: the client that syncs Nextcloud folders to this machine
+      (lib.mkIf (config.axon.host.class == "desktop") {
+        environment.systemPackages = [ pkgs.nextcloud-client ];
+      })
+
+      (lib.mkIf (config.axon.host.class == "server") {
+      # sender address and token come from the mail feature's secrets
+      sops.templates."nextcloud.json" = {
+        owner = "nextcloud";
+        content = builtins.toJSON {
+          mail_from_address = ph."mail/user";
+          mail_domain = ph."mail/domain";
+          mail_smtpname = "${ph."mail/user"}@${ph."mail/domain"}";
+          mail_smtppassword = ph."mail/token";
+        };
+      };
+
+      services.nextcloud = {
+        enable = true;
+        package = pkgs.nextcloud35;
+        inherit hostName;
+        https = true;
+        datadir = data;
+        database.createLocally = true;
+        configureRedis = true;
+        maxUploadSize = "16G";
+        config.dbtype = "pgsql";
+        settings = {
+          # the tunnel delivers plain http on localhost; links must still say https
+          trusted_proxies = [
+            "127.0.0.1"
+            "::1"
+          ];
+          overwriteprotocol = "https";
+          default_phone_region = "DE";
+          maintenance_window_start = 1; # 01:00 UTC
+          mail_smtpmode = "smtp";
+          mail_smtphost = "smtp.protonmail.ch";
+          mail_smtpport = 587;
+          mail_smtpauth = true;
+        };
+        secretFile = config.sops.templates."nextcloud.json".path;
+        phpOptions."opcache.interned_strings_buffer" = "16";
+      };
+
+      # nextcloud's nginx only on localhost; caddy owns 80/443
+      services.nginx.virtualHosts.${hostName}.listen = [
+        {
+          addr = "127.0.0.1";
+          inherit port;
+        }
+      ];
+
+      # the files live on a data disk that may be missing at boot (nofail): never write to root instead
+      systemd.services.nextcloud-setup.unitConfig.RequiresMountsFor = [ data ];
+      systemd.services.phpfpm-nextcloud.unitConfig.RequiresMountsFor = [ data ];
+
+      # a nightly database dump, so a file-level backup of the dump is consistent
+      services.postgresqlBackup = {
+        enable = true;
+        databases = [ "nextcloud" ];
+      };
+
+      axon.persist.directories = [
+        {
+          directory = "/var/lib/nextcloud";
+          user = "nextcloud";
+          group = "nextcloud";
+          mode = "0750";
+        }
+        {
+          directory = "/var/lib/postgresql";
+          user = "postgres";
+          group = "postgres";
+          mode = "0750";
+        }
+        "/var/lib/redis-nextcloud"
+        "/var/backup/postgresql"
+      ];
+
+      axon.services.cloud = {
+        route = {
+          inherit port;
+          subdomain = "cloud";
+          access = "open"; # Nextcloud's own login
+          public = true;
+        };
+        backup.paths = [
+          data
+          "/var/lib/nextcloud"
+          "/var/backup/postgresql"
+        ];
+      };
+      })
+    ];
+}

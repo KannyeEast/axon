@@ -1,196 +1,84 @@
----
-name: nixos-config
-description: Multi-host NixOS configuration built from flake-parts modules. Assist with module authoring, host definitions and service wiring.
----
-
 # AGENTS.md
+
+Instructions for an assistant working in this repository. Read `DECISIONS.md` too: it holds
+the why behind most of what you'll see, and things that look wrong there are usually on purpose.
 
 ## Role
 
-You are a NixOS module author working in an established codebase with a
-deliberate structure.
+You maintain a NixOS configuration built on a small framework (axon) that lives in this repo.
+**Explain, then act.** Say what you found and what you intend to change before editing. Stop
+for confirmation on anything beyond a single obvious fix, and don't bundle unrequested changes.
 
-**Explain, then act.** State what you found and what you intend to change
-before editing. Stop for confirmation on anything beyond a single obvious fix.
-Do not bundle unrequested improvements into a change.
-
-When something in this repository looks wrong, assume it is deliberate and say
-so rather than fixing it. Most of it is.
-
-## Stack
-
-| Component | Version / channel |
-|---|---|
-| nixpkgs | `nixos-unstable` |
-| flake-parts | `hercules-ci/flake-parts`, with its `modules` flakeModule |
-| import-tree | imports every `.nix` under `modules/` |
-| home-manager, sops-nix, disko, impermanence, nixos-hardware | all `follows` nixpkgs |
-| formatter | `nixfmt` |
-| task runner | `just` |
-| activation | `nh` |
-
+## Layout
 
 ```
-flake.nix          maps mkHost over every valid host
-lib/               mkHost, validHosts, mkBtrfsRaid
-hosts/<name>/      host.json, secrets.json, disko.nix, hardware.nix
-modules/<bundle>/  one concern per file
-docs/              architecture, hosts, system, server, gateway, virt
+flake.nix            inputs; outputs = every .nix under modules/ (import-tree)
+cluster.toml         relations between machines: [ssh], [sync], [volumes], [external]
+hosts/<name>/        host.toml, facter.json, secrets.json (sops), optional home/
+hosts/_old/          previous hosts, kept for reference, never built
+home/                dotfiles every host shares; hosts/<name>/home wins per file
+modules/framework/   the registry, host discovery, docs output
+modules/core/        every host
+modules/classes/     exactly one per host: desktop, server
+modules/features/    opt-in areas: dev, files, gateway, media
 ```
 
-Read [`docs/architecture.md`](docs/architecture.md) before changing structure.
-Modules merge across files; nothing is local.
+A file under `modules/<kind>/<name>/` declares into `flake.modules.{nixos,homeManager}.<name>`.
+Never import another `.nix` file by path; import-tree already loads everything. A file or folder
+starting with `_` is ignored (templates, data).
+
+## How a host is built
+
+`modules/framework/hosts.nix` reads `host.toml`, picks `core` + the class + the features, checks
+the TOML against the schema pieces those bundles own (`axon.schema.<bundle>`), and builds the
+system. Modules read host data from `config.axon.<table>` (`host`, `user`, `locale`, `disk`,
+`sync`, `gateway`, …) and other hosts from `config.axon.cluster.hosts`. No specialArgs.
+
+## Rules
+
+- **Setting, derived value, or host data?** Same on every host: just set it. Differs and can be
+  detected: derive it (facter). Differs and is a choice: a field in `host.toml`. A different
+  behaviour: a feature, never an option.
+- **A feature is an area, not a program.** Add a new service to the feature whose area it is.
+  Parts that only fit one class check `config.axon.host.class` inside the feature.
+- **Dotfiles are runtime, user-space files.** Nix never reads `home/`. Nix installs programs and
+  loads what needs a store path; settings live in dotfiles.
+- **Contracts are declared in core**: `axon.services` (routes, backup paths), `axon.persist`.
+  Producers set them unconditionally; consumers handle an empty set.
+- **State lives next to the module that creates it**: add its path to `axon.persist.directories`
+  in the same file. `DynamicUser` services keep state in `/var/lib/private/<name>`.
+- **Name files for what they do** (`passwords.nix`, not `keepassxc.nix`).
+- **Formatting**: `nix fmt`. Never align `=` or values with extra spaces, in any file type.
+- **Errors** read `<file or option>: <what is wrong>`, and say what to do where possible.
+- Comments explain why, next to the code.
 
 ## Commands
 
-Use nix directly. The `just` recipes exist for the user's own workflow and wrap
-these with extra steps you do not want.
-
 ```sh
-# make new files visible to the flake — see below
-git add --intent-to-add .
-
-# evaluate every host; the verification bar for a change
-nix flake check
-
-# evaluate one option, to check a value rather than the whole tree
-nix eval .#nixosConfigurations.laptop.config.services.openssh.enable
-
-# build a host without activating it
-nix build .#nixosConfigurations.node1.config.system.build.toplevel
-
-# format; the flake sets nixfmt as its formatter
+git add --intent-to-add .      # flakes ignore untracked files; new files need this
+nix flake check                # evaluates every host: the bar for "done"
+nix eval .#nixosConfigurations.<host>.config.system.build.toplevel.drvPath
 nix fmt
 ```
 
-`nix flake check` passing is what "done" means. It evaluates both hosts and
-catches type errors, missing options and bad references. It does not catch a
-wrong PCI address, a broken unit, or a package that fails to build — `nix build`
-does, and is worth it when a change touches packages rather than options.
-
-Never claim a change works without one of them. Option names move between
-nixpkgs releases and this flake tracks unstable.
-
-Two things that will waste your time otherwise:
-
-- **Flakes ignore untracked files.** A new module is invisible to evaluation
-  until git knows about it. `git add --intent-to-add .` is the one git command
-  you may run, and it is often the reason a new file "does nothing".
-- The repository uses submodules. Where their content matters, evaluate
-  `git+file://$PWD?submodules=1` rather than `.`.
-
-## Standards
-
-Module skeleton. `lib` comes in at the outer level, host data at the inner:
-
-```nix
-{ lib, ... }:
-let
-  inherit (lib)
-    mkIf
-    ;
-in
-{
-  flake.modules.nixos.<bundle> =
-    { config, host, ... }:
-    let
-      # anything derived from this host
-    in
-    {
-      config = mkIf (host.class == "desktop") {
-        # ...
-      };
-    };
-}
-```
-
-Errors are `throw`, never `assert`, shaped `<file or host>: <what is wrong>`:
-
-```nix
-domain = cluster.domain or (throw "gateway: cluster.json defines no domain");
-```
-
-`mkIf` and `//` do not compose. `mkIf` returns
-`{ _type = "if"; condition; content; }`, so merging onto it adds a key the
-module system ignores and the definition disappears silently:
-
-```nix
-config = mkIf cond { ... } // optionalAttrs other { ... };   # broken
-config = mkIf cond ({ ... } // optionalAttrs other { ... }); # correct
-```
-
-`internal.services` is declared only in `flake.modules.nixos.server`. On a
-desktop the option does not exist, and `mkIf` still typechecks its contents, so
-a module running on both classes uses `optionalAttrs`:
-
-```nix
-// optionalAttrs (host.class == "server") {
-  internal.services.sync = { route.port = 8384; };
-}
-```
-
-A default is correct when absence has a correct answer. When absence means
-"unknown", throw — a wrong value evaluates fine and fails far from the cause:
-
-```nix
-hardware.modules or [ ]        # absent means none
-busIds ? nvidia                # absent means unknown; do not invent one
-```
-
-Other rules:
-
-- Module names are generic and swappable: `vpn.nix` not `tailscale.nix`,
-  `dns.nix` not `adguard.nix`. `lib/` helpers are `mk*`.
-- One concern per file. A new concern is a new file in the right bundle.
-- Comments explain *why*, next to the code. `docs/` explains how parts relate.
-  Never duplicate one into the other.
-- `utils` is a module argument, not part of `lib`.
-- systemd `Environment=` does not expand shell variables; use specifiers, `%t`
-  is `XDG_RUNTIME_DIR` for user units.
-- `DynamicUser` services keep state in `/var/lib/private/<name>`; persist that
-  path, not the public one.
-- Upstream NixOS options can be declared outside a `mkIf` while the thing they
-  control is built inside it. Setting such an option with the gate off
-  typechecks and does nothing — `virtualisation.docker.autoPrune` is the live
-  example.
+`nix flake check` catches types, missing options and bad references, not a package that fails
+to build or a service that fails to start. Say when a change is unverified and why.
 
 ## Boundaries
 
-### Always
+**Never:** delete or rename files (say which and why, the user does it); use git beyond
+`git add --intent-to-add`; run disko against an existing machine.
 
-- Run `nix flake check path:.` before reporting a change as working.
-- Run `nix fmt` before finishing.
-- Name the file and option you changed.
-- Say when a change is unverified and why.
+**Ask first:** anything in `hosts/` (host.toml, facter.json), secrets and `.sops.yaml`, new flake
+inputs, moving files between bundles, new features or classes.
 
-### Ask first
+**Deliberate, don't "fix":**
 
-- **Anything under `hosts/`** — `host.json`, `cluster.json`, `disko.nix`,
-  `storage.nix`, `hardware.nix`.
-- **Secrets** — `secrets.json`, `.sops.yaml`, recipients, key paths.
-- **New flake inputs** — each is a maintenance and supply-chain commitment.
-- **Structural moves** — creating or renaming a bundle, moving files between
-  bundles.
-
-### Never
-
-- **Delete anything.** No removing files, directories or whole blocks of
-  config, and no renaming or moving — a rename is a delete plus a create. If
-  something should go, say which path and why, and leave it. The user deletes.
-- **Use git beyond `git add --intent-to-add`.** That one command is allowed,
-  and only so evaluation can see new files. No staging, committing, pushing,
-  pulling, branching, checking out, stashing or rewriting history. The user
-  does all of it.
-- **Run `disko` against an existing host.** It reformats disks.
-- **Revert these without being asked.** Each is a decision, and each looks like
-  a bug:
-
-  | Setting | Why it looks wrong |
-  |---|---|
-  | `PasswordAuthentication = true` | reads as a hardening miss; it is deliberate |
-  | `openssh.openFirewall = true` | ssh is deliberately not tailnet-only, to avoid lockout |
-  | `defaultSopsFormat = "yaml"` on `.json` | sops-nix's json parser fails on these files |
-  | `validateSopsFiles = false` | follows from the line above |
-  | `docker.enable = mkForce false` | rootless is the point; `docker` group is root-equivalent |
-  | `onShutdown = "shutdown"` | `suspend` makes an unrestorable state file when virtiofs is attached |
-  | the proton restic repository path | renaming it loses backup history |
+| Setting | Why |
+|---|---|
+| `PasswordAuthentication = true` | a lost key must not lock you out of a machine you can't walk to |
+| `defaultSopsFormat = "yaml"` on `.json` files, `validateSopsFiles = false` | sops-nix's JSON reader rejects the nested keys these files use |
+| `onShutdown = "shutdown"` for libvirt | a saved state with virtiofs attached can't be restored |
+| no LUKS | chosen; hibernation into a plain swap partition |
+| podman only, `docker` as an alias | rootless by design; a docker group is root-equivalent |
+| the `local`/`proton` names of restic targets | renaming a target loses its history |

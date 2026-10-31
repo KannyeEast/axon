@@ -1,0 +1,19 @@
+domain = "vexelvault.com"
+
+# who may log in where: the member's user key is authorised on each listed host
+[ssh]
+tower = ["laptop", "node1"]
+laptop = ["tower", "node1"]
+
+# folders, and the members that keep them in sync with each other
+[sync]
+vault = ["tower", "laptop", "node1", "phone"]
+
+# shared stores; a service asks for one by name
+[volumes]
+media = "node1:/server/media"
+vault = "node1:/server/vault"
+
+# members that take part in relations but are not built from this repository
+[external.phone]
+sync = "FEHJ4VH-KTUCWO7-FLWTHY4-KNLHYMZ-ABVK3EP-RRD54NG-6PSKTPB-SWIWSQW"

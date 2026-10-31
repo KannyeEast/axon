@@ -1,0 +1,42 @@
+[host]
+class = "server"
+features = ["dev", "files", "gateway", "media"]
+state = "26.05" # written once at install, never changed
+key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKmRNw4AIN8rtkAG8DIgL5stwAiQYAjGru1rNfJAAQGr root@node1"
+
+[user]
+name = "gldn"
+email = "johngit@vexelvault.com"
+key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGVOaOCHBmyINeGN6m8pLjKS/ErUhoafr7/WQPsrHTsQ gldn@node1"
+
+[locale]
+timezone = "Europe/Berlin"
+
+[disk.boot]
+devices = ["/dev/nvme0n1"] # TODO: by-id
+swap = 17
+
+# 2x 8 TB HDD, mirrored: everything big or important
+[disk.bulk]
+devices = [
+  "/dev/disk/by-id/ata-WDC_WD80EFPX-68C4ZN0_WD-RD31AHZH",
+  "/dev/disk/by-id/ata-WDC_WD80EFPX-68C4ZN0_WD-RD31HTJG",
+]
+profile = "raid1"
+mounts = { media = "/server/media", data = "/server/data" }
+
+# 500 GB SSD: small things used all the time
+[disk.kit]
+devices = ["/dev/disk/by-id/ata-Samsung_SSD_860_EVO_500GB_S4CNNF0M701774A"]
+mounts = { vault = "/server/vault" }
+
+# SSD: work in progress
+[disk.scratch]
+devices = ["/dev/disk/by-id/ata-INTENSO_SSD_AA000000000000000565"]
+mounts = { scratch = "/server/scratch" }
+
+[gateway]
+# tunnel = "<id from: cloudflared tunnel create node1>"
+
+[sync]
+id = "7B5WETD-2BBTFMG-OKJBRDP-A5NJ3UC-3A7HECI-IEB6UP4-KZLTLWF-7RVIPQD"

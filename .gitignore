@@ -1,6 +1,9 @@
 result
+result-*
 .direnv
-.env
 .idea
-*.qcow2
+_inputs/
 *.bak
+
+DECISIONS.md
+Axon NixOS Framework.html
