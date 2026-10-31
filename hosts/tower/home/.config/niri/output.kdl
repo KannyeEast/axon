@@ -3,7 +3,7 @@
 spawn-at-startup "kanshi"
 
 // Extra settings unavailable in kanshi
-output "GIGA-BYTE TECHNOLOGY CO., LTD. Gigabyte M32U 0x01010101" {
+output "GIGA-BYTE TECHNOLOGY CO., LTD. Gigabyte M32U 24081B002226" {
     focus-at-startup
 
     layout {

@@ -1,19 +1,21 @@
+# rates are the exact modes from `niri msg outputs`; a rate no mode has fails the whole profile
 output "Acer Technologies QG271 M3 A4121352C3W01" {
-    mode 1920x1080@144
+    mode 1920x1080@179.998
     position 0,192
     scale 1
     alias $DESKTOP_01
 }
 
-output "GIGA-BYTE TECHNOLOGY CO., LTD. Gigabyte M32U 0x01010101" {
-    mode 3840x2160@144
+output "GIGA-BYTE TECHNOLOGY CO., LTD. Gigabyte M32U 24081B002226" {
+    mode 3840x2160@143.988
     position 1920,192
     scale 1.25
     alias $DESKTOP_02
 }
 
+# over HDMI this panel stops at 144 Hz
 output "PNP(BNQ) ZOWIE XL LCD EBLAL01265SL0" {
-    mode 1920x1080@180
+    mode 1920x1080@143.981
     position 4992,0
     transform 90
     scale 1
