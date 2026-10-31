@@ -21,7 +21,10 @@ in
       inherit (config.axon) user cluster services;
 
       domain =
-        if cluster.domain != null then cluster.domain else throw "cluster.toml: the gateway feature needs a domain";
+        if cluster.domain != null then
+          cluster.domain
+        else
+          throw "cluster.toml: the gateway feature needs a domain";
       gateways = attrNames (filterAttrs (_: data: elem "gateway" data.host.features) cluster.hosts);
       routed = filterAttrs (_: service: service.route != null && !service.route.public) services;
 

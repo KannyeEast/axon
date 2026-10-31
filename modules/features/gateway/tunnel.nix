@@ -43,7 +43,9 @@ in
         message = "axon.services.${name}: a public service must bring its own login (access = \"open\"); the gateway login only guards the tailnet";
       }) public;
 
-      warnings = lib.optional (public != { } && gateway.tunnel == null) "gateway: ${concatStringsSep ", " (attrNames public)} would be public, but host.toml has no [gateway] tunnel yet";
+      warnings =
+        lib.optional (public != { } && gateway.tunnel == null)
+          "gateway: ${concatStringsSep ", " (attrNames public)} would be public, but host.toml has no [gateway] tunnel yet";
 
       sops.secrets.cloudflare-tunnel = mkIf (gateway.tunnel != null) { };
 

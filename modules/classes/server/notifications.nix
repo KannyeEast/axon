@@ -9,7 +9,11 @@
     let
       inherit (config.axon) host cluster;
       ph = config.sops.placeholder;
-      domain = if cluster.domain != null then cluster.domain else throw "cluster.toml: a server needs a domain for its mail";
+      domain =
+        if cluster.domain != null then
+          cluster.domain
+        else
+          throw "cluster.toml: a server needs a domain for its mail";
       sendmail = "/run/wrappers/bin/sendmail";
     in
     {

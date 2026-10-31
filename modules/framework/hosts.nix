@@ -94,19 +94,21 @@ let
     name: data:
     removeAttrs
       (evalModules {
-        modules = map (bundle: schema.${bundle}) (filter (bundle: schema ? ${bundle}) (bundles name data)) ++ [
-          {
-            _file = hostsDir + "/${name}/host.toml";
-            config = data;
-          }
-          {
-            _file = "modules/framework/hosts.nix";
-            config.host = {
-              inherit name;
-              dir = hostsDir + "/${name}";
-            };
-          }
-        ];
+        modules =
+          map (bundle: schema.${bundle}) (filter (bundle: schema ? ${bundle}) (bundles name data))
+          ++ [
+            {
+              _file = hostsDir + "/${name}/host.toml";
+              config = data;
+            }
+            {
+              _file = "modules/framework/hosts.nix";
+              config.host = {
+                inherit name;
+                dir = hostsDir + "/${name}";
+              };
+            }
+          ];
       }).config
       [ "_module" ];
 
@@ -118,15 +120,18 @@ let
   cluster =
     let
       data = if builtins.pathExists clusterFile then readToml clusterFile else { };
-      checked = removeAttrs (evalModules {
-        modules = [
-          clusterSchema
-          {
-            _file = clusterFile;
-            config = data;
-          }
-        ];
-      }).config [ "_module" ];
+      checked =
+        removeAttrs
+          (evalModules {
+            modules = [
+              clusterSchema
+              {
+                _file = clusterFile;
+                config = data;
+              }
+            ];
+          }).config
+          [ "_module" ];
       members = attrNames hosts ++ attrNames checked.external;
       known = name: elem name members;
       ownerOf = location: head (splitString ":" location);

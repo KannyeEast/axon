@@ -5,25 +5,25 @@
     { config, pkgs, ... }:
     {
       config = lib.mkIf (config.axon.host.class == "desktop") {
-      virtualisation.libvirtd = {
-        enable = true;
-        onBoot = "ignore";
-        # a guest with a virtiofs share cannot be restored from a saved state
-        onShutdown = "shutdown";
-        qemu = {
-          runAsRoot = false;
-          swtpm.enable = true;
-          vhostUserPackages = [ pkgs.virtiofsd ];
+        virtualisation.libvirtd = {
+          enable = true;
+          onBoot = "ignore";
+          # a guest with a virtiofs share cannot be restored from a saved state
+          onShutdown = "shutdown";
+          qemu = {
+            runAsRoot = false;
+            swtpm.enable = true;
+            vhostUserPackages = [ pkgs.virtiofsd ];
+          };
         };
-      };
-      programs.virt-manager.enable = true;
+        programs.virt-manager.enable = true;
 
-      users.users.${config.axon.user.name}.extraGroups = [ "libvirtd" ];
+        users.users.${config.axon.user.name}.extraGroups = [ "libvirtd" ];
 
-      # state lives next to the module that creates it
-      axon.persist.directories = [ "/var/lib/libvirt" ];
+        # state lives next to the module that creates it
+        axon.persist.directories = [ "/var/lib/libvirt" ];
 
-      networking.firewall.trustedInterfaces = [ "virbr0" ];
+        networking.firewall.trustedInterfaces = [ "virbr0" ];
       };
     };
 }

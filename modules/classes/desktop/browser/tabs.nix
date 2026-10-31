@@ -12,11 +12,11 @@ in
       domain = if osConfig.axon.cluster.domain != null then osConfig.axon.cluster.domain else "";
       escapeRegex = builtins.replaceStrings [ "." ] [ "\\." ];
 
-      # one neutral tint for every space; colours are taste and can be set in the browser
+      # one black for every space; spacesForce reapplies it on every switch, so change it here
       tint = {
-        red = 128;
-        green = 128;
-        blue = 128;
+        red = 0;
+        green = 0;
+        blue = 0;
       };
 
       mkTheme = _: {
@@ -27,11 +27,11 @@ in
             // {
               algorithm = "floating";
               type = "explicit-lightness";
-              lightness = 50;
+              lightness = 0;
             }
           )
         ];
-        opacity = 0.8;
+        opacity = 1.0;
         texture = 0.0;
       };
 

@@ -33,7 +33,7 @@
       url = "github:NixOS/nixos-hardware/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    
+
     # desktop
     zen-browser = {
       url = "github:0xc000022070/zen-browser-flake";
