@@ -26,6 +26,27 @@
       };
 
       config = {
+        # sops-nix finds a missing key only at boot, and then installs none of the host's
+        # secrets (the Tailscale key among them). Every secret a module declares from this
+        # file must exist here, so the evaluation, and install.sh before it wipes, fails first.
+        assertions =
+          let
+            ours = lib.filter (secret: secret.sopsFile == file && secret.key != "") (
+              lib.attrValues config.sops.secrets
+            );
+            missing = lib.filter (
+              secret: !lib.hasAttrByPath (lib.splitString "/" secret.key) config.axon.secrets
+            ) ours;
+          in
+          [
+            {
+              assertion = missing == [ ];
+              message = "hosts/${host.name}/secrets.json: missing ${
+                lib.concatMapStringsSep ", " (secret: "'${secret.key}'") missing
+              }; add them with `just secrets ${host.name}` (a/b is {\"a\": {\"b\": …}})";
+            }
+          ];
+
         sops = {
           defaultSopsFile = file;
           # JSON is YAML; sops-nix's JSON reader rejects nested keys these files use

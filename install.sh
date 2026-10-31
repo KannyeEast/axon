@@ -7,9 +7,9 @@
 #                              set a root password there with `passwd` first)
 #
 # It asks a few questions, then writes hosts/<name>/ (host.toml, facter.json, secrets.json),
-# adds the machine's keys to .sops.yaml, checks that the config evaluates, and only then wipes
-# the chosen disk. Everything except the login password and the Tailscale key is added later
-# with `just secrets`.
+# adds the machine's keys to .sops.yaml, lets you add what the questions don't cover (extra
+# disks, the features' tables and secrets), checks that the config evaluates, and only then
+# wipes the chosen disk.
 set -euo pipefail
 
 # the tools come from nixpkgs; re-run inside a shell that has them
@@ -208,10 +208,34 @@ fi
 
 git add --intent-to-add "hosts/$name" .sops.yaml
 
+# ── what the questions don't cover ────────
+# Both have to be in place before the install: disko formats disks only now, and one missing
+# secret stops sops-nix from installing any of them at boot, the Tailscale key included.
+say "before installing"
+echo "  host.toml     extra disks ([disk.<label>]) and feature tables ([gateway], …)"
+echo "  secrets.json  what the features need; the check below names anything missing"
+# the new user key opens secrets.json; it goes with $work when this script ends
+SOPS_AGE_KEY=$(ssh-to-age -private-key -i "$work/root/home/$user/.ssh/id_ed25519")
+export SOPS_AGE_KEY
+edit() {
+  local what
+  while :; do
+    read -rp "edit [h]ost.toml, [s]ecrets.json, or [c]ontinue: " what
+    case "$what" in
+      h) "${EDITOR:-nano}" "hosts/$name/host.toml" ;;
+      s) sops "hosts/$name/secrets.json" ;;
+      c) return ;;
+    esac
+  done
+}
+edit
+
 # ── check before anything is wiped ────────
 say "evaluating the new configuration"
-flake_eval --raw ".#nixosConfigurations.$name.config.system.build.toplevel.drvPath" >/dev/null ||
-  die "the configuration doesn't evaluate; hosts/$name is written, nothing was wiped"
+until flake_eval --raw ".#nixosConfigurations.$name.config.system.build.toplevel.drvPath" >/dev/null; do
+  echo "the configuration doesn't evaluate (above); fix it here, or stop with Ctrl-C: hosts/$name is written, nothing was wiped"
+  edit
+done
 
 echo
 echo "  host     $name ($class: ${features[*]:-no features})"
@@ -249,5 +273,5 @@ say "done"
 cat <<NEXT
   Reboot into $name. Then, on it:
     cd ~/axon && git add -A && just commit "feat($name): install"   # keep the new host
-    just secrets                                                  # add the remaining secrets
+    just secrets                                                  # change secrets later
 NEXT

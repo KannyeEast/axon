@@ -1,6 +1,9 @@
 # The gateway login (Authelia), for routed services that don't have their own.
 # The user database is seeded once from the admin hash in secrets.json; after that
 # Authelia owns it, so a changed hash in secrets.json doesn't apply any more.
+# Its three keys (session cookies, database encryption, reset links) are random values
+# nobody types, so the host makes them on first start and keeps them in the state folder,
+# which is persisted and backed up: the database is unreadable without its key.
 { lib, ... }:
 let
   inherit (lib) filterAttrs mapAttrsToList;
@@ -12,6 +15,7 @@ in
       inherit (config.axon) user cluster services;
       domain = cluster.domain;
       state = "/var/lib/authelia-main";
+      keys = "${state}/keys";
 
       policyOf = {
         "login" = "one_factor";
@@ -22,12 +26,7 @@ in
       ) services;
     in
     {
-      sops.secrets = {
-        "authelia/admin-hash" = { };
-        "authelia/jwt".owner = "authelia-main";
-        "authelia/session".owner = "authelia-main";
-        "authelia/storage".owner = "authelia-main";
-      };
+      sops.secrets."authelia/admin-hash" = { };
 
       sops.templates."authelia-seed.yml".content = ''
         users:
@@ -41,7 +40,7 @@ in
       '';
 
       systemd.services.authelia-main-seed = {
-        description = "Seed the Authelia user database";
+        description = "Seed the Authelia user database and create its keys";
         wantedBy = [ "multi-user.target" ];
         before = [ "authelia-main.service" ];
         requiredBy = [ "authelia-main.service" ];
@@ -58,15 +57,20 @@ in
           if [ ! -e ${state}/users.yml ]; then
             install -m 0600 "$CREDENTIALS_DIRECTORY/seed" ${state}/users.yml
           fi
+          umask 077
+          mkdir -p ${keys}
+          for key in jwt session storage; do
+            [ -e ${keys}/$key ] || head -c 48 /dev/urandom | base64 -w0 >${keys}/$key
+          done
         '';
       };
 
       services.authelia.instances.main = {
         enable = true;
         secrets = {
-          jwtSecretFile = config.sops.secrets."authelia/jwt".path;
-          sessionSecretFile = config.sops.secrets."authelia/session".path;
-          storageEncryptionKeyFile = config.sops.secrets."authelia/storage".path;
+          jwtSecretFile = "${keys}/jwt";
+          sessionSecretFile = "${keys}/session";
+          storageEncryptionKeyFile = "${keys}/storage";
         };
         settings = {
           theme = "auto";
