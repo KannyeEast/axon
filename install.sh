@@ -44,6 +44,7 @@ DISK_NAME=""
 SWAP=""
 RESERVE=0
 WIPE_EXTRA=false
+INPLACE=false
 
 # == data disks: one entry per [disk.<label>] ==
 DATA_LABELS=()
@@ -62,6 +63,8 @@ DOTFILES_METHOD=""
 DOTFILES=""
 SSH_OPTS=()
 TARGET=""
+TARGET_MAC=""
+TARGET_NET=""
 REGISTRY=""
 
 # ── theme ────────
@@ -146,6 +149,22 @@ isInstaller() {
   probe grep -Eq 'VARIANT_ID="?installer"?' /etc/os-release
 }
 
+# == the keys of an install that hasn't finished yet; a rerun after a failure picks them up ==
+keepDir() { printf '%s' "${XDG_CACHE_HOME:-$HOME/.cache}/axon-install/$HOSTNAME"; }
+
+# == every IPv4 address the card with this MAC has on this machine's network. Each address of
+# == the /24 is pinged once so the neighbour table fills; a host that drops pings still answers ARP.
+findByMac() {
+  local mac="$1" base i
+  base="${2%/*}"
+  base="${base%.*}"
+  (
+    for (( i = 1; i < 255; i++ )); do ping -c1 -W1 "$base.$i" &>/dev/null & done
+    wait
+  ) || true
+  ip -4 neigh show | awk -v m="$mac" 'tolower($0) ~ m && $NF != "FAILED" { print $1 }'
+}
+
 # ── traps ────────
 trapError() {
   local code=$? cmd=$BASH_COMMAND line=${BASH_LINENO[0]} fn=${FUNCNAME[1]:-main}
@@ -216,7 +235,9 @@ shell() {
     # locale -a and the layout list read these instead of the host's
     LOCALE_ARCHIVE="$(nixx build --no-link --print-out-paths --inputs-from "$flake" nixpkgs#glibcLocales)/lib/locale/locale-archive"
     XKB_RULES="$(nixx build --no-link --print-out-paths --inputs-from "$flake" nixpkgs#xkeyboard_config)/share/X11/xkb/rules/base.lst"
-    export LOCALE_ARCHIVE XKB_RULES INSTALLER_SHELL=1
+    # NixOS's glibc reads the versioned name first, and the host sets it to its own few locales
+    LOCALE_ARCHIVE_2_27="$LOCALE_ARCHIVE"
+    export LOCALE_ARCHIVE LOCALE_ARCHIVE_2_27 XKB_RULES INSTALLER_SHELL=1
 
     exec nix --extra-experimental-features "nix-command flakes" shell --inputs-from "$flake" \
       "${pkgs[@]/#/nixpkgs#}" -c bash "$0" "$@"
@@ -437,6 +458,17 @@ gatherTarget() {
   done
 
   logInfo "Connected to $(probe hostname) running $(probe uname -sr)"
+
+  # an installer asks DHCP again and may come back at another address; its card finds it
+  local dev
+  dev="$(probe ip -o -4 route show default \
+    | awk '{ for (i = 1; i < NF; i++) if ($i == "dev") { print $(i + 1); exit } }')" || true
+  if [[ -n $dev ]]; then
+    TARGET_MAC="$(probe cat "/sys/class/net/$dev/address")" || true
+    TARGET_NET="$(probe ip -o -4 addr show dev "$dev" | awk '{ print $4; exit }')" || true
+  fi
+  [[ -n $TARGET_MAC ]] && logInfo "Network card $TARGET_MAC on $TARGET_NET"
+
   if isInstaller; then
     logInfo "It runs the NixOS installer"
   else
@@ -564,7 +596,12 @@ preserveIdentity() {
 
   mkdir -p "$sync"
 
-  if [[ $REMOTE == true ]]; then
+  if [[ -s $(keepDir)/ssh_host_ed25519_key ]]; then
+    # an earlier run wrote hosts/<name> with these and then failed
+    cp "$(keepDir)/ssh_host_ed25519_key" "$key"
+    cp -r "$(keepDir)/syncthing/." "$sync/" 2>/dev/null || true
+    logInfo "Found the keys of an unfinished install"
+  elif [[ $REMOTE == true ]]; then
     # the old system is still running: read its persist directly
     if isInstaller; then
       logWarn "The target already runs the installer; the old keys can't be read, they are regenerated"
@@ -608,7 +645,7 @@ preserveIdentity() {
 
   # only the key host.toml names can open secrets.json
   if [[ "$(ssh-keygen -y -f "$key" | cut -d' ' -f1-2)" != "$(cut -d' ' -f1-2 <<< "$HOST_KEY")" ]]; then
-    logWarn "The old system's host key isn't the one in host.toml, keys are regenerated"
+    logWarn "The host key found isn't the one in host.toml, keys are regenerated"
     rm -f "$key"
     return 0
   fi
@@ -712,7 +749,7 @@ gatherData() {
   # the minimum device count of each profile, as modules/core/storage.nix checks it
   local -A minimum=([single]=1 [raid0]=2 [raid1]=2 [raid1c3]=3 [raid1c4]=4 [raid10]=4 [raid5]=3 [raid6]=4)
   local -a used=("$DISK_NAME") free picked devices profiles
-  local label profile mounts subvol mountpoint row p
+  local fsLabel profile mounts subvol mountpoint row p
 
   while :; do
     mapfile -t free < <(listDisks | awk -v used=" ${used[*]} " 'index(used, " " $1 " ") == 0')
@@ -720,13 +757,13 @@ gatherData() {
     formConfirm "Add a data disk?" "n" || break
 
     while :; do
-      formInput label "Name (the filesystem label)" "" "bulk"
-      if [[ ! $label =~ ^[a-z][a-z0-9-]*$ || $label == boot ]]; then
+      formInput fsLabel "Name (the filesystem label)" "" "bulk"
+      if [[ ! $fsLabel =~ ^[a-z][a-z0-9-]*$ || $fsLabel == boot ]]; then
         logWarn "Lowercase letters, digits, and hyphens; not 'boot'"
         continue
       fi
-      if printf '%s\n' "${DATA_LABELS[@]}" | grep -qx "$label"; then
-        logWarn "$label is taken"
+      if printf '%s\n' "${DATA_LABELS[@]}" | grep -qx "$fsLabel"; then
+        logWarn "$fsLabel is taken"
         continue
       fi
       break
@@ -734,7 +771,7 @@ gatherData() {
 
     formMulti picked "Disks (space to select)" "${free[@]}"
     if (( ${#picked[@]} == 0 )); then
-      logWarn "No disk selected; $label is skipped"
+      logWarn "No disk selected; $fsLabel is skipped"
       continue
     fi
 
@@ -759,7 +796,7 @@ gatherData() {
     fi
 
     mounts=""
-    subvol="$label"
+    subvol="$fsLabel"
     while :; do
       while :; do
         formInputOpt p "Subvolume" "$subvol"
@@ -775,15 +812,15 @@ gatherData() {
         logWarn "An absolute path without spaces or quotes"
       done
       mounts+="$subvol = \"$mountpoint\", "
-      formConfirm "Another subvolume on $label?" "n" || break
+      formConfirm "Another subvolume on $fsLabel?" "n" || break
       subvol=""
     done
 
-    DATA_LABELS+=("$label")
+    DATA_LABELS+=("$fsLabel")
     DATA_DEVICES+=("${devices[*]}")
     DATA_PROFILES+=("$profile")
     DATA_MOUNTS+=("{ ${mounts%, } }")
-    logInfo "disk.$label: ${#devices[@]} disk(s), $profile"
+    logInfo "disk.$fsLabel: ${#devices[@]} disk(s), $profile"
   done
 }
 
@@ -870,7 +907,10 @@ gatherSummary() {
   row() { printf '    %-14s %s\n' "$1" "$2"; }
 
   {
-    [[ $REMOTE == true ]] && { row Target "$TARGET"; echo; }
+    if [[ $REMOTE == true ]]; then
+      row Target "$TARGET"
+      echo
+    fi
 
     row Hostname "$HOSTNAME"
     row Class "$CLASS"
@@ -886,11 +926,15 @@ gatherSummary() {
       read -ra devices <<< "${DATA_DEVICES[$i]}"
       row "disk.${DATA_LABELS[$i]}" "${DATA_PROFILES[$i]}, ${#devices[@]} disk(s), ${DATA_MOUNTS[$i]}"
     done
-    [[ $CLASS == "desktop" ]] && row Reserved "$( (( RESERVE > 0 )) && echo "${RESERVE}GiB" || echo none)"
+    if [[ $CLASS == "desktop" ]]; then
+      row Reserved "$( (( RESERVE > 0 )) && echo "${RESERVE}GiB" || echo none)"
+    fi
     if [[ $EXISTING == true ]]; then
       row Keys "$([[ $PRESERVE == true ]] && echo kept || echo "regenerated (secrets.json starts over)")"
     else
-      [[ $CLASS == "desktop" ]] && row Dotfiles "${DOTFILES:-skip}"
+      if [[ $CLASS == "desktop" ]]; then
+        row Dotfiles "${DOTFILES:-skip}"
+      fi
     fi
   } | gum style --border="rounded" --padding="1 2" --margin="1 0"
 }
@@ -997,6 +1041,14 @@ generate() {
       logInfo "Syncthing id: $SYNC_ID"
     fi
   fi
+
+  # secrets.json is encrypted to these from now on: kept until the install succeeds, so a
+  # failed run doesn't leave a secrets.json nothing can open
+  rm -rf "$(keepDir)"
+  install -d -m 700 "$(keepDir)"
+  cp "$TEMP_DIR"/ssh_host_ed25519_key "$TEMP_DIR"/ssh_host_ed25519_key.pub "$(keepDir)/"
+  [[ -d $TEMP_DIR/syncthing ]] && cp -r "$TEMP_DIR/syncthing" "$(keepDir)/"
+  return 0
 }
 
 # ── write .sops.yaml ────────
@@ -1217,7 +1269,12 @@ gatherWipe() {
   # the framework never wipes them: a disk that already has a filesystem is kept as it is
   formHeader "Data disks"
   printf '    %s\n' "${EXTRA_DISKS[@]}"
-  logInfo "They are kept as they are, unless wiped here; empty ones are formatted either way"
+  if [[ $INPLACE == true ]]; then
+    # no disko in place: a disk is used only if it already carries its label
+    logInfo "They are kept as they are, unless formatted here; they're used only if they already carry their names"
+  else
+    logInfo "They are kept as they are, unless wiped here; empty ones are formatted either way"
+  fi
   formConfirm "Wipe them? Everything on them is lost" "n" || return 0
   formTypeName "Type the host name to wipe the data disks too"
   WIPE_EXTRA=true
@@ -1242,20 +1299,55 @@ zeroBootDisk() {
 
 # ── remote: into the installer in RAM ────────
 kexecTarget() {
-  local addr="${TARGET#*@}" i
+  local addr="${TARGET#*@}" pid found="" i ip
 
   logWarn "Switching $TARGET into the installer; until the install, a reboot brings the old system back"
   ssh -o ControlPath="$TEMP_DIR/ssh-%C" -O exit "$TARGET" &>/dev/null || true
+
+  # nixos-anywhere waits for the installer at the old address and never gives up, but DHCP
+  # may hand it another one. So it runs on its own (its own session, so stopping it stops its
+  # ssh too) while the installer is looked for by its network card.
   # --flake is required even here; only the disko and install phases build anything
-  nixx run --inputs-from "$FLAKE" nixpkgs#nixos-anywhere -- \
-    --phases kexec --flake "$FLAKE#$HOSTNAME" --target-host "$TARGET"
+  setsid nix --extra-experimental-features "nix-command flakes" run --inputs-from "$FLAKE" \
+    nixpkgs#nixos-anywhere -- --phases kexec --flake "$FLAKE#$HOSTNAME" --target-host "$TARGET" \
+    </dev/null &
+  pid=$!
 
   # the installer has a host key of its own
   ssh-keygen -R "$addr" -f "$TEMP_DIR/known_hosts" &>/dev/null || true
-  for (( i = 0; i < 60; i++ )); do
-    ssh "${SSH_OPTS[@]}" -o BatchMode=yes "$TARGET" true 2>/dev/null && break
-    sleep 5
+
+  for (( i = 0; i < 90; i++ )); do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      wait "$pid" || die "Switching into the installer failed (above); nothing was wiped"
+      found="$addr"
+      break
+    fi
+    # after a minute, the old system is gone and the installer has asked for an address
+    if [[ -n $TARGET_MAC ]] && (( i >= 6 && i % 3 == 0 )); then
+      while IFS= read -r ip; do
+        [[ $ip != "$addr" ]] || continue
+        if ssh -n "${SSH_OPTS[@]}" -o BatchMode=yes "root@$ip" \
+            "grep -Eq 'VARIANT_ID=\"?installer\"?' /etc/os-release" 2>/dev/null; then
+          found="$ip"
+          break
+        fi
+      done < <(findByMac "$TARGET_MAC" "$TARGET_NET")
+      if [[ -n $found ]]; then
+        kill -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+        wait "$pid" 2>/dev/null || true
+        logInfo "The installer came up at $found instead of $addr"
+        break
+      fi
+    fi
+    sleep 10
   done
+
+  if [[ -z $found ]]; then
+    kill -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+    die "$addr didn't come back as the installer, at that address or any other; nothing was wiped, a reboot brings the old system back, and a rerun reuses this run's keys"
+  fi
+
+  TARGET="root@$found"
   isInstaller || die "$TARGET didn't come back as the installer"
   logInfo "$TARGET runs the installer"
 }
@@ -1287,16 +1379,168 @@ stageFiles() {
 # ── install ────────
 installSystem() {
   formHeader "Installing"
+
+  INPLACE=false
+  if [[ $REMOTE == true ]] && ! isInstaller && canInPlace; then
+    logInfo "$TARGET runs NixOS on the partitions this config uses; it can be installed in place:"
+    logInfo "no switch into the installer, and if the new system doesn't come up, a power cycle"
+    logInfo "starts the old one again"
+    formConfirm "Install in place?" "y" && INPLACE=true
+  fi
+
   gatherWipe
 
-  logWarn "$DISK on ${TARGET:-this machine} will be wiped"
+  if [[ $INPLACE == true ]]; then
+    logWarn "The system on $DISK is replaced; its partitions stay, /persist and /home start empty"
+  else
+    logWarn "$DISK on ${TARGET:-this machine} will be wiped"
+  fi
   formTypeName "Type the host name to wipe and install"
 
-  if [[ $REMOTE == true ]]; then
+  if [[ $INPLACE == true ]]; then
+    installInPlace
+  elif [[ $REMOTE == true ]]; then
     installRemote
   else
     installLocal
   fi
+}
+
+# == in place: the target runs NixOS on the partitions disko would create, by the same names ==
+canInPlace() {
+  local p
+  probe test -e /etc/NIXOS 2>/dev/null || return 1
+  for p in ESP root; do
+    probe test -b "/dev/disk/by-partlabel/disk-main-$p" 2>/dev/null || return 1
+  done
+  if (( SWAP > 0 )); then
+    probe test -b /dev/disk/by-partlabel/disk-main-swap 2>/dev/null || return 1
+  fi
+  # and they are on the disk host.toml names
+  [[ "$(probe lsblk -no PKNAME /dev/disk/by-partlabel/disk-main-root 2>/dev/null)" \
+    == "$(probe readlink -f "$DISK" 2>/dev/null | xargs -r basename)" ]]
+}
+
+# == Install in place, over SSH, while the old system runs ==
+# The partitions stay; /persist and /home start empty, / is emptied on every boot anyway.
+# The new system is built here, copied over and set to boot once (EFI BootNext): the old
+# boot entry stays the default until the new system has answered.
+installInPlace() {
+  local stage="$TEMP_DIR/stage" mnt=/mnt/axon-install system efi order entry
+  mkdir -p "$stage"
+  stageFiles "$stage"
+
+  logWarn "First build can take a while"
+  system="$(nixx build --no-link --print-out-paths "$FLAKE#nixosConfigurations.$HOSTNAME.config.system.build.toplevel")"
+  efi="$(nixx build --no-link --print-out-paths --inputs-from "$FLAKE" "nixpkgs#efibootmgr^out")"
+  NIX_SSHOPTS="${SSH_OPTS[*]}" nixx copy --substitute-on-destination --to "ssh://$TARGET" "$system" "$efi"
+  efi="$efi/bin/efibootmgr"
+
+  # an empty persist next to the running one, swapped in just before the reboot
+  probe bash -s -- "$mnt" <<'EOF'
+set -eu
+mnt=$1
+mkdir -p "$mnt"
+mountpoint -q "$mnt" || mount -o subvolid=5 /dev/disk/by-partlabel/disk-main-root "$mnt"
+# left over from an attempt that didn't get to the reboot
+if [ -e "$mnt/persist.new" ]; then btrfs subvolume delete "$mnt/persist.new" >/dev/null; fi
+btrfs subvolume create "$mnt/persist.new" >/dev/null
+[ -e "$mnt/home" ] || btrfs subvolume create "$mnt/home" >/dev/null
+EOF
+  tar -C "$stage" --owner=0 --group=0 --transform 's,^persist,persist.new,SH' -cf - persist home \
+    | probe tar -C "$mnt" -xpf -
+  probe chown -R 1000:100 "$mnt/home/$USERNAME"
+  if [[ -d $stage/persist/var/lib/syncthing ]]; then
+    probe chown -R 1000:100 "$mnt/persist.new/var/lib/syncthing"
+  fi
+  logInfo "Staged the keys and the checkout"
+
+  order="$(probe "$efi" | sed -n 's/^BootOrder: //p')"
+  probe nix-env -p /nix/var/nix/profiles/system --set "$system"
+  # GRUB copies every generation's kernel onto the ESP, which the old layout keeps small; the
+  # old system still boots from its own loader's copies
+  probe nix-env -p /nix/var/nix/profiles/system --delete-generations old
+  probe env NIXOS_INSTALL_BOOTLOADER=1 "$system/bin/switch-to-configuration" boot
+  entry="$(probe "$efi" | awk '/NixOS-boot/ { sub(/^Boot/, "", $1); sub(/\*.*/, "", $1); print $1; exit }')"
+  [[ -n $entry ]] || die "GRUB added no boot entry; nothing was swapped, the old system still boots"
+  # grub-install puts itself first; the old entry stays the default until the new system answers
+  [[ -n $order ]] && probe "$efi" -q -o "$order"
+
+  probe bash -s -- "$mnt" <<'EOF'
+set -eu
+mnt=$1
+mv "$mnt/persist" "$mnt/persist-old_$(date +%F_%H%M%S)"
+mv "$mnt/persist.new" "$mnt/persist"
+umount "$mnt"
+EOF
+  # only now: until here, a reboot would have found the new system without its keys
+  probe "$efi" -q -n "$entry"
+  logInfo "Boot entry $entry boots $HOSTNAME once; the old one stays the default"
+
+  logWarn "Rebooting into $HOSTNAME. If it doesn't come back, power-cycle it: the old system starts again"
+  probe systemctl reboot &>/dev/null || true
+  ssh -o ControlPath="$TEMP_DIR/ssh-%C" -O exit "$TARGET" &>/dev/null || true
+  sleep 20
+
+  if ! verifyRemote; then
+    logWarn "$HOSTNAME stays on its old boot entry; a power cycle starts the old system"
+    die "Not finished: the new system didn't answer"
+  fi
+
+  # it answered: from now on it is the default
+  probe "$efi" -q -o "$entry${order:+,$order}"
+  logInfo "$HOSTNAME boots by default now"
+
+  if [[ $WIPE_EXTRA == true ]]; then
+    formatData
+    logInfo "Rebooting once more, so everything starts with its disks"
+    probe systemctl reboot &>/dev/null || true
+    ssh -o ControlPath="$TEMP_DIR/ssh-%C" -O exit "$TARGET" &>/dev/null || true
+    sleep 20
+    verifyRemote || true
+  fi
+  finish
+}
+
+# == the data disks as modules/core/storage.nix lays them out, made on the running new system ==
+formatData() {
+  local json label profile meta
+  local -a devices subvolumes
+  json="$(tomlJson "$FLAKE/hosts/$HOSTNAME/host.toml")"
+
+  while IFS= read -r label; do
+    mapfile -t devices < <(jq -r --arg l "$label" '.disk[$l].devices[]' <<< "$json")
+    mapfile -t subvolumes < <(jq -r --arg l "$label" '.disk[$l].mounts | keys[]' <<< "$json")
+    profile="$(jq -r --arg l "$label" '.disk[$l].profile // "single"' <<< "$json")"
+    # parity profiles keep metadata mirrored, as storage.nix does
+    case $profile in raid5|raid6) meta=raid1c3 ;; *) meta=$profile ;; esac
+
+    if ! probe bash -s -- "$label" "$profile" "$meta" "${#devices[@]}" "${devices[@]}" "${subvolumes[@]}" <<'EOF'
+set -eu
+label=$1 profile=$2 meta=$3 n=$4
+shift 4
+devices=("${@:1:n}")
+subvolumes=("${@:n+1}")
+for d in "${devices[@]}"; do
+  # an old filesystem on it may still be mounted under its own name
+  uuid=$(blkid -s UUID -o value "$d" || true)
+  if [ -n "$uuid" ]; then findmnt -rno TARGET -S "UUID=$uuid" | xargs -r umount; fi
+  for p in "$d"-part*; do [ -e "$p" ] && wipefs -aq "$p"; done
+  wipefs -aq "$d"
+done
+mkfs.btrfs -q -f -L "$label" -d "$profile" -m "$meta" "${devices[@]}"
+mnt=$(mktemp -d)
+mount "${devices[0]}" "$mnt"
+for s in "${subvolumes[@]}"; do btrfs subvolume create "$mnt/$s" >/dev/null; done
+umount "$mnt"
+rmdir "$mnt"
+EOF
+    then
+      logWarn "Couldn't format disk.$label (above); the system runs, format it by hand"
+      continue
+    fi
+    logInfo "Formatted disk.$label ($profile)"
+  done < <(jq -r '.disk | keys[] | select(. != "boot")' <<< "$json")
 }
 
 # == install via nixos-install ==
@@ -1347,36 +1591,50 @@ installRemote() {
     --chown /persist/var/lib/syncthing 1000:100 \
     --target-host "$TARGET"
 
-  verifyRemote
+  verifyRemote || true
   finish
 }
 
 # == verify the new system is reachable ==
 verifyRemote() {
-  local addr="${TARGET#*@}" ok=false i
+  local addr="${TARGET#*@}" ok=false i ip
+  local -a candidates
 
-  # Pin the key we generated, so this proves identity as well as reachability
-  printf '%s %s\n' "$addr" "$HOST_KEY" > "$TEMP_DIR/known_hosts"
+  # Pin the key we generated, so this proves identity as well as reachability. By name, not
+  # address: the installed system asks DHCP again and may come back elsewhere.
+  printf '%s %s\n' "$HOSTNAME" "$HOST_KEY" > "$TEMP_DIR/known_hosts"
 
   logInfo "Waiting for $HOSTNAME to reboot"
   for (( i = 0; i < 60; i++ )); do
-    if ssh -o StrictHostKeyChecking=yes -o ControlPath=none -o BatchMode=yes -o ConnectTimeout=10 \
-        -o UserKnownHostsFile="$TEMP_DIR/known_hosts" "$USERNAME@$addr" true 2>/dev/null; then
-      ok=true
-      break
+    candidates=("$addr")
+    if [[ -n $TARGET_MAC ]] && (( i >= 6 && i % 3 == 0 )); then
+      mapfile -t -O 1 candidates < <(findByMac "$TARGET_MAC" "$TARGET_NET")
     fi
+    for ip in "${candidates[@]}"; do
+      if ssh -o StrictHostKeyChecking=yes -o ControlPath=none -o BatchMode=yes -o ConnectTimeout=10 \
+          -o HostKeyAlias="$HOSTNAME" -o UserKnownHostsFile="$TEMP_DIR/known_hosts" \
+          "$USERNAME@$ip" true 2>/dev/null; then
+        ok=true
+        TARGET="root@$ip"
+        break 2
+      fi
+    done
     sleep 5
   done
 
   if [[ $ok == true ]]; then
-    logInfo "Host key verified, logged in as $USERNAME"
+    logInfo "Host key verified, logged in as $USERNAME at ${TARGET#*@}"
   else
     logWarn "Couldn't log in to $HOSTNAME as $USERNAME. It may still be booting, or cluster.toml"
     logWarn "[ssh] doesn't let this machine's key in yet; try ssh $USERNAME@$addr with the password"
+    return 1
   fi
 }
 
 finish() {
+  # installed: the keys are on the machine now
+  rm -rf "$(keepDir)"
+
   {
     printf '%-10s %s\n' host "$HOSTNAME"
     [[ $REMOTE == true ]] && printf '%-10s %s\n' ssh "ssh $USERNAME@${TARGET#*@}"
