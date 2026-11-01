@@ -81,6 +81,10 @@ in
             relaysEnabled = false;
             urAccepted = -1;
           };
+          # behind the gateway the UI is asked for as sync.<domain>, which its host check
+          # rejects; it still only listens on localhost, and the gateway login is in front.
+          # Elsewhere the check stays: it keeps websites out of the local UI (DNS rebinding).
+          gui.insecureSkipHostcheck = elem "gateway" host.features;
           devices = genAttrs peers device;
           folders = genAttrs folders (folder: {
             path = pathOf folder;

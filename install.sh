@@ -1365,15 +1365,42 @@ stageFiles() {
   install -m 644 "$TEMP_DIR/id_ed25519.pub" "$home/.ssh/id_ed25519.pub"
   install -m 600 "$TEMP_DIR/id_ed25519" "$home/.ssh/id_ed25519"
 
-  # the checkout, where axon.repo expects it; build output and caches stay behind
-  install -d "$home/axon"
-  tar -C "$FLAKE" --exclude=./result --exclude='./result-*' --exclude=./.direnv -cf - . \
-    | tar -C "$home/axon" -xf -
+  # the checkout, where axon.repo expects it: a clone of the commit that holds this host, not
+  # a copy of the working tree, whose half-added files made the first pull there fail
+  local branch key value
+  git clone -q "$FLAKE" "$home/axon"
+  # its origin is this checkout; it gets the remotes this checkout uses instead
+  git -C "$home/axon" remote remove origin
+  while read -r key value; do
+    git -C "$home/axon" config --add "$key" "$value"
+  done < <(git -C "$FLAKE" config --get-regexp '^remote\.')
+  branch="$(git -C "$FLAKE" branch --show-current)"
+  for key in remote merge; do
+    value="$(git -C "$FLAKE" config "branch.$branch.$key")" || continue
+    git -C "$home/axon" config "branch.$branch.$key" "$value"
+  done
 
   if [[ -s $sync/cert.pem ]]; then
     install -d -m 700 "$root/persist/var/lib/syncthing"
     install -m 600 "$sync/cert.pem" "$sync/key.pem" "$root/persist/var/lib/syncthing/"
   fi
+}
+
+# ── commit ────────
+# The new host is cloned from this commit, so both sides have the same history and its
+# first pull is a fast-forward. Only the host's files go in; nothing else staged or changed.
+commitHost() {
+  local paths=("hosts/$HOSTNAME" .sops.yaml) verb=install
+  [[ $EXISTING == true ]] && verb=reinstall
+
+  git -C "$FLAKE" add -- "${paths[@]}"
+  if git -C "$FLAKE" diff --cached --quiet -- "${paths[@]}"; then
+    logInfo "hosts/$HOSTNAME is committed already"
+    return 0
+  fi
+  git -C "$FLAKE" commit -q -m "feat($HOSTNAME): $verb" -- "${paths[@]}" \
+    || die "Couldn't commit hosts/$HOSTNAME (above); nothing was wiped"
+  logInfo "Committed hosts/$HOSTNAME: $(git -C "$FLAKE" log -1 --format='%h %s')"
 }
 
 # ── install ────────
@@ -1639,9 +1666,15 @@ finish() {
     printf '%-10s %s\n' host "$HOSTNAME"
     [[ $REMOTE == true ]] && printf '%-10s %s\n' ssh "ssh $USERNAME@${TARGET#*@}"
     echo
-    echo "Keep the new host, from this checkout:"
-    echo "  git add -A && just commit \"feat($HOSTNAME): install\""
-    echo "Then rebuild the other hosts, so they trust its keys and Syncthing id"
+    echo "Publish the commit with the new host, from this checkout:"
+    echo "  git push"
+    if [[ -n $(git -C "$FLAKE" status --porcelain) ]]; then
+      echo "Other changes here aren't committed; $HOSTNAME's checkout doesn't have them"
+      echo "until they are committed and pushed"
+    fi
+    echo "Then rebuild the other hosts, so they trust its keys and Syncthing id."
+    echo "$HOSTNAME pulls from the forges with its own key ($USERNAME@$HOSTNAME)"
+    echo "or one your SSH agent forwards; if its pull fails, add that key there"
   } | gum style --border=rounded --padding="1 2" --margin="1 0"
   logWarn "If your known_hosts has an old key for the target: ssh-keygen -R ${TARGET#*@}"
 }
@@ -1680,6 +1713,7 @@ main() {
   generate
   write
   complete
+  commitHost
   installSystem
 }
 
