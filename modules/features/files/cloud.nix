@@ -51,6 +51,7 @@
             ];
             overwriteprotocol = "https";
             default_phone_region = "DE";
+            serverid = 1; # unique per PHP server; there is one, but Nextcloud warns without it
             maintenance_window_start = 1; # 01:00 UTC
             mail_smtpmode = "smtp";
             mail_smtphost = "smtp.protonmail.ch";
