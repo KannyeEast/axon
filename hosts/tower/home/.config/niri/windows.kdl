@@ -32,3 +32,11 @@ window-rule {
     open-floating true
     open-focused true
 }
+
+// KeePassXC's prompts (passkeys, browser access, unlock) answer another app's request, so
+// niri wouldn't focus them by itself; they open next to the main window on the side screen
+window-rule {
+    match app-id=r#"^org\.keepassxc\.KeePassXC$"# title=r#"^(KeePassXC - |Unlock Database - KeePassXC$)"#
+    open-floating true
+    open-focused true
+}

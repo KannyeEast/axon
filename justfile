@@ -20,7 +20,7 @@ default:
 # ── system ────────
 # Rebuild and activate
 [group("system")]
-switch *ARGS: pull _stage (_closed "zen-beta" "Zen")
+switch *ARGS: pull _stage
   nh os switch --ask {{flake}} -H {{host}} {{ARGS}}
 
 # Rebuild and activate on the next boot
@@ -167,12 +167,3 @@ remotes:
 [private]
 _stage:
   @git -C {{flake}} add --intent-to-add .
-
-# Refuse while PATTERN is running (Zen's settings are written during activation)
-[private]
-_closed PATTERN NAME=PATTERN:
-  #!/usr/bin/env bash
-  if pgrep "{{PATTERN}}" >/dev/null; then
-    echo "Error: {{NAME}} is running. Close it first." >&2
-    exit 1
-  fi
