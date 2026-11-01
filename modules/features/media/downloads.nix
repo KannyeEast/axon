@@ -20,10 +20,9 @@
       vpnNamespaces.vpn = {
         enable = true;
         wireguardConfigFile = config.sops.secrets.mullvad-wireguard.path;
-        accessibleFrom = [
-          "127.0.0.1/32"
-          "192.168.15.0/24"
-        ];
+        # not the bridge's own 192.168.15.0/24: the namespace already has that route, and
+        # VPN-Confinement fails adding it twice ("RTNETLINK answers: File exists")
+        accessibleFrom = [ "127.0.0.1/32" ];
         portMappings = [
           {
             from = port;
