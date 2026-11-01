@@ -1,5 +1,6 @@
-# Consumer of axon.services: every routed service that isn't public gets <subdomain>.<domain>
-# on the tailnet, behind the gateway login unless it has its own.
+# Consumer of axon.services: every routed service gets <subdomain>.<domain> on the tailnet,
+# behind the gateway login unless it has its own. Public ones are also on the tunnel, so they
+# keep working on the tailnet before it exists and when the internet route is down.
 # One wildcard certificate from Let's Encrypt via a Cloudflare DNS challenge covers them all.
 { lib, ... }:
 let
@@ -26,7 +27,7 @@ in
         else
           throw "cluster.toml: the gateway feature needs a domain";
       gateways = attrNames (filterAttrs (_: data: elem "gateway" data.host.features) cluster.hosts);
-      routed = filterAttrs (_: service: service.route != null && !service.route.public) services;
+      routed = filterAttrs (_: service: service.route != null) services;
 
       # with auto_https off caddy picks no certificate itself, so every vhost names the acme files
       tls = "tls /var/lib/acme/${domain}/fullchain.pem /var/lib/acme/${domain}/key.pem";

@@ -41,7 +41,7 @@ in
                       public = mkOption {
                         type = types.bool;
                         default = false;
-                        description = "Reachable from the internet through the gateway's tunnel instead of the tailnet. Only for services with their own login.";
+                        description = "Also reachable from the internet through the gateway's tunnel; on the tailnet either way. Only for services with their own login.";
                       };
                     };
                   }
