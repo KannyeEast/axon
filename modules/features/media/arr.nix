@@ -30,6 +30,14 @@
         unitConfig.RequiresMountsFor = [ "/server/media" ];
       });
 
+      # Radarr's module only declares .config/Radarr, so tmpfiles makes .config root's and then
+      # refuses the unsafe step from radarr's folder into it: Radarr is never created
+      systemd.tmpfiles.settings."10-radarr"."/var/lib/radarr/.config".d = {
+        user = "radarr";
+        group = "media";
+        mode = "0750";
+      };
+
       axon.persist.directories =
         map (app: {
           directory = "/var/lib/${app}";
