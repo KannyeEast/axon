@@ -66,6 +66,10 @@ in
 
         fileSystems."/persist".neededForBoot = true;
 
+        # persisting /var/lib/private/<name> makes the parent 0755, and systemd refuses to start
+        # DynamicUser services under anything but 0700
+        systemd.tmpfiles.rules = [ "d /var/lib/private 0700 root root -" ];
+
         # the rollback below runs in the initrd, which has only the tools listed here
         boot.initrd.systemd.initrdBin = [
           pkgs.btrfs-progs
