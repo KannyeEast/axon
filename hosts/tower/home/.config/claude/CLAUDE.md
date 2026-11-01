@@ -6,7 +6,8 @@
   You see the current folder as `/work`, the host's nix store and daemon, and nothing else.
 - `!` commands run in the sandbox too. Anything that needs tower (niri, kanshi, systemctl,
   sudo, the desktop, the LAN, Tailscale) is a command for the user to run in a real terminal.
-  Ask them to write its output to a file in the repo, then read that file.
+  Ask them to write its output to `.claude/logs/` in the current folder (git-ignored, so logs
+  never end up in a commit), then read that file.
 
 ## Working style
 

@@ -2,12 +2,12 @@
 class = "server"
 features = ["dev", "files", "gateway", "media"]
 state = "26.11" # written once at install, never changed
-key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKMXrIta7SmDEzxW21OIxtMNb1M6t5EVHNOyowknN/1G root@node1 root@node1"
+key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKMXrIta7SmDEzxW21OIxtMNb1M6t5EVHNOyowknN/1G root@node1"
 
 [user]
 name = "gldn"
 email = "acc-git@vexelvault.com"
-key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGrql6SdjHjUzi21L6ZnN1WL7MUYWdx/ciEg4jFCbJJ9 gldn@node1 gldn@node1"
+key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGrql6SdjHjUzi21L6ZnN1WL7MUYWdx/ciEg4jFCbJJ9 gldn@node1"
 
 [locale]
 timezone = "Europe/Berlin"
