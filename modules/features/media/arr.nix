@@ -31,6 +31,10 @@
       systemd.services =
         lib.genAttrs [ "radarr" "sonarr" "bazarr" ] (_: {
           unitConfig.RequiresMountsFor = [ "/server/media" ];
+          # what one app creates in the library, the others in the media group must be able to
+          # write to: Bazarr puts subtitles into the folders Radarr and Sonarr make. Forced, as
+          # their modules set 0022
+          serviceConfig.UMask = lib.mkForce "0002";
         })
         // {
           # Prowlarr talks to the trackers' sites, so it searches through the tunnel like
