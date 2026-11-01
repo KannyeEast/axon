@@ -59,6 +59,9 @@
           "/server/media"
           "/server/scratch"
         ];
+        # glibc asks systemd-resolved first, through a socket VPN-Confinement leaves open; that
+        # resolver runs outside the tunnel. Without it, lookups go to the tunnel's own DNS.
+        serviceConfig.InaccessiblePaths = [ "/run/systemd/resolve" ];
       };
 
       systemd.tmpfiles.rules = [ "d ${incomplete} 2775 root media -" ];
