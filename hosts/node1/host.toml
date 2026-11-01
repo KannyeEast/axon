@@ -33,3 +33,6 @@ mounts = { vault = "/server/vault" }
 
 [sync]
 id = "LK32EDL-DSKO6QV-2R3EROB-NSFUXAZ-MENCL3R-RQ7XXYY-LJS6IGU-ZGUISQN"
+
+[gateway]
+tunnel = "27709698-c197-4b97-80f1-85b1309e8c72" 
