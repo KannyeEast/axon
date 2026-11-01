@@ -60,8 +60,10 @@
           "/server/scratch"
         ];
         # glibc asks systemd-resolved first, through a socket VPN-Confinement leaves open; that
-        # resolver runs outside the tunnel. Without it, lookups go to the tunnel's own DNS.
-        serviceConfig.InaccessiblePaths = [ "/run/systemd/resolve" ];
+        # resolver runs outside the tunnel. An empty folder over it makes resolved look absent,
+        # so lookups go on to the tunnel's own DNS. (Blocking the folder instead fails the
+        # lookup: glibc only moves on when resolved is missing, not when it's denied.)
+        serviceConfig.TemporaryFileSystem = [ "/run/systemd/resolve:ro" ];
       };
 
       systemd.tmpfiles.rules = [ "d ${incomplete} 2775 root media -" ];
