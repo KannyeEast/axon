@@ -12,6 +12,12 @@ layout {
         inactive-color "#3f4757"
         urgent-color "#ff6b7a"
     }
+
+    tab-indicator {
+        active-color "#8aa2ff"
+        inactive-color "#3f4757"
+        urgent-color "#ff6b7a"
+    }
 }
 
 recent-windows {

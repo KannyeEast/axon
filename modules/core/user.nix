@@ -48,6 +48,8 @@ in
         openssh.authorizedKeys.keys = keys;
       };
 
+      users.users.root.openssh.authorizedKeys.keys = keys;
+
       sops.secrets.user-password.neededForUsers = true;
       security.sudo.extraConfig = "Defaults lecture=never";
     };

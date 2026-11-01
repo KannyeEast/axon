@@ -17,6 +17,7 @@
           pkgs.diffutils
           pkgs.fd
           pkgs.findutils
+          pkgs.gawk
           pkgs.git
           pkgs.gnugrep
           pkgs.gnused
@@ -28,6 +29,7 @@
           pkgs.nodejs
           pkgs.python3
           pkgs.ripgrep
+          pkgs.shellcheck
           pkgs.which
         ];
         extraCommands = "mkdir -m 1777 tmp";
@@ -64,6 +66,15 @@
           state="''${XDG_DATA_HOME:-$HOME/.local/share}/sandbox"
           mkdir -p "$state"
 
+          # personal settings stay in the dotfiles, read-only in here: edit them there.
+          # The links point into the checkout, so the files are mounted, not the folders.
+          config="''${XDG_CONFIG_HOME:-$HOME/.config}"
+          settings=()
+          [ -e "$config/claude/CLAUDE.md" ] \
+            && settings+=(--volume "$config/claude/CLAUDE.md:/home/sandbox/.claude/CLAUDE.md:ro")
+          [ -e "$config/caveman/config.json" ] \
+            && settings+=(--volume "$config/caveman/config.json:/home/sandbox/.config/caveman/config.json:ro")
+
           # the host's store, read-only, and its daemon: evals and builds use the host's cache
           # instead of a second store. The store is world-readable on the host anyway; secrets
           # never enter it.
@@ -73,6 +84,7 @@
             --volume /nix/var/nix/daemon-socket:/nix/var/nix/daemon-socket \
             --volume "$PWD:/work" \
             --volume "$state:/home/sandbox" \
+            "''${settings[@]}" \
             --workdir /work \
             "$name" "''${@:-bash}"
         '';

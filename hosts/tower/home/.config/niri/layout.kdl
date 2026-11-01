@@ -23,10 +23,14 @@ layout {
         width 1
     }
 
+    // a bar along the top of the column, one segment per tab; outside the column it fell into
+    // the 4px gap between columns and couldn't be seen
     tab-indicator {
         hide-when-single-tab
-        width 4
-        length total-proportion=0.33
-        gaps-between-tabs 0
+        place-within-column
+        position "top"
+        width 6
+        length total-proportion=1.0
+        gaps-between-tabs 4
     }
 }
