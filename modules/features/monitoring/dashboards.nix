@@ -20,6 +20,19 @@
             sha256 = "11hrll7fm626ikbva5md4gm0rca537vp4xsxa9sxl1pk15s6nk0q";
           };
         }
+        {
+          name = "blackbox-http.json";
+          # written for import, which asks for the data source; provisioning doesn't
+          path = pkgs.runCommand "blackbox-http.json" { } ''
+            sed 's/''${DS_PROMETHEUS}/Prometheus/g' ${
+              pkgs.fetchurl {
+                name = "blackbox-http.json";
+                url = "https://grafana.com/api/dashboards/13659/revisions/1/download";
+                sha256 = "0m4gskf936jam2mrwhd8i1mnam9y26wklcg69hmaba60a1c4aw4y";
+              }
+            } >$out
+          '';
+        }
       ];
     in
     {
