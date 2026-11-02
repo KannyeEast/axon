@@ -7,10 +7,7 @@
 { lib, ... }:
 let
   inherit (lib)
-    attrNames
     filterAttrs
-    length
-    mapAttrs
     mapAttrsToList
     range
     ;
@@ -23,18 +20,6 @@ in
       exporters = config.services.prometheus.exporters;
       port = 9090;
       routed = filterAttrs (_: service: service.route != null) services;
-      grafana = "https://grafana.${cluster.domain}";
-
-      metric = label: query: format: { inherit label query format; };
-      percent = {
-        type = "percent";
-        options.maximumFractionDigits = 0;
-      };
-      whole = suffix: {
-        type = "number";
-        inherit suffix;
-        options.maximumFractionDigits = 0;
-      };
       open = filterAttrs (_: service: service.route.access == "open") routed;
       guarded = filterAttrs (_: service: service.route.access != "open") routed;
       external = route: "https://${route.subdomain}.${cluster.domain}";
@@ -148,52 +133,6 @@ in
         }
       ];
 
-      # the System tiles on the start page: one per host and one for the cluster, each leading
-      # to its Grafana dashboard
-      axon.services.prometheus = {
-        route.port = port;
-        dashboard = {
-          name = "Prometheus";
-          group = "System";
-          icon = "prometheus.svg";
-          widget.type = "prometheusmetric";
-          instances =
-            mapAttrs (name: data: {
-              description = data.host.class;
-              icon = "mdi-server";
-              link = "${grafana}/d/rYdddlPWk/node-exporter-full?var-job=node&var-nodename=${name}&var-node=${name}";
-              widget.metrics = [
-                (metric "CPU" ''100 * (1 - avg(rate(node_cpu_seconds_total{mode="idle",host="${name}"}[5m])))''
-                  percent
-                )
-                (metric "RAM"
-                  ''100 * (1 - node_memory_MemAvailable_bytes{host="${name}"} / node_memory_MemTotal_bytes{host="${name}"})''
-                  percent
-                )
-                (metric "Disk"
-                  ''100 * max(1 - node_filesystem_avail_bytes{host="${name}",fstype!="tmpfs"} / node_filesystem_size_bytes{host="${name}",fstype!="tmpfs"})''
-                  percent
-                )
-                (metric "Temp" ''max(node_hwmon_temp_celsius{host="${name}"})'' (whole " °C"))
-              ];
-            }) cluster.hosts
-            // {
-              Cluster = {
-                description = "services, alerts, disks, certificates";
-                link = "${grafana}/d/NEzutrbMk/blackbox-exporter-http-prober";
-                widget.metrics = [
-                  (metric "Services" ''sum(probe_success{job="service"})'' (
-                    whole "/${toString (length (attrNames routed))}"
-                  ))
-                  (metric "Alerts" ''count(ALERTS{alertstate="firing"}) or vector(0)'' (whole ""))
-                  (metric "SMART errors" "count(smartctl_device_smart_status != 1) or vector(0)" (whole ""))
-                  (metric "Certificate" ''min(probe_ssl_earliest_cert_expiry{job=~"route|guarded"} - time()) / 86400''
-                    (whole " d")
-                  )
-                ];
-              };
-            };
-        };
-      };
+      axon.services.prometheus.route.port = port;
     };
 }

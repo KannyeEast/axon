@@ -60,11 +60,11 @@ in
           icon = or' (instance.icon or null) service.dashboard.icon;
           siteMonitor = internal service.route + service.dashboard.monitor;
         }
-        // optionalAttrs (service.dashboard.widget != null) {
+        // optionalAttrs (service.dashboard.widget != null || instance.widget or { } != { }) {
           widget = {
             url = internal service.route;
           }
-          // service.dashboard.widget
+          // (or' service.dashboard.widget { })
           // mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
           // instance.widget or { };
         };
@@ -92,6 +92,8 @@ in
         [ "System" ]
       ];
       columns = 4;
+      # groups of graphs: two per row, so they get the width
+      wide = [ "System" ];
       rows = filter (row: row != [ ]) (
         map (filter (group: elem group groups)) rowsWanted
         ++ map (group: [ group ]) (subtractLists (concatLists rowsWanted) groups)
@@ -104,7 +106,7 @@ in
       layoutOf =
         row:
         if length row == 1 then
-          nameValuePair (head row) (grid columns)
+          nameValuePair (head row) (grid (if elem (head row) wide then 2 else columns))
         else
           nameValuePair (rowName row) (
             grid (length row) // { header = false; } // genAttrs row (_: grid (columns / length row))

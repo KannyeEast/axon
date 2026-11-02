@@ -2,6 +2,12 @@
 # provisioned from here. Behind the gateway login, which Grafana trusts: the user the login names
 # is signed in, and the host.toml user is Grafana's admin, with monitoring/password for the API.
 # Its secret key is made on first start and kept in its persisted state folder.
+# The "Start page" dashboard is written here; its panels are the System graphs on the gateway's
+# start page, each embedded on its own.
+{ lib, ... }:
+let
+  inherit (lib) imap1 listToAttrs nameValuePair;
+in
 {
   flake.modules.nixos.monitoring =
     { config, pkgs, ... }:
@@ -11,7 +17,141 @@
       state = "/var/lib/grafana";
       url = "https://grafana.${cluster.domain}";
 
+      percent = {
+        unit = "percent";
+        min = 0;
+        max = 100;
+      };
+      timeseries = title: unit: targets: {
+        type = "timeseries";
+        inherit title targets;
+        fieldConfig.defaults = unit // {
+          custom = {
+            fillOpacity = 10;
+            showPoints = "never";
+          };
+        };
+        options.tooltip.mode = "multi";
+      };
+      query = expr: legendFormat: { inherit expr legendFormat; };
+
+      # in tile order, two per row
+      panels = [
+        (timeseries "CPU" percent [
+          (query ''100 * (1 - avg by (host) (rate(node_cpu_seconds_total{mode="idle"}[5m])))'' "{{host}}")
+        ])
+        (timeseries "Memory" percent [
+          (query "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)" "{{host}}")
+        ])
+        (timeseries "Network" { unit = "Bps"; } [
+          (query ''sum by (host) (rate(node_network_receive_bytes_total{device!~"lo|veth.*|br.*|vb-.*|tailscale.*"}[5m]))'' "{{host}} in")
+          (query ''sum by (host) (rate(node_network_transmit_bytes_total{device!~"lo|veth.*|br.*|vb-.*|tailscale.*"}[5m]))'' "{{host}} out")
+        ])
+        (timeseries "Temperature" { unit = "celsius"; } [
+          (query "max by (host) (node_hwmon_temp_celsius)" "{{host}}")
+        ])
+        {
+          type = "bargauge";
+          title = "Disks";
+          targets = [
+            (
+              query ''100 * (1 - node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})'' "{{host}} {{mountpoint}}"
+              // {
+                instant = true;
+              }
+            )
+          ];
+          fieldConfig.defaults = percent // {
+            thresholds = {
+              mode = "absolute";
+              steps = [
+                {
+                  color = "green";
+                  value = null;
+                }
+                {
+                  color = "orange";
+                  value = 70;
+                }
+                {
+                  color = "red";
+                  value = 85;
+                }
+              ];
+            };
+          };
+          options = {
+            orientation = "horizontal";
+            displayMode = "basic";
+            reduceOptions.calcs = [ "lastNotNull" ];
+          };
+        }
+        {
+          type = "state-timeline";
+          title = "Services";
+          targets = [ (query ''probe_success{job="service"}'' "{{service}}") ];
+          fieldConfig.defaults = {
+            color.mode = "thresholds";
+            thresholds = {
+              mode = "absolute";
+              steps = [
+                {
+                  color = "red";
+                  value = null;
+                }
+                {
+                  color = "green";
+                  value = 1;
+                }
+              ];
+            };
+            mappings = [
+              {
+                type = "value";
+                options = {
+                  "0".text = "down";
+                  "1".text = "up";
+                };
+              }
+            ];
+          };
+          options = {
+            showValue = "never";
+            mergeValues = true;
+            legend.showLegend = false;
+          };
+        }
+      ];
+
+      start = builtins.toJSON {
+        uid = "start";
+        title = "Start page";
+        time = {
+          from = "now-24h";
+          to = "now";
+        };
+        refresh = "1m";
+        panels = imap1 (
+          id: panel:
+          panel
+          // {
+            inherit id;
+            datasource.uid = "prometheus";
+            gridPos = {
+              w = 12;
+              h = 8;
+              x = if lib.mod id 2 == 1 then 0 else 12;
+              y = 8 * ((id - 1) / 2);
+            };
+          }
+        ) panels;
+      };
+
       dashboards = pkgs.linkFarm "grafana-dashboards" [
+        {
+          name = "start.json";
+          path = pkgs.writeText "start.json" start;
+        }
         {
           name = "node-exporter-full.json";
           path = pkgs.fetchurl {
@@ -47,6 +187,8 @@
             root_url = "${url}/";
           };
           security = {
+            # the start page shows panels of the Start page dashboard in frames
+            allow_embedding = true;
             admin_user = user.name;
             admin_password = "$__file{${config.sops.secrets."monitoring/password".path}}";
             secret_key = "$__file{${state}/secret_key}";
@@ -105,14 +247,23 @@
         dashboard = {
           name = "Grafana";
           group = "System";
-          description = "Graphs for every host";
           icon = "grafana.svg";
-          widget = {
-            type = "grafana";
-            version = 2;
-            username = user.name;
-          };
-          secrets.password = "monitoring/password";
+          instances = listToAttrs (
+            imap1 (
+              id: panel:
+              nameValuePair panel.title {
+                description = "last 24 hours";
+                link = "${url}/d/start";
+                widget = {
+                  type = "iframe";
+                  name = "grafana-${toString id}";
+                  src = "${url}/d-solo/start/start?panelId=${toString id}&theme=dark&from=now-24h&to=now&refresh=1m";
+                  classes = "h-60 sm:h-60 md:h-60 lg:h-60 xl:h-60 2xl:h-72";
+                  allowScrolling = "no";
+                };
+              }
+            ) panels
+          );
         };
         backup.paths = [ state ];
       };
