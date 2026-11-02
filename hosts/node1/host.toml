@@ -32,7 +32,7 @@ devices = ["/dev/disk/by-id/ata-Samsung_SSD_860_EVO_500GB_S4CNNF0M701774A"]
 mounts = { vault = "/server/vault" }
 
 [sync]
-id = "LK32EDL-DSKO6QV-2R3EROB-NSFUXAZ-MENCL3R-RQ7XXYY-LJS6IGU-ZGUISQN"
+id = "7B5WETD-2BBTFMG-OKJBRDP-A5NJ3UC-3A7HECI-IEB6UP4-KZLTLWF-7RVIPQD"
 
 [gateway]
 tunnel = "27709698-c197-4b97-80f1-85b1309e8c72" 

@@ -1031,8 +1031,11 @@ generate() {
   if printf '%s\n' "${FEATURES[@]}" | grep -qx files; then
     local sync="$TEMP_DIR/syncthing"
     mkdir -p "$sync"
-    if [[ -s $sync/cert.pem && -s $sync/key.pem && -n $SYNC_ID ]]; then
-      logInfo "Kept the Syncthing id"
+    if [[ -s $sync/cert.pem && -s $sync/key.pem ]]; then
+      # the key decides the id; host.toml may still carry one from an earlier attempt
+      SYNC_ID="$(syncthing device-id --home "$sync")"
+      [[ -n $SYNC_ID ]] || die "Couldn't read the Syncthing id from the kept key"
+      logInfo "Kept the Syncthing id: $SYNC_ID"
     else
       rm -f "$sync"/*
       SYNC_ID="$(syncthing generate --home "$sync" 2>&1 | grep -oE '[A-Z0-9]{7}(-[A-Z0-9]{7}){7}' | head -n1)"
