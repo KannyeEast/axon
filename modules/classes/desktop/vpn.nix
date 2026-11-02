@@ -3,7 +3,7 @@
 # runtime settings it keeps in /etc/mullvad-vpn.
 {
   flake.modules.nixos.desktop =
-    { config, pkgs, ... }:
+    { pkgs, ... }:
     let
       # Mullvad's exclusion marks: traffic carrying them bypasses its tunnel and firewall
       exclude = "ct mark set 0x00000f41 meta mark set 0x6d6f6c65";
