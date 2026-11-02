@@ -22,7 +22,7 @@
       })
 
       (lib.mkIf (config.axon.host.class == "server") {
-        # sender address and token come from the mail feature's secrets
+        # sender address and token are the ones notifications.nix sends with
         sops.templates."nextcloud.json" = {
           owner = "nextcloud";
           content = builtins.toJSON {

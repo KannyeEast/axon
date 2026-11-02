@@ -85,11 +85,21 @@
           scriptArgs = "%i";
           path = [ pkgs.systemd ];
           script = ''
+            # systemd triggers this before its own message about the failure reaches the journal
+            sleep 2
+            journalctl --sync
             {
               echo "To: ${config.axon.mail.alert}"
               echo "Subject: [${host.name}] $1 failed"
               echo
               systemctl status --full --lines=60 "$1" || true
+              # a "dependency" failure has its error in the unit it depends on
+              for dep in $(systemctl show --property=Requires,Requisite,BindsTo --value "$1"); do
+                if systemctl --quiet is-failed "$dep"; then
+                  echo
+                  systemctl status --full --lines=60 "$dep" || true
+                fi
+              done
             } | ${sendmail} -t
           '';
         };
