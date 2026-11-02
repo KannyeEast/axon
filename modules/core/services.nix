@@ -83,9 +83,32 @@ in
                         description = "Widget field -> key in the gateway host's secrets.json that holds its value.";
                       };
                       instances = mkOption {
-                        type = types.attrsOf (types.attrsOf types.anything);
                         default = { };
-                        description = "One tile per entry instead of one, named by the key; its value is merged over widget.";
+                        description = "One tile per entry instead of one, named by the key.";
+                        type = types.attrsOf (
+                          types.submodule {
+                            options = {
+                              widget = mkOption {
+                                type = types.attrsOf types.anything;
+                                default = { };
+                                description = "Merged over the service's widget.";
+                              };
+                              link = mkOption {
+                                type = types.nullOr types.str;
+                                default = null;
+                                description = "Where the tile leads instead of the route.";
+                              };
+                              icon = mkOption {
+                                type = types.nullOr types.str;
+                                default = null;
+                              };
+                              description = mkOption {
+                                type = types.nullOr types.str;
+                                default = null;
+                              };
+                            };
+                          }
+                        );
                       };
                     };
                   }

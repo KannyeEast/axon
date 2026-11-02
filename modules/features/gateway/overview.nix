@@ -43,10 +43,12 @@ in
       envName = secret: "HOMEPAGE_VAR_${toUpper (replaceStrings [ "/" "-" ] [ "_" "_" ] secret)}";
       secrets = unique (concatMap (service: attrValues service.dashboard.secrets) (attrValues tiles));
 
+      or' = value: fallback: if value != null then value else fallback;
       tile = service: name: instance: {
         ${name} = {
-          href = "https://${service.route.subdomain}.${domain}";
-          inherit (service.dashboard) description icon;
+          href = or' (instance.link or null) "https://${service.route.subdomain}.${domain}";
+          description = or' (instance.description or null) service.dashboard.description;
+          icon = or' (instance.icon or null) service.dashboard.icon;
           siteMonitor = internal service.route + service.dashboard.monitor;
         }
         // optionalAttrs (service.dashboard.widget != null) {
@@ -55,7 +57,7 @@ in
           }
           // service.dashboard.widget
           // mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
-          // instance;
+          // instance.widget or { };
         };
       };
       tilesOf =
