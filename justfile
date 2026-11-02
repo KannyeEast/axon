@@ -33,6 +33,11 @@ boot *ARGS: pull _stage
 build *ARGS: _stage
   nh os build {{flake}} -H {{host}} {{ARGS}}
 
+# Push, then switch another host to it
+[group("system")]
+deploy HOST MESSAGE="": (push MESSAGE)
+  ssh -t {{HOST}} just -f axon/justfile switch
+
 # Regenerate this machine's hardware report after a hardware change
 [group("system")]
 facter:

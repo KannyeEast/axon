@@ -29,6 +29,32 @@
         margin: 3rem auto 0 !important;
       }
 
+      /* the links: a quiet row of icons under the tiles */
+      #bookmarks {
+        max-width: 72rem;
+        margin: 1rem auto 3rem !important;
+        justify-content: center;
+      }
+
+      .bookmark a {
+        width: 2.75rem !important;
+        height: 2.75rem !important;
+        background: transparent !important;
+        border: 1px solid var(--line);
+        border-radius: 10px !important;
+        opacity: 0.6;
+      }
+
+      .bookmark a:hover {
+        border-color: var(--accent);
+        opacity: 1;
+      }
+
+      .bookmark-icon > div {
+        width: 1.25rem !important;
+        height: 1.25rem !important;
+      }
+
       /* the refresh button; the page refreshes its numbers by itself */
       #footer {
         display: none;

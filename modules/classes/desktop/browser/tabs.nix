@@ -56,47 +56,14 @@ in
           position = 2;
           isEssential = true;
         };
-
-        # ── development ────────
-        # Infrastructure
-        "Server" = {
-          id = "e0f080f0-6cab-41d5-b416-cc07d318b969";
-          position = 110;
-          workspace = spaces."Development".id;
-          isGroup = true;
-          isFolderCollapsed = true;
-          editedTitle = true;
-          folderIcon = "chrome://browser/skin/zen-icons/selectable/folder.svg";
-        };
-        "FRITZ!Box" = {
-          id = "36a3dbb0-447f-4446-8dd8-df1b169cbc12";
-          url = "http://192.168.178.1";
-          position = 111;
-          workspace = spaces."Development".id;
-          folderParentId = pins."Server".id;
-        };
-        "Cloudflare" = {
-          id = "9fb4ee37-0150-4532-ad02-f981f102f16a";
-          url = "https://dash.cloudflare.com";
-          position = 112;
-          workspace = spaces."Development".id;
-          folderParentId = pins."Server".id;
-        };
-        "Tailscale" = {
-          id = "53bcb3ca-773e-4b5b-9974-16862c8c18b9";
-          url = "https://console.tailscale.com";
-          position = 113;
-          workspace = spaces."Development".id;
-          folderParentId = pins."Server".id;
-        };
       }
       // optionalAttrs (domain != "") {
-        "Website" = {
+        # ── development ────────
+        "Server" = {
           id = "07324e6b-5fd0-4c7e-8872-0e8bbc66660b";
           url = "https://home.${domain}";
-          position = 115;
+          position = 110;
           workspace = spaces."Development".id;
-          folderParentId = pins."Server".id;
         };
       }
       // {

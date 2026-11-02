@@ -1,6 +1,7 @@
 # The start page (Homepage) at home.<domain>: a tile for every service with a dashboard entry,
 # grouped, linked to its route and with a status dot; live numbers where it sets a widget.
-# Widget credentials come from secrets.json dashboard/<service>/<field>.
+# Widget credentials come from secrets.json dashboard/<service>/<field>. Below the tiles, a row
+# of links to the admin pages of what runs outside the cluster.
 { lib, ... }:
 let
   inherit (lib)
@@ -80,13 +81,51 @@ in
             searchDescriptions = true;
             hideInternetSearch = true;
           };
-          layout = genAttrs groups (_: {
-            style = "row";
-            columns = 4;
-          });
+          layout =
+            genAttrs groups (_: {
+              style = "row";
+              columns = 4;
+            })
+            // {
+              Links = {
+                header = false;
+                iconsOnly = true;
+              };
+            };
         };
 
         services = map (group: { ${group} = inGroup group; }) groups;
+
+        bookmarks = [
+          {
+            Links = [
+              {
+                Cloudflare = [
+                  {
+                    icon = "cloudflare.svg";
+                    href = "https://dash.cloudflare.com";
+                  }
+                ];
+              }
+              {
+                Tailscale = [
+                  {
+                    icon = "tailscale.svg";
+                    href = "https://console.tailscale.com";
+                  }
+                ];
+              }
+              {
+                "FRITZ!Box" = [
+                  {
+                    icon = "fritzbox.svg";
+                    href = "http://192.168.178.1";
+                  }
+                ];
+              }
+            ];
+          }
+        ];
       };
 
       sops.secrets = genAttrs (concatMap secretsOf (attrNames tiles)) (_: { });
