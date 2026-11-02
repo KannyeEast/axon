@@ -47,7 +47,7 @@ in
         ${service.dashboard.name} = {
           href = "https://${service.route.subdomain}.${domain}";
           inherit (service.dashboard) description icon;
-          siteMonitor = internal service.route;
+          siteMonitor = internal service.route + service.dashboard.monitor;
         }
         // optionalAttrs (service.dashboard.widget != null) {
           widget = {

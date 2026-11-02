@@ -93,7 +93,7 @@ in
       // optionalAttrs (domain != "") {
         "Website" = {
           id = "07324e6b-5fd0-4c7e-8872-0e8bbc66660b";
-          url = "https://dns.${domain}";
+          url = "https://home.${domain}";
           position = 115;
           workspace = spaces."Development".id;
           folderParentId = pins."Server".id;

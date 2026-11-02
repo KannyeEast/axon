@@ -64,6 +64,11 @@ in
                         type = types.str;
                         description = "A name from homarr-labs/dashboard-icons, e.g. jellyfin.svg.";
                       };
+                      monitor = mkOption {
+                        type = types.str;
+                        default = "/";
+                        description = "Path the status dot requests; it follows redirects, so it must not lead off plain http.";
+                      };
                       widget = mkOption {
                         type = types.nullOr (types.attrsOf types.anything);
                         default = null;

@@ -109,6 +109,8 @@
             group = "Files";
             description = "Files, calendar, contacts";
             icon = "nextcloud.svg";
+            # / redirects to https on this plain http port
+            monitor = "/status.php";
             widget = {
               type = "nextcloud";
               fields = [
