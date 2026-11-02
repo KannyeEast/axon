@@ -7,7 +7,6 @@
 { lib, ... }:
 let
   inherit (lib)
-    attrNames
     filterAttrs
     mapAttrsToList
     range
@@ -17,7 +16,7 @@ in
   flake.modules.nixos.monitoring =
     { config, ... }:
     let
-      inherit (config.axon) cluster services;
+      inherit (config.axon) cluster host services;
       exporters = config.services.prometheus.exporters;
       port = 9090;
       routed = filterAttrs (_: service: service.route != null) services;
@@ -25,11 +24,17 @@ in
       guarded = filterAttrs (_: service: service.route.access != "open") routed;
       external = route: "https://${route.subdomain}.${cluster.domain}";
 
+      # every series carries the host it's about, and its class: alerts that a machine is off
+      # only make sense for servers
       job = name: exporterPort: {
         job_name = name;
-        static_configs = [
-          { targets = map (host: "${host}:${toString exporterPort}") (attrNames cluster.hosts); }
-        ];
+        static_configs = mapAttrsToList (name: data: {
+          targets = [ "${name}:${toString exporterPort}" ];
+          labels = {
+            host = name;
+            class = data.host.class;
+          };
+        }) cluster.hosts;
         # "node1" instead of "node1:9100" in graphs and alerts
         relabel_configs = [
           {
@@ -46,7 +51,10 @@ in
         params.module = [ module ];
         static_configs = mapAttrsToList (name: service: {
           targets = [ (url service.route) ];
-          labels.service = name;
+          labels = {
+            host = host.name;
+            service = name;
+          };
         }) targets;
         relabel_configs = [
           {
