@@ -1,8 +1,9 @@
 # Prometheus: scrapes the exporters on every host in the cluster (core/metrics.nix) every 30 s
 # and keeps 90 days. Its own UI at prometheus.<domain>, behind the gateway login.
 # The blackbox exporter checks every route twice: "service" asks the service directly (any
-# answer below 500 means it runs), "route" calls https://<name>.<domain> the way clients do
-# (DNS, Caddy, certificate, the tunnel for public ones; guarded ones answer with the login).
+# answer below 500 means it runs), and https://<name>.<domain> is called the way clients do
+# (DNS, Caddy, certificate, the tunnel for public ones): "route" for services with their own
+# login must answer, "guarded" for those behind the gateway login must refuse with 401.
 { lib, ... }:
 let
   inherit (lib)
@@ -20,6 +21,9 @@ in
       exporters = config.services.prometheus.exporters;
       port = 9090;
       routed = filterAttrs (_: service: service.route != null) services;
+      open = filterAttrs (_: service: service.route.access == "open") routed;
+      guarded = filterAttrs (_: service: service.route.access != "open") routed;
+      external = route: "https://${route.subdomain}.${cluster.domain}";
 
       job = name: exporterPort: {
         job_name = name;
@@ -36,14 +40,14 @@ in
         ];
       };
 
-      probe = module: url: {
+      probe = module: url: targets: {
         job_name = module;
         metrics_path = "/probe";
         params.module = [ module ];
         static_configs = mapAttrsToList (name: service: {
           targets = [ (url service.route) ];
           labels.service = name;
-        }) routed;
+        }) targets;
         relabel_configs = [
           {
             source_labels = [ "__address__" ];
@@ -77,6 +81,15 @@ in
               timeout = "10s";
               http.preferred_ip_protocol = "ip4";
             };
+            # the gateway login refuses requests that aren't from a browser instead of redirecting
+            guarded = {
+              prober = "http";
+              timeout = "10s";
+              http = {
+                valid_status_codes = [ 401 ];
+                preferred_ip_protocol = "ip4";
+              };
+            };
           };
         }
       );
@@ -97,8 +110,9 @@ in
         scrapeConfigs = [
           (job "node" exporters.node.port)
           (job "smartctl" exporters.smartctl.port)
-          (probe "service" (route: "http://${route.address}:${toString route.port}"))
-          (probe "route" (route: "https://${route.subdomain}.${cluster.domain}"))
+          (probe "service" (route: "http://${route.address}:${toString route.port}") routed)
+          (probe "route" external open)
+          (probe "guarded" external guarded)
         ];
       };
 
