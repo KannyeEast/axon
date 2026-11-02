@@ -1,5 +1,4 @@
-# Deliberately small: font, rounding, a calmer tab list, the folder redesign and a few
-# hidden extras. Anything Zen already does well is left alone.
+# Font, rounding, a calmer tab list, the folder redesign and a few hidden extras.
 {
   flake.modules.homeManager.desktop = {
     programs.zen-browser.profiles.default.userChrome = ''

@@ -48,7 +48,7 @@
         ];
       };
 
-      # nvim as $EDITOR with its default config; configuring it is a later project
+      # nvim as $EDITOR, with its default config
       programs.neovim = {
         enable = true;
         defaultEditor = true;

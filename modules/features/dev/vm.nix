@@ -20,7 +20,6 @@
 
         users.users.${config.axon.user.name}.extraGroups = [ "libvirtd" ];
 
-        # state lives next to the module that creates it
         axon.persist.directories = [ "/var/lib/libvirt" ];
 
         networking.firewall.trustedInterfaces = [ "virbr0" ];

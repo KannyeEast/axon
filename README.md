@@ -9,8 +9,7 @@ NixOS for my machines, as data plus a small framework.
   features (`dev`, `files`, `gateway`, `media`).
 - Dotfiles live in `home/` and are linked live into `$HOME`; Nix never reads them.
 
-Why things are the way they are: [DECISIONS.md](DECISIONS.md). Working on it with an assistant:
-[AGENTS.md](AGENTS.md).
+Working on it with an assistant: [AGENTS.md](AGENTS.md).
 
 ## Everyday
 

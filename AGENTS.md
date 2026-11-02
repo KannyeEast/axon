@@ -1,7 +1,6 @@
 # AGENTS.md
 
-Instructions for an assistant working in this repository. Read `DECISIONS.md` too: it holds
-the why behind most of what you'll see, and things that look wrong there are usually on purpose.
+Instructions for an assistant working in this repository.
 
 ## Role
 
@@ -50,7 +49,9 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
 - **Name files for what they do** (`passwords.nix`, not `keepassxc.nix`).
 - **Formatting**: `nix fmt`. Never align `=` or values with extra spaces, in any file type.
 - **Errors** read `<file or option>: <what is wrong>`, and say what to do where possible.
-- Comments explain why, next to the code.
+- **Comments describe the code as it is, not how it got there.** A module's header says what
+  that module does. Inline comments only where the code isn't obvious on its own. No history,
+  rejected alternatives or reasoning from a conversation: that belongs in the commit message.
 
 ## Commands
 

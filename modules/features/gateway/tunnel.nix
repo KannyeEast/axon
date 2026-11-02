@@ -2,7 +2,6 @@
 # node1 dials out to Cloudflare, so no router port is opened and the home IP stays hidden.
 # The tunnel is created once by hand (cloudflared tunnel create), its id goes in host.toml
 # [gateway] and its credentials file in secrets.json as cloudflare-tunnel.
-# Cloudflare's terms don't allow streaming media through it: media stays on the tailnet.
 { lib, ... }:
 let
   inherit (lib)

@@ -133,7 +133,7 @@ sync:
   git switch main 2>/dev/null || git switch -c main origin/main
   prev=$(git log -1 --format=%B --grep='^sync: (' | sed -n 's/^sync: (\([0-9a-f]\{7,40\}\))$/\1/p')
   git rm -rq --ignore-unmatch .
-  git checkout dev -- modules/ flake.nix README.md DECISIONS.md AGENTS.md justfile install.sh 2>/dev/null || true
+  git checkout dev -- modules/ flake.nix README.md AGENTS.md justfile install.sh 2>/dev/null || true
   if [ -n "$prev" ] && git cat-file -e "$prev^{commit}" 2>/dev/null; then range="$prev..dev"; else range="dev"; fi
   body=$(git log --no-merges --reverse --format='- %s' "$range")
   if git diff --cached --quiet; then

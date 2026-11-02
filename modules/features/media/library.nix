@@ -1,5 +1,5 @@
 # Watching and requesting: Jellyfin plays the library, Seerr takes requests and hands them
-# to Radarr (movies) and Sonarr (shows). Both have their own logins; the tailnet is the fence.
+# to Radarr (movies) and Sonarr (shows). Both bring their own login; Jellyfin is also public.
 # Library layout on the bulk disks, shared through the media group:
 #   /server/media/{movies,shows}   what Jellyfin shows
 #   /server/media/downloads        finished downloads, same filesystem so imports are instant
@@ -45,6 +45,7 @@
           route = {
             port = 8096;
             access = "open";
+            public = true;
           };
           backup.paths = [ "/var/lib/jellyfin" ];
         };

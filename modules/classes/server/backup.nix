@@ -31,7 +31,6 @@ in
       # sops-nix can also leave values unencrypted with this suffix; useful when values need to be read at eval
       rmSuffix = mapAttrs' (name: value: nameValuePair (removeSuffix "_unencrypted" name) value);
 
-      # check if key has env associated with it
       envOf = data: data.env or { };
       secretEnv = filterAttrs (key: _: !hasSuffix "_unencrypted" key);
 
@@ -47,10 +46,8 @@ in
           ) env
         );
 
-      # grab all populated entries for the services.backup option
       backups = filter (service: service.backup.paths != [ ]) (attrValues config.axon.services);
 
-      # map it all into 1 list
       paths = unique (concatMap (service: service.backup.paths) backups);
       exclude = unique (concatMap (service: service.backup.exclude) backups);
     in

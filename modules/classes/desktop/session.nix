@@ -23,7 +23,7 @@
         TERMINAL = "alacritty";
       };
 
-      # stopgap shell until quickshell is rewritten; niri's startup.kdl decides what runs
+      # niri's startup.kdl decides what runs
       environment.systemPackages = [
         pkgs.alacritty
         pkgs.fuzzel

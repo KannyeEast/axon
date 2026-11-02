@@ -1365,8 +1365,7 @@ stageFiles() {
   install -m 644 "$TEMP_DIR/id_ed25519.pub" "$home/.ssh/id_ed25519.pub"
   install -m 600 "$TEMP_DIR/id_ed25519" "$home/.ssh/id_ed25519"
 
-  # the checkout, where axon.repo expects it: a clone of the commit that holds this host, not
-  # a copy of the working tree, whose half-added files made the first pull there fail
+  # the checkout, where axon.repo expects it: a clone of the commit that holds this host
   local branch key value
   git clone -q "$FLAKE" "$home/axon"
   # its origin is this checkout; it gets the remotes this checkout uses instead
