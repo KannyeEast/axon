@@ -81,6 +81,14 @@
           inherit port;
           address = "192.168.15.1";
         };
+        # the subnet whitelist above lets the widget in without a login
+        dashboard = {
+          name = "qBittorrent";
+          group = "Media";
+          description = "Downloads through Mullvad";
+          icon = "qbittorrent.svg";
+          widget.type = "qbittorrent";
+        };
         backup.paths = [ "/var/lib/qBittorrent" ];
       };
     };

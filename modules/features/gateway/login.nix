@@ -111,6 +111,12 @@ in
           port = 9091;
           access = "open";
         };
+        dashboard = {
+          name = "Authelia";
+          group = "Network";
+          description = "Login for the gateway";
+          icon = "authelia.svg";
+        };
         backup.paths = [ state ];
       };
     };

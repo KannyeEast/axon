@@ -12,6 +12,21 @@
       };
       prowlarr = 9696;
       vpn = config.vpnNamespaces.vpn;
+
+      dashboard = app: description: {
+        name = lib.toSentenceCase app;
+        group = "Media";
+        inherit description;
+        icon = "${app}.svg";
+        widget.type = app;
+        secrets = [ "key" ];
+        calendar = app == "radarr" || app == "sonarr";
+      };
+      descriptions = {
+        radarr = "Movies";
+        sonarr = "Shows";
+        bazarr = "Subtitles";
+      };
     in
     {
       services.radarr = {
@@ -90,6 +105,7 @@
       axon.services =
         lib.mapAttrs (app: port: {
           route.port = port;
+          dashboard = dashboard app descriptions.${app};
           backup.paths = [ "/var/lib/${app}" ];
         }) apps
         // {
@@ -98,6 +114,7 @@
               port = prowlarr;
               address = vpn.namespaceAddress;
             };
+            dashboard = dashboard "prowlarr" "Indexers";
             backup.paths = [ "/var/lib/private/prowlarr" ];
           };
         };

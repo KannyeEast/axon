@@ -87,6 +87,14 @@
 
         axon.services.dns = {
           route.port = 3000;
+          # without users AdGuard's API needs no login
+          dashboard = {
+            name = "AdGuard Home";
+            group = "Network";
+            description = "DNS filtering for the tailnet";
+            icon = "adguard-home.svg";
+            widget.type = "adguard";
+          };
           backup.paths = [ "/var/lib/private/AdGuardHome" ];
         };
       };

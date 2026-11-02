@@ -48,6 +48,42 @@ in
                 );
               };
 
+              dashboard = mkOption {
+                default = null;
+                description = "A tile on the gateway's start page, linked to the route.";
+                type = types.nullOr (
+                  types.submodule {
+                    options = {
+                      name = mkOption { type = types.str; };
+                      group = mkOption { type = types.str; };
+                      description = mkOption {
+                        type = types.str;
+                        default = "";
+                      };
+                      icon = mkOption {
+                        type = types.str;
+                        description = "A name from homarr-labs/dashboard-icons, e.g. jellyfin.svg.";
+                      };
+                      widget = mkOption {
+                        type = types.nullOr (types.attrsOf types.anything);
+                        default = null;
+                        description = "Homepage widget settings; url defaults to the route's address.";
+                      };
+                      secrets = mkOption {
+                        type = types.listOf types.str;
+                        default = [ ];
+                        description = "Widget fields read from dashboard/<service>/<field> in the gateway host's secrets.json.";
+                      };
+                      calendar = mkOption {
+                        type = types.bool;
+                        default = false;
+                        description = "Show the widget's releases in the start page's calendar (radarr, sonarr).";
+                      };
+                    };
+                  }
+                );
+              };
+
               backup = {
                 paths = mkOption {
                   type = types.listOf types.str;

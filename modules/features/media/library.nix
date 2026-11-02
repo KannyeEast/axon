@@ -47,12 +47,32 @@
             access = "open";
             public = true;
           };
+          dashboard = {
+            name = "Jellyfin";
+            group = "Media";
+            description = "Movies and shows";
+            icon = "jellyfin.svg";
+            widget = {
+              type = "jellyfin";
+              version = 2;
+              enableBlocks = true;
+            };
+            secrets = [ "key" ];
+          };
           backup.paths = [ "/var/lib/jellyfin" ];
         };
         requests = {
           route = {
             port = 5055;
             access = "open";
+          };
+          dashboard = {
+            name = "Seerr";
+            group = "Media";
+            description = "Requests";
+            icon = "jellyseerr.svg";
+            widget.type = "seerr";
+            secrets = [ "key" ];
           };
           backup.paths = [ "/var/lib/private/seerr" ];
         };

@@ -104,6 +104,22 @@
             access = "open"; # Nextcloud's own login
             public = true;
           };
+          dashboard = {
+            name = "Nextcloud";
+            group = "Files";
+            description = "Files, calendar, contacts";
+            icon = "nextcloud.svg";
+            widget = {
+              type = "nextcloud";
+              fields = [
+                "freespace"
+                "activeusers"
+                "numfiles"
+                "numshares"
+              ];
+            };
+            secrets = [ "key" ];
+          };
           backup.paths = [
             data
             "/var/lib/nextcloud"

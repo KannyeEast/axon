@@ -119,6 +119,14 @@ in
       # producer side of the services contract; published everywhere, read only by a gateway
       axon.services.sync = {
         route.port = 8384;
+        dashboard = {
+          name = "Syncthing";
+          group = "Files";
+          description = "Folders between machines";
+          icon = "syncthing.svg";
+          widget.type = "syncthing";
+          secrets = [ "key" ];
+        };
         backup.paths = [ "/var/lib/syncthing" ] ++ map pathOf onVolumes;
       };
     };
