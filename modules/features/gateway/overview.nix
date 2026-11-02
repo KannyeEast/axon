@@ -138,6 +138,9 @@ in
         ];
       };
 
+      # Node exits with 143 on SIGTERM; without this every restart counts as a failure and mails
+      systemd.services.homepage-dashboard.serviceConfig.SuccessExitStatus = [ 143 ];
+
       sops.secrets = genAttrs secrets (_: { });
       sops.templates."homepage.env" = {
         content = concatStrings (map (secret: "${envName secret}=${ph.${secret}}\n") secrets);
