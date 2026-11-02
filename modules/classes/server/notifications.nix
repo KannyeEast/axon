@@ -92,12 +92,19 @@
               echo "To: ${config.axon.mail.alert}"
               echo "Subject: [${host.name}] $1 failed"
               echo
-              systemctl status --full --lines=60 "$1" || true
+              # status only shows the log of the unit's current run; once it has restarted, the
+              # failed run's lines are only in the journal
+              report() {
+                systemctl status --full --lines=0 "$1" || true
+                echo
+                journalctl --unit="$1" --boot --lines=40 --no-pager --no-hostname
+              }
+              report "$1"
               # a "dependency" failure has its error in the unit it depends on
               for dep in $(systemctl show --property=Requires,Requisite,BindsTo --value "$1"); do
                 if systemctl --quiet is-failed "$dep"; then
                   echo
-                  systemctl status --full --lines=60 "$dep" || true
+                  report "$dep"
                 fi
               done
             } | ${sendmail} -t
