@@ -7,23 +7,32 @@ let
   inherit (lib)
     attrNames
     attrValues
+    concatLists
     concatMap
+    concatMapStrings
     concatStrings
+    concatStringsSep
+    elem
+    filter
     filterAttrs
     genAttrs
     head
+    length
     mapAttrs
     mapAttrsToList
+    nameValuePair
     optionalAttrs
     replaceStrings
     sort
+    subtractLists
+    toJSON
     toUpper
     unique
     ;
 in
 {
   flake.modules.nixos.gateway =
-    { config, ... }:
+    { config, pkgs, ... }:
     let
       inherit (config.axon) cluster services;
       ph = config.sops.placeholder;
@@ -71,6 +80,46 @@ in
         sort (a: b: head (attrNames a) < head (attrNames b)) (
           concatMap tilesOf (attrValues (filterAttrs (_: service: service.dashboard.group == group) tiles))
         );
+
+      # top to bottom on a grid of four; groups in one row share it, each with an equal part.
+      # Groups not named here follow, alphabetically.
+      rowsWanted = [
+        [ "Media" ]
+        [
+          "Files"
+          "Network"
+        ]
+        [ "System" ]
+      ];
+      columns = 4;
+      rows = filter (row: row != [ ]) (
+        map (filter (group: elem group groups)) rowsWanted
+        ++ map (group: [ group ]) (subtractLists (concatLists rowsWanted) groups)
+      );
+      rowName = concatStringsSep " and ";
+      grid = count: {
+        style = "row";
+        columns = count;
+      };
+      layoutOf =
+        row:
+        if length row == 1 then
+          nameValuePair (head row) (grid columns)
+        else
+          nameValuePair (rowName row) (
+            grid (length row) // { header = false; } // genAttrs row (_: grid (columns / length row))
+          );
+
+      # Homepage shows groups in the order of their layout entries, and Nix writes attribute sets
+      # sorted, so the layout is written out by hand, one entry per line in row order
+      layout = map layoutOf rows ++ [ (nameValuePair "Admin" (grid columns)) ];
+      settingsFile = pkgs.writeText "settings.yaml" (
+        concatStrings (
+          mapAttrsToList (key: value: "${key}: ${toJSON value}\n") config.services.homepage-dashboard.settings
+        )
+        + "layout:\n"
+        + concatMapStrings (entry: "  ${toJSON entry.name}: ${toJSON entry.value}\n") layout
+      );
     in
     {
       services.homepage-dashboard = {
@@ -92,13 +141,15 @@ in
             searchDescriptions = true;
             hideInternetSearch = true;
           };
-          layout = genAttrs groups (_: {
-            style = "row";
-            columns = 4;
-          });
         };
 
-        services = map (group: { ${group} = inGroup group; }) groups;
+        services = map (
+          row:
+          if length row == 1 then
+            { ${head row} = inGroup (head row); }
+          else
+            { ${rowName row} = map (group: { ${group} = inGroup group; }) row; }
+        ) rows;
 
         bookmarks = [
           {
@@ -146,6 +197,8 @@ in
 
       # Node exits with 143 on SIGTERM; without this every restart counts as a failure and mails
       systemd.services.homepage-dashboard.serviceConfig.SuccessExitStatus = [ 143 ];
+
+      environment.etc."homepage-dashboard/settings.yaml".source = lib.mkForce settingsFile;
 
       sops.secrets = genAttrs secrets (_: { });
       sops.templates."homepage.env" = {
