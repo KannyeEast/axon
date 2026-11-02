@@ -1,7 +1,7 @@
 # The start page (Homepage) at home.<domain>: a tile for every service with a dashboard entry,
 # grouped, linked to its route and with a status dot; live numbers where it sets a widget.
-# Widget credentials come from secrets.json dashboard/<service>/<field>. Below the tiles, a row
-# of links to the admin pages of what runs outside the cluster.
+# Widget credentials come from secrets.json dashboard/<service>/<field>. Below the tiles, links
+# to the admin pages of what runs outside the cluster.
 { lib, ... }:
 let
   inherit (lib)
@@ -81,24 +81,17 @@ in
             searchDescriptions = true;
             hideInternetSearch = true;
           };
-          layout =
-            genAttrs groups (_: {
-              style = "row";
-              columns = 4;
-            })
-            // {
-              Links = {
-                header = false;
-                iconsOnly = true;
-              };
-            };
+          layout = genAttrs groups (_: {
+            style = "row";
+            columns = 4;
+          });
         };
 
         services = map (group: { ${group} = inGroup group; }) groups;
 
         bookmarks = [
           {
-            Links = [
+            Admin = [
               {
                 Cloudflare = [
                   {
