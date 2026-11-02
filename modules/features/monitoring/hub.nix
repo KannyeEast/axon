@@ -59,7 +59,11 @@ in
         environmentFile = config.sops.templates."beszel-hub.env".path;
       };
 
-      systemd.services.beszel-hub.preStart = "ln -sf ${systems} config.yml";
+      # the hub's data folder is beszel_data under its working directory
+      systemd.services.beszel-hub.preStart = ''
+        mkdir -p beszel_data
+        ln -sf ${systems} beszel_data/config.yml
+      '';
 
       sops.secrets."monitoring/password" = { };
       sops.templates."beszel-hub.env" = {
