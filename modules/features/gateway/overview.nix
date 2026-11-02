@@ -1,16 +1,18 @@
 # The start page (Homepage) at home.<domain>: a tile for every service with a dashboard entry,
-# grouped, linked to its route and with a status dot; live numbers where it sets a widget.
-# Widget credentials come from secrets.json dashboard/<service>/<field>. Below the tiles, links
-# to the admin pages of what runs outside the cluster.
+# grouped, linked to its route and with a status dot; live numbers where it sets a widget, one
+# tile per instance where it lists several. Widget credentials come from this host's
+# secrets.json. Below the tiles, links to the admin pages of what runs outside the cluster.
 { lib, ... }:
 let
   inherit (lib)
     attrNames
+    attrValues
     concatMap
     concatStrings
     filterAttrs
     genAttrs
     head
+    mapAttrs
     mapAttrsToList
     optionalAttrs
     replaceStrings
@@ -37,12 +39,12 @@ in
       groups = unique (sort (a: b: a < b) (mapAttrsToList (_: service: service.dashboard.group) tiles));
 
       internal = route: "http://${route.address}:${toString route.port}";
-      envName =
-        name: field: "HOMEPAGE_VAR_${toUpper (replaceStrings [ "-" ] [ "_" ] "${name}_${field}")}";
-      secretsOf = name: map (field: "dashboard/${name}/${field}") tiles.${name}.dashboard.secrets;
+      # "dashboard/radarr/key" -> HOMEPAGE_VAR_DASHBOARD_RADARR_KEY
+      envName = secret: "HOMEPAGE_VAR_${toUpper (replaceStrings [ "/" "-" ] [ "_" "_" ] secret)}";
+      secrets = unique (concatMap (service: attrValues service.dashboard.secrets) (attrValues tiles));
 
-      tile = name: service: {
-        ${service.dashboard.name} = {
+      tile = service: name: instance: {
+        ${name} = {
           href = "https://${service.route.subdomain}.${domain}";
           inherit (service.dashboard) description icon;
           siteMonitor = internal service.route + service.dashboard.monitor;
@@ -52,13 +54,20 @@ in
             url = internal service.route;
           }
           // service.dashboard.widget
-          // genAttrs service.dashboard.secrets (field: "{{${envName name field}}}");
+          // mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
+          // instance;
         };
       };
+      tilesOf =
+        service:
+        if service.dashboard.instances == { } then
+          [ (tile service service.dashboard.name { }) ]
+        else
+          mapAttrsToList (tile service) service.dashboard.instances;
       inGroup =
         group:
         sort (a: b: head (attrNames a) < head (attrNames b)) (
-          mapAttrsToList tile (filterAttrs (_: service: service.dashboard.group == group) tiles)
+          concatMap tilesOf (attrValues (filterAttrs (_: service: service.dashboard.group == group) tiles))
         );
     in
     {
@@ -109,6 +118,14 @@ in
                 ];
               }
               {
+                Mullvad = [
+                  {
+                    icon = "mullvad.svg";
+                    href = "https://mullvad.net/en/account";
+                  }
+                ];
+              }
+              {
                 "FRITZ!Box" = [
                   {
                     icon = "fritzbox.svg";
@@ -121,14 +138,9 @@ in
         ];
       };
 
-      sops.secrets = genAttrs (concatMap secretsOf (attrNames tiles)) (_: { });
+      sops.secrets = genAttrs secrets (_: { });
       sops.templates."homepage.env".content = concatStrings (
-        mapAttrsToList (
-          name: service:
-          concatStrings (
-            map (field: "${envName name field}=${ph."dashboard/${name}/${field}"}\n") service.dashboard.secrets
-          )
-        ) tiles
+        map (secret: "${envName secret}=${ph.${secret}}\n") secrets
       );
 
       axon.services.home.route.port = port;

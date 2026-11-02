@@ -58,7 +58,7 @@
               enableBlocks = true;
               enableNowPlaying = false;
             };
-            secrets = [ "key" ];
+            secrets.key = "dashboard/jellyfin/key";
           };
           backup.paths = [ "/var/lib/jellyfin" ];
         };
@@ -73,7 +73,7 @@
             description = "Requests";
             icon = "jellyseerr.svg";
             widget.type = "seerr";
-            secrets = [ "key" ];
+            secrets.key = "dashboard/requests/key";
           };
           backup.paths = [ "/var/lib/private/seerr" ];
         };

@@ -120,7 +120,7 @@
                 "numshares"
               ];
             };
-            secrets = [ "key" ];
+            secrets.key = "dashboard/cloud/key";
           };
           backup.paths = [
             data

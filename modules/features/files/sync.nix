@@ -125,7 +125,7 @@ in
           description = "Folders between machines";
           icon = "syncthing.svg";
           widget.type = "syncthing";
-          secrets = [ "key" ];
+          secrets.key = "dashboard/sync/key";
         };
         backup.paths = [ "/var/lib/syncthing" ] ++ map pathOf onVolumes;
       };

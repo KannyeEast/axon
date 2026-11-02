@@ -19,7 +19,7 @@
         inherit description;
         icon = "${app}.svg";
         widget.type = app;
-        secrets = [ "key" ];
+        secrets.key = "dashboard/${app}/key";
       };
       descriptions = {
         radarr = "Movies";

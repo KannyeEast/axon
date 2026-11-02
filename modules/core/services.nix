@@ -75,9 +75,17 @@ in
                         description = "Homepage widget settings; url defaults to the route's address.";
                       };
                       secrets = mkOption {
-                        type = types.listOf types.str;
-                        default = [ ];
-                        description = "Widget fields read from dashboard/<service>/<field> in the gateway host's secrets.json.";
+                        type = types.attrsOf types.str;
+                        default = { };
+                        example = {
+                          key = "dashboard/radarr/key";
+                        };
+                        description = "Widget field -> key in the gateway host's secrets.json that holds its value.";
+                      };
+                      instances = mkOption {
+                        type = types.attrsOf (types.attrsOf types.anything);
+                        default = { };
+                        description = "One tile per entry instead of one, named by the key; its value is merged over widget.";
                       };
                     };
                   }
