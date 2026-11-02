@@ -86,47 +86,10 @@ in
             reduceOptions.calcs = [ "lastNotNull" ];
           };
         }
-        # one box per service; the history is in Grafana's Blackbox dashboard
-        {
-          type = "stat";
-          title = "Services";
-          targets = [
-            # max: series from before a label was added still count as the same service
-            (query ''max by (service) (probe_success{job="service"})'' "{{service}}" // { instant = true; })
-          ];
-          fieldConfig.defaults = {
-            color.mode = "thresholds";
-            thresholds = {
-              mode = "absolute";
-              steps = [
-                {
-                  color = "red";
-                  value = null;
-                }
-                {
-                  color = "green";
-                  value = 1;
-                }
-              ];
-            };
-            mappings = [
-              {
-                type = "value";
-                options = {
-                  "0".text = "down";
-                  "1".text = "up";
-                };
-              }
-            ];
-          };
-          options = {
-            colorMode = "background";
-            graphMode = "none";
-            textMode = "name";
-            justifyMode = "center";
-            reduceOptions.calcs = [ "lastNotNull" ];
-          };
-        }
+        (timeseries "Disk I/O" { unit = "Bps"; } [
+          (query ''sum by (host) (rate(node_disk_read_bytes_total{device!~"loop.*|zram.*|dm-.*"}[5m]))'' "{{host}} read")
+          (query ''sum by (host) (rate(node_disk_written_bytes_total{device!~"loop.*|zram.*|dm-.*"}[5m]))'' "{{host}} write")
+        ])
       ];
 
       start = builtins.toJSON {
