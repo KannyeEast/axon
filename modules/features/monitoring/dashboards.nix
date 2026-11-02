@@ -6,7 +6,12 @@
 # start page, each embedded on its own.
 { lib, ... }:
 let
-  inherit (lib) imap1 listToAttrs nameValuePair;
+  inherit (lib)
+    genAttrs
+    imap1
+    listToAttrs
+    nameValuePair
+    ;
 in
 {
   flake.modules.nixos.monitoring =
@@ -34,6 +39,14 @@ in
         options.tooltip.mode = "multi";
       };
       query = expr: legendFormat: { inherit expr legendFormat; };
+      column = name: properties: {
+        matcher = {
+          id = "byName";
+          options = name;
+        };
+        inherit properties;
+      };
+      property = id: value: { inherit id value; };
 
       # in tile order, two per row
       panels = [
@@ -51,39 +64,100 @@ in
           (query "max by (host) (node_hwmon_temp_celsius)" "{{host}}")
         ])
         {
-          type = "bargauge";
+          type = "table";
           title = "Disks";
-          targets = [
-            (
-              query ''100 * (1 - node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})'' "{{host}} {{mountpoint}}"
-              // {
+          targets =
+            imap1
+              (i: expr: {
+                inherit expr;
+                refId = lib.elemAt [ "A" "B" "C" ] (i - 1);
+                format = "table";
                 instant = true;
-              }
-            )
-          ];
-          fieldConfig.defaults = percent // {
-            thresholds = {
-              mode = "absolute";
-              steps = [
-                {
-                  color = "green";
-                  value = null;
-                }
-                {
-                  color = "orange";
-                  value = 70;
-                }
-                {
-                  color = "red";
-                  value = 85;
-                }
+              })
+              [
+                ''node_filesystem_size_bytes{fstype!="tmpfs"}''
+                ''node_filesystem_size_bytes{fstype!="tmpfs"} - node_filesystem_avail_bytes{fstype!="tmpfs"}''
+                ''100 * (1 - node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})''
               ];
-            };
+          # one row per filesystem with its three values side by side
+          transformations = [
+            {
+              id = "merge";
+              options = { };
+            }
+            {
+              id = "organize";
+              options = {
+                excludeByName = genAttrs [
+                  "Time"
+                  "class"
+                  "device"
+                  "fstype"
+                  "instance"
+                  "job"
+                ] (_: true);
+                indexByName = {
+                  host = 0;
+                  mountpoint = 1;
+                  "Value #A" = 2;
+                  "Value #B" = 3;
+                  "Value #C" = 4;
+                };
+                renameByName = {
+                  host = "Host";
+                  mountpoint = "Filesystem";
+                  "Value #A" = "Size";
+                  "Value #B" = "Used";
+                  "Value #C" = "Use";
+                };
+              };
+            }
+          ];
+          fieldConfig = {
+            defaults = { };
+            overrides = [
+              (column "Size" [ (property "unit" "decbytes") ])
+              (column "Used" [ (property "unit" "decbytes") ])
+              (column "Use" [
+                (property "unit" "percent")
+                (property "min" 0)
+                (property "max" 100)
+                (property "custom.cellOptions" {
+                  type = "gauge";
+                  mode = "basic";
+                })
+                (property "thresholds" {
+                  mode = "absolute";
+                  steps = [
+                    {
+                      color = "green";
+                      value = null;
+                    }
+                    {
+                      color = "orange";
+                      value = 70;
+                    }
+                    {
+                      color = "red";
+                      value = 85;
+                    }
+                  ];
+                })
+              ])
+            ];
           };
           options = {
-            orientation = "horizontal";
-            displayMode = "basic";
-            reduceOptions.calcs = [ "lastNotNull" ];
+            cellHeight = "sm";
+            sortBy = [
+              {
+                displayName = "Filesystem";
+                desc = false;
+              }
+              {
+                displayName = "Host";
+                desc = false;
+              }
+            ];
           };
         }
         (timeseries "Disk I/O" { unit = "Bps"; } [
