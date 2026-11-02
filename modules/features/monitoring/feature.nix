@@ -1,6 +1,6 @@
 {
   axon.features.monitoring = {
-    description = "Beszel hub: history, graphs and alerts for every host in the cluster";
+    description = "Prometheus and Grafana: metrics, history and graphs for every host in the cluster";
     classes = [ "server" ];
   };
 }
