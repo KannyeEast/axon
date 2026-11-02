@@ -113,11 +113,11 @@
             monitor = "/status.php";
             widget = {
               type = "nextcloud";
+              # four values make labels like "ACTIVE USERS" wrap, and the whole row grows with them
               fields = [
                 "freespace"
-                "activeusers"
                 "numfiles"
-                "numshares"
+                "activeusers"
               ];
             };
             secrets.key = "dashboard/cloud/key";

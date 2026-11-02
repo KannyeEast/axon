@@ -86,10 +86,14 @@ in
             reduceOptions.calcs = [ "lastNotNull" ];
           };
         }
+        # one box per service; the history is in Grafana's Blackbox dashboard
         {
-          type = "state-timeline";
+          type = "stat";
           title = "Services";
-          targets = [ (query ''probe_success{job="service"}'' "{{service}}") ];
+          targets = [
+            # max: series from before a label was added still count as the same service
+            (query ''max by (service) (probe_success{job="service"})'' "{{service}}" // { instant = true; })
+          ];
           fieldConfig.defaults = {
             color.mode = "thresholds";
             thresholds = {
@@ -116,9 +120,11 @@ in
             ];
           };
           options = {
-            showValue = "never";
-            mergeValues = true;
-            legend.showLegend = false;
+            colorMode = "background";
+            graphMode = "none";
+            textMode = "name";
+            justifyMode = "center";
+            reduceOptions.calcs = [ "lastNotNull" ];
           };
         }
       ];

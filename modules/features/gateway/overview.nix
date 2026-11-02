@@ -114,7 +114,7 @@ in
 
       # Homepage shows groups in the order of their layout entries, and Nix writes attribute sets
       # sorted, so the layout is written out by hand, one entry per line in row order
-      layout = map layoutOf rows ++ [ (nameValuePair "Admin" (grid columns)) ];
+      layout = map layoutOf rows;
       settingsFile = pkgs.writeText "settings.yaml" (
         concatStrings (
           mapAttrsToList (key: value: "${key}: ${toJSON value}\n") config.services.homepage-dashboard.settings

@@ -13,12 +13,23 @@
       prowlarr = 9696;
       vpn = config.vpnNamespaces.vpn;
 
+      # fields: four values make labels like "FAIL QUERIES" wrap, and the whole row grows with them
+      fields = {
+        prowlarr = [
+          "numberOfGrabs"
+          "numberOfQueries"
+          "numberOfFailGrabs"
+        ];
+      };
       dashboard = app: description: {
         name = lib.toSentenceCase app;
         group = "Media";
         inherit description;
         icon = "${app}.svg";
-        widget.type = app;
+        widget = {
+          type = app;
+        }
+        // lib.optionalAttrs (fields ? ${app}) { fields = fields.${app}; };
         secrets.key = "dashboard/${app}/key";
       };
       descriptions = {
