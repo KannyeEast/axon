@@ -1,17 +1,17 @@
-# The start page's look: near-black, monospace, flat cards with a thin border and one green accent.
+# The start page's look: near-black, monospace, centered, flat cards with a thin border.
 {
   flake.modules.nixos.gateway = {
     services.homepage-dashboard.customCSS = ''
-      @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap");
 
       :root {
         --bg: #0a0c0b;
-        --card: #111412;
-        --card-hover: #151a17;
-        --line: rgba(255, 255, 255, 0.07);
+        --card: #0f1211;
+        --card-hover: #131715;
+        --line: rgba(255, 255, 255, 0.06);
         --text: #e4e7e5;
-        --muted: #7f8782;
-        --accent: #4ade80;
+        --muted: #6f7772;
+        --accent: rgba(74, 222, 128, 0.35);
       }
 
       html,
@@ -24,46 +24,21 @@
         font-family: "JetBrains Mono", ui-monospace, monospace;
       }
 
-      /* the header: resources and clock in one framed bar */
-      #information-widgets {
-        margin: 1.5rem 2rem 0;
-        padding: 0.75rem 1rem;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        background: var(--card);
+      #services {
+        max-width: 72rem;
+        margin: 3rem auto 0 !important;
       }
 
-      #information-widgets * {
-        color: var(--muted);
-        font-size: 0.75rem;
-      }
-
-      #tabs ul {
-        background: transparent !important;
-        justify-content: center;
-        gap: 0.75rem;
-      }
-
-      #tabs li {
-        max-width: 9rem;
-      }
-
-      #tabs button {
-        border: 1px solid var(--line);
-        background: var(--card);
-        color: var(--muted);
-      }
-
-      #tabs button[aria-selected="true"] {
-        color: var(--text);
-        border-color: var(--accent);
-        box-shadow: inset 0 -2px 0 var(--accent);
+      /* the refresh button; the page refreshes its numbers by itself */
+      #footer {
+        display: none;
       }
 
       .service-group-name {
         color: var(--muted) !important;
-        font-size: 0.75rem !important;
-        letter-spacing: 0.15em;
+        font-size: 0.7rem !important;
+        font-weight: 400 !important;
+        letter-spacing: 0.18em;
         text-transform: uppercase;
       }
 
@@ -71,36 +46,40 @@
         background: var(--card) !important;
         border: 1px solid var(--line);
         border-radius: 10px !important;
-        padding: 0.5rem !important;
+        padding: 0.25rem 0.375rem !important;
       }
 
       .service-card:hover {
         background: var(--card-hover) !important;
-        border-color: rgba(74, 222, 128, 0.25);
+        border-color: var(--accent);
       }
 
       .service-name {
         color: var(--text);
-        font-weight: 500;
+        font-size: 0.8rem;
+        font-weight: 400;
       }
 
       .service-description {
         color: var(--muted) !important;
+        font-size: 0.7rem;
       }
 
       .service-block {
         background: transparent !important;
+        padding: 0.125rem !important;
       }
 
       .service-block-value {
         color: var(--text);
-        font-size: 0.95rem;
+        font-size: 0.85rem;
         font-weight: 300;
       }
 
       .service-block-label {
         color: var(--muted);
-        font-size: 0.625rem;
+        font-size: 0.55rem;
+        font-weight: 400;
         letter-spacing: 0.08em;
       }
     '';

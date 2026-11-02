@@ -1,19 +1,16 @@
 # The start page (Homepage) at home.<domain>: a tile for every service with a dashboard entry,
 # grouped, linked to its route and with a status dot; live numbers where it sets a widget.
-# Widget credentials come from secrets.json dashboard/<service>/<field>. Services that mark
-# calendar = true put their releases into the Calendar tab.
+# Widget credentials come from secrets.json dashboard/<service>/<field>.
 { lib, ... }:
 let
   inherit (lib)
     attrNames
     concatMap
     concatStrings
-    filter
     filterAttrs
     genAttrs
     head
     mapAttrsToList
-    optional
     optionalAttrs
     replaceStrings
     sort
@@ -25,7 +22,7 @@ in
   flake.modules.nixos.gateway =
     { config, ... }:
     let
-      inherit (config.axon) cluster services disk;
+      inherit (config.axon) cluster services;
       ph = config.sops.placeholder;
 
       domain =
@@ -62,36 +59,6 @@ in
         sort (a: b: head (attrNames a) < head (attrNames b)) (
           mapAttrsToList tile (filterAttrs (_: service: service.dashboard.group == group) tiles)
         );
-
-      releases = filterAttrs (_: service: service.dashboard.calendar) tiles;
-      calendar = {
-        Calendar = [
-          {
-            Releases.widget = {
-              type = "calendar";
-              view = "monthly";
-              showTime = true;
-              integrations = mapAttrsToList (_: service: {
-                type = service.dashboard.widget.type;
-                service_group = service.dashboard.group;
-                service_name = service.dashboard.name;
-                baseUrl = "https://${service.route.subdomain}.${domain}";
-              }) releases;
-            };
-          }
-        ];
-      };
-
-      # one bar per filesystem: the first mount of every data disk
-      filesystems = [
-        "/"
-      ]
-      ++ concatMap (
-        label:
-        optional (disk.${label} ? mounts && disk.${label}.mounts != { }) (
-          head (lib.attrValues disk.${label}.mounts)
-        )
-      ) (filter (label: label != "boot") (attrNames disk));
     in
     {
       services.homepage-dashboard = {
@@ -113,39 +80,13 @@ in
             searchDescriptions = true;
             hideInternetSearch = true;
           };
-          layout =
-            genAttrs groups (_: {
-              tab = "Home";
-              style = "row";
-              columns = 4;
-            })
-            // optionalAttrs (releases != { }) { Calendar.tab = "Calendar"; };
+          layout = genAttrs groups (_: {
+            style = "row";
+            columns = 4;
+          });
         };
 
-        services = map (group: { ${group} = inGroup group; }) groups ++ optional (releases != { }) calendar;
-
-        widgets = [
-          {
-            resources = {
-              cpu = true;
-              memory = true;
-              cputemp = true;
-              uptime = true;
-              disk = filesystems;
-              units = "metric";
-            };
-          }
-          {
-            datetime = {
-              text_size = "md";
-              format = {
-                dateStyle = "medium";
-                timeStyle = "short";
-                hour12 = false;
-              };
-            };
-          }
-        ];
+        services = map (group: { ${group} = inGroup group; }) groups;
       };
 
       sops.secrets = genAttrs (concatMap secretsOf (attrNames tiles)) (_: { });

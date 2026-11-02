@@ -79,11 +79,6 @@ in
                         default = [ ];
                         description = "Widget fields read from dashboard/<service>/<field> in the gateway host's secrets.json.";
                       };
-                      calendar = mkOption {
-                        type = types.bool;
-                        default = false;
-                        description = "Show the widget's releases in the start page's calendar (radarr, sonarr).";
-                      };
                     };
                   }
                 );

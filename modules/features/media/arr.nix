@@ -20,7 +20,6 @@
         icon = "${app}.svg";
         widget.type = app;
         secrets = [ "key" ];
-        calendar = app == "radarr" || app == "sonarr";
       };
       descriptions = {
         radarr = "Movies";

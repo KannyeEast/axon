@@ -56,6 +56,7 @@
               type = "jellyfin";
               version = 2;
               enableBlocks = true;
+              enableNowPlaying = false;
             };
             secrets = [ "key" ];
           };
