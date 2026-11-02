@@ -85,7 +85,7 @@ in
           statusStyle = "dot";
           hideVersion = true;
           useEqualHeights = true;
-          target = "_self";
+          target = "_blank";
           quicklaunch = {
             searchDescriptions = true;
             hideInternetSearch = true;
@@ -106,6 +106,7 @@ in
                   {
                     icon = "cloudflare.svg";
                     href = "https://dash.cloudflare.com";
+                    description = "dash.cloudflare.com ↗";
                   }
                 ];
               }
@@ -114,6 +115,7 @@ in
                   {
                     icon = "tailscale.svg";
                     href = "https://console.tailscale.com";
+                    description = "console.tailscale.com ↗";
                   }
                 ];
               }
@@ -122,6 +124,7 @@ in
                   {
                     icon = "mullvad.svg";
                     href = "https://mullvad.net/en/account";
+                    description = "mullvad.net ↗";
                   }
                 ];
               }
@@ -130,6 +133,7 @@ in
                   {
                     icon = "fritzbox.svg";
                     href = "http://192.168.178.1";
+                    description = "192.168.178.1 ↗";
                   }
                 ];
               }
