@@ -1,8 +1,8 @@
 # The Beszel hub at monitor.<domain>: collects from the agent on every host in the cluster
 # (core/metrics.nix), keeps the history, draws the graphs and sends the alerts. The host list is
 # generated from the cluster; thresholds and notifications are set in its UI.
-# Behind the gateway login, which Beszel takes over: it signs in whoever the login names.
-# The account is created on first start from host.toml's email and monitoring/password.
+# Beszel's own login; the account is created on first start from host.toml's email and
+# monitoring/password.
 # The hub makes its key pair on first start; its public key goes into host.toml
 # [monitoring] key, and the agents start once it's there.
 { lib, ... }:
@@ -55,21 +55,19 @@ in
       services.beszel.hub = {
         enable = true;
         inherit port;
-        environment = {
-          USER_EMAIL = user.email;
-          # the gateway login passes the signed-in user's email; only Caddy, on this host, may
-          TRUSTED_AUTH_HEADER = "Remote-Email";
-          TRUSTED_PROXY_IPS = "127.0.0.1";
-        };
+        environment.USER_EMAIL = user.email;
         environmentFile = config.sops.templates."beszel-hub.env".path;
       };
 
       systemd.services.beszel-hub.preStart = "ln -sf ${systems} config.yml";
 
       sops.secrets."monitoring/password" = { };
-      sops.templates."beszel-hub.env".content = ''
-        USER_PASSWORD=${config.sops.placeholder."monitoring/password"}
-      '';
+      sops.templates."beszel-hub.env" = {
+        content = ''
+          USER_PASSWORD=${config.sops.placeholder."monitoring/password"}
+        '';
+        restartUnits = [ "beszel-hub.service" ];
+      };
 
       axon.persist.directories = [
         {
@@ -79,7 +77,10 @@ in
       ];
 
       axon.services.monitor = {
-        route.port = port;
+        route = {
+          inherit port;
+          access = "open";
+        };
         dashboard = {
           name = "Beszel";
           group = "System";

@@ -139,9 +139,11 @@ in
       };
 
       sops.secrets = genAttrs secrets (_: { });
-      sops.templates."homepage.env".content = concatStrings (
-        map (secret: "${envName secret}=${ph.${secret}}\n") secrets
-      );
+      sops.templates."homepage.env" = {
+        content = concatStrings (map (secret: "${envName secret}=${ph.${secret}}\n") secrets);
+        # a running Homepage keeps the variables it started with
+        restartUnits = [ "homepage-dashboard.service" ];
+      };
 
       axon.services.home.route.port = port;
     };
