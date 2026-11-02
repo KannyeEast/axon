@@ -66,9 +66,12 @@ in
 
         fileSystems."/persist".neededForBoot = true;
 
-        # persisting /var/lib/private/<name> makes the parent 0755, and systemd refuses to start
-        # DynamicUser services under anything but 0700
-        systemd.tmpfiles.rules = [ "d /var/lib/private 0700 root root -" ];
+        # systemd starts DynamicUser services only under a 0700 /var/lib/private. Impermanence
+        # copies every parent's mode from /persist on each activation, so the copy there sets it.
+        systemd.tmpfiles.rules = [
+          "d /persist/var/lib/private 0700 root root -"
+          "d /var/lib/private 0700 root root -"
+        ];
 
         # the rollback below runs in the initrd, which has only the tools listed here
         boot.initrd.systemd.initrdBin = [
