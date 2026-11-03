@@ -14,6 +14,8 @@
     lib.mkIf (config.axon.host.class == "server") {
       services.immich = {
         enable = true;
+        # "localhost" binds to ::1 only, and the gateway proxies to 127.0.0.1
+        host = "127.0.0.1";
         inherit port;
         mediaLocation = data;
       };
