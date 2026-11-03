@@ -46,6 +46,7 @@
         route = {
           inherit port;
           access = "open"; # Immich's own login
+          public = true;
         };
         dashboard = {
           name = "Immich";
