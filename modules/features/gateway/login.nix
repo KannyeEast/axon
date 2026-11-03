@@ -76,6 +76,9 @@ in
           theme = "auto";
           server.address = "tcp://127.0.0.1:9091";
           authentication_backend.file.path = "${state}/users.yml";
+          # the guarded services are tailnet-only, so a login may last: idle a day, at most a week
+          session.inactivity = "1d";
+          session.expiration = "1w";
           session.cookies = [
             {
               inherit domain;
