@@ -53,6 +53,11 @@
           group = "Files";
           description = "Photos and videos";
           icon = "immich.svg";
+          widget = {
+            type = "immich";
+            version = 2;
+          };
+          secrets.key = "dashboard/photos/key";
         };
         # thumbs/ and encoded-video/ are rebuilt from the originals; backups/ holds Immich's own database dumps
         backup.paths = map (dir: "${data}/${dir}") [
