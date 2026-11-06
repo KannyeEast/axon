@@ -38,6 +38,10 @@ in
               type = types.str;
               description = "Recipient for scheduled reports.";
             };
+            info = mkOption {
+              type = types.str;
+              description = "Recipient for notices: worth reading, but nothing is wrong.";
+            };
           };
         }
       );

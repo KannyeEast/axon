@@ -4,19 +4,33 @@
 # Its three keys (session cookies, database encryption, reset links) are random values
 # nobody types, so the host makes them on first start and keeps them in the state folder,
 # which is persisted and backed up: the database is unreadable without its key.
+# Password resets and the like go through axon.mail to srv-info@, as that is the address its user
+# is seeded with. Without an account they land in notifications.txt in the state folder.
 { lib, ... }:
 let
-  inherit (lib) filterAttrs mapAttrsToList;
+  inherit (lib)
+    filterAttrs
+    mapAttrsToList
+    mkIf
+    optional
+    toJSON
+    ;
 in
 {
   flake.modules.nixos.gateway =
     { config, ... }:
     let
-      inherit (config.axon) user domain routes;
+      inherit (config.axon)
+        user
+        domain
+        mail
+        routes
+        ;
       ph = config.sops.placeholder;
       port = 9091;
       state = "/var/lib/authelia-main";
       keys = "${state}/keys";
+      email = if mail != null then mail.info else user.email;
 
       policyOf = {
         "login" = "one_factor";
@@ -33,10 +47,24 @@ in
             disabled: false
             displayname: "${user.name}"
             password: "${ph."authelia/admin-hash"}"
-            email: ${user.email}
+            email: ${email}
             groups:
               - admin
       '';
+
+      # merged over the settings below when Authelia starts
+      sops.templates."authelia-mail.yml" = mkIf (mail != null) {
+        owner = "authelia-main";
+        content = toJSON {
+          notifier.smtp = {
+            address = "submission://${mail.host}:${toString mail.port}";
+            username = mail.address;
+            password = mail.token;
+            sender = "Authelia <${mail.address}>";
+          };
+        };
+        restartUnits = [ "authelia-main.service" ];
+      };
 
       systemd.services.authelia-main-seed = {
         description = "Seed the Authelia user database and create its keys";
@@ -66,6 +94,7 @@ in
 
       services.authelia.instances.main = {
         enable = true;
+        settingsFiles = optional (mail != null) config.sops.templates."authelia-mail.yml".path;
         secrets = {
           jwtSecretFile = "${keys}/jwt";
           sessionSecretFile = "${keys}/session";
@@ -86,8 +115,12 @@ in
             }
           ];
           storage.local.path = "${state}/db.sqlite3";
-          # password resets go to a file until mail is wired in
-          notifier.filesystem.filename = "${state}/notifications.txt";
+          # a mail outage must not keep the login from starting
+          notifier =
+            if mail != null then
+              { disable_startup_check = true; }
+            else
+              { filesystem.filename = "${state}/notifications.txt"; };
           access_control = {
             default_policy = "deny";
             rules = mapAttrsToList (_: service: {

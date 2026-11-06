@@ -1,8 +1,8 @@
 # Mail leaves through Proton's SMTP with a token; a home connection can't deliver mail itself.
 # Swapping the provider means changing axon.mail's host and port here, and the secrets.
 # The sender address lives in secrets.json (mail/user, mail/domain, mail/token), so it never
-# lands in the repo. Recipients are srv-alert@ and srv-report@ the cluster domain, which a
-# Sieve rule on the recipient's local part files away.
+# lands in the repo. Recipients are srv-alert@, srv-report@ and srv-info@ the cluster domain,
+# which a Sieve rule on the recipient's local part files away.
 { lib, ... }:
 {
   flake.modules.nixos.mail =
@@ -22,6 +22,7 @@
         token = ph."mail/token";
         alert = "srv-alert@${domain}";
         report = "srv-report@${domain}";
+        info = "srv-info@${domain}";
       };
 
       sops.secrets = {
