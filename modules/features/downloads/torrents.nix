@@ -26,8 +26,13 @@
           LegalNotice.Accepted = true;
           BitTorrent.Session = {
             DefaultSavePath = finished;
-            GlobalMaxRatio = 1; # then stop: finished means finished
+            GlobalMaxRatio = 0; # stop as soon as it's done: nothing seeds
+            # a whole series queues up and works through by itself; a torrent without peers doesn't
+            # hold up the rest
             QueueingSystemEnabled = true;
+            IgnoreSlowTorrentsForQueueing = true;
+            MaxActiveDownloads = 5;
+            MaxActiveTorrents = 5;
           }
           // lib.optionalAttrs (volumes ? scratch) {
             TempPathEnabled = true;
