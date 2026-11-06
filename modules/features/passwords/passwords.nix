@@ -8,7 +8,8 @@
     {
       environment.systemPackages = [ pkgs.keepassxc ];
 
-      # the browser extension, and the link that lets it talk to the app
+      # the browser extension, the link that lets it talk to the app, and the browser's own password
+      # saving out of the way
       axon.browser = {
         extensions."keepassxc-browser@keepassxc.org" = {
           id = "keepassxc-browser";
@@ -16,6 +17,10 @@
           private = true;
         };
         nativeHosts = [ pkgs.keepassxc ];
+        policies = {
+          OfferToSaveLogins = false;
+          PasswordManagerEnabled = false;
+        };
       };
 
       # two secret stores fight over the same D-Bus name; GDM would bring gnome-keyring along

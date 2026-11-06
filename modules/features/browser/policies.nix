@@ -7,6 +7,7 @@ in
   flake.modules.homeManager.browser =
     { osConfig, ... }:
     let
+      inherit (osConfig.axon) overlay;
       inherit (osConfig.axon.cluster) domain;
       mkPolicy = lib.mapAttrs (_: Value: { inherit Value; });
     in
@@ -15,7 +16,6 @@ in
       programs.zen-browser.policies = {
         AIControls.Default.Value = "blocked";
         AppAutoUpdate = false;
-        # Authentication >> Might be useful to look at later
         AutofillAddressEnabled = false;
         AutofillCreditCardEnabled = false;
         BackgroundAppUpdate = false;
@@ -23,7 +23,6 @@ in
           AllowBackup = false;
           AllowRestore = false;
         };
-        Certificates.ImportEnterpriseRoots = true;
         Cookies = {
           Allow = [
             "file:///"
@@ -47,9 +46,9 @@ in
         DisableFirefoxStudies = true;
         DisableSetDesktopBackground = true;
         DisableTelemetry = true;
-        # DisplayBookmarksToolbar = "never";
+        # on the tailnet lookups use its DNS, which the gateway filters
         DNSOverHTTPS = {
-          Enabled = true;
+          Enabled = overlay.network == null;
           ProviderURL = "https://mozilla.cloudflare-dns.com/dns-query";
           Fallback = true;
         };
@@ -86,11 +85,8 @@ in
         InstallAddonsPermission.Default = false;
         NetworkPrediction = false;
         NewTabPage = false;
-        # NoDefaultBookmarks = true;
-        OfferToSaveLogins = false;
         OverrideFirstRunPage = "";
         OverridePostUpdatePage = "";
-        PasswordManagerEnabled = false;
         Permissions = {
           Camera = {
             Allow = [ ];
@@ -146,18 +142,17 @@ in
         SkipTermsOfUse = true;
         StartDownloadsInTempDirectory = true;
         TranslateEnabled = false;
-        VisualSearchEnabled = true;
+        VisualSearchEnabled = false;
         Preferences = mkPolicy {
           "browser.display.document_color_use" = 0;
-          "browser.newtabpage.activity-stream.default.sites" = "";
-          "browser.shell.checkDefaultBrowser" = false;
-          "browser.shell.didSkipDefaultBrowserCheckOnFirstRun" = true;
           "browser.tabs.warnOnClose" = false;
           "browser.urlbar.clipboard.featureGate" = false;
           "browser.urlbar.addons.featureGate" = false;
           "browser.urlbar.suggest.addons" = false;
           "browser.urlbar.suggest.engines" = false;
           "browser.urlbar.suggest.mdn" = false;
+          # the row of sites Zen's new tab launcher opens with
+          "browser.urlbar.suggest.topsites" = false;
           "browser.urlbar.suggest.trending" = false;
           "browser.urlbar.suggest.weather" = false;
           "browser.urlbar.suggest.yelp" = false;
@@ -167,16 +162,13 @@ in
           "general.smoothScroll" = false;
           # middle-click scrolling; Firefox leaves it off on Linux, where middle click pastes
           "general.autoScroll" = true;
-
-          "media.videocontrols.picture-in-picture.video-toggle.enabled" = false;
-          "media.videocontrols.picture-in-picture.enabled" = false;
         };
         UserMessaging = {
           WhatsNew = false;
           ExtensionRecommendations = false;
           FeatureRecommendations = false;
           UrlbarInterventions = false;
-          SkipOnboarding = false;
+          SkipOnboarding = true;
           MoreFromMozilla = false;
           FirefoxLabs = false;
         };
@@ -184,7 +176,6 @@ in
 
       programs.zen-browser.profiles.default.settings = {
         "devtools.chrome.enabled" = true;
-        "devtools.debugger.remote-enabled" = true;
 
         "font.default.x-western" = "serif";
         "font.name.sans-serif.x-western" = "Inter";

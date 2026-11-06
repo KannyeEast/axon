@@ -103,7 +103,6 @@
       }
 
       /* clutter */
-      #picture-in-picture-button,
       #identity-icon-label,
       .tab-icon-overlay,
       .zen-workspace-close-unpinned-tabs-button {

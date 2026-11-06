@@ -4,6 +4,14 @@
     { pkgs, ... }:
     let
       nixIcon = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
+
+      param = name: value: { inherit name value; };
+      query = name: param name "{searchTerms}";
+      engine = template: params: icon: alias: {
+        urls = [ { inherit template params; } ];
+        inherit icon;
+        definedAliases = [ alias ];
+      };
     in
     {
       programs.zen-browser.profiles.default.search = {
@@ -13,105 +21,24 @@
         privateDefault = "Kagi";
 
         engines = {
-          "Kagi" = {
-            urls = [
-              {
-                template = "https://kagi.com/search";
-                params = [
-                  {
-                    name = "q";
-                    value = "{searchTerms}";
-                  }
-                ];
-              }
-            ];
-            icon = "https://kagi.com/favicon.ico";
-            definedAliases = [ "@k" ];
-          };
+          "Kagi" = engine "https://kagi.com/search" [ (query "q") ] "https://kagi.com/favicon.ico" "@k";
 
-          "NixOS Packages" = {
-            urls = [
-              {
-                template = "https://search.nixos.org/packages";
-                params = [
-                  {
-                    name = "channel";
-                    value = "unstable";
-                  }
-                  {
-                    name = "type";
-                    value = "packages";
-                  }
-                  {
-                    name = "query";
-                    value = "{searchTerms}";
-                  }
-                ];
-              }
-            ];
-            icon = nixIcon;
-            definedAliases = [ "@np" ];
-          };
+          "NixOS Packages" = engine "https://search.nixos.org/packages" [
+            (param "channel" "unstable")
+            (param "type" "packages")
+            (query "query")
+          ] nixIcon "@np";
 
-          "NixOS Options" = {
-            urls = [
-              {
-                template = "https://mynixos.com/search";
-                params = [
-                  {
-                    name = "q";
-                    value = "{searchTerms}";
-                  }
-                ];
-              }
-            ];
-            icon = nixIcon;
-            definedAliases = [ "@no" ];
-          };
+          "NixOS Options" = engine "https://mynixos.com/search" [ (query "q") ] nixIcon "@no";
 
-          "Home Manager Options" = {
-            urls = [
-              {
-                template = "https://search.nixos.org/options";
-                params = [
-                  {
-                    name = "channel";
-                    value = "unstable";
-                  }
-                  {
-                    name = "type";
-                    value = "options";
-                  }
-                  {
-                    name = "query";
-                    value = "{searchTerms}";
-                  }
-                  {
-                    name = "source";
-                    value = "home_manager";
-                  }
-                ];
-              }
-            ];
-            icon = nixIcon;
-            definedAliases = [ "@hm" ];
-          };
+          "Home Manager Options" = engine "https://search.nixos.org/options" [
+            (param "channel" "unstable")
+            (param "type" "options")
+            (query "query")
+            (param "source" "home_manager")
+          ] nixIcon "@hm";
 
-          "Noogle" = {
-            urls = [
-              {
-                template = "https://noogle.dev/q";
-                params = [
-                  {
-                    name = "term";
-                    value = "{searchTerms}";
-                  }
-                ];
-              }
-            ];
-            icon = nixIcon;
-            definedAliases = [ "@ng" ];
-          };
+          "Noogle" = engine "https://noogle.dev/q" [ (query "term") ] nixIcon "@ng";
 
           "bing".metaData.hidden = true;
           "ddg".metaData.hidden = true;

@@ -102,7 +102,8 @@ in
             escaped=''${merged//\'/\'\'}
 
             ${sqlite} "$db" \
-              "update storage_sync_data set data = '$escaped' where ext_id = '$id';"
+              "update storage_sync_data set data = '$escaped' where ext_id = '$id';" \
+              || echo "zen: $id is busy, will apply on a later rebuild"
           }
 
           ${concatMapStringsSep "" (id: apply id settings.${id}) (lib.attrNames settings)}

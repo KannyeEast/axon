@@ -9,7 +9,7 @@
 
       programs.zen-browser = {
         enable = true;
-        setAsDefaultBrowser = true;
+        inherit (osConfig.axon.browser) policies;
         nativeMessagingHosts = osConfig.axon.browser.nativeHosts;
       };
     };

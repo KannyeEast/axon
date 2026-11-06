@@ -1,13 +1,22 @@
 # Spaces, pinned tabs and live folders, and which sites open in which space.
 { lib, ... }:
 let
-  inherit (lib) escapeRegex optionalAttrs optionalString;
+  inherit (lib)
+    any
+    attrValues
+    elem
+    escapeRegex
+    optionalAttrs
+    optionalString
+    ;
 in
 {
   flake.modules.homeManager.browser =
     { osConfig, ... }:
     let
-      inherit (osConfig.axon.cluster) domain;
+      inherit (osConfig.axon) cluster;
+      inherit (cluster) domain;
+      hasGateway = any (data: elem "gateway" data.host.features) (attrValues cluster.hosts);
 
       # one black for every space; spacesForce reapplies it on every switch, so change it here
       tint = {
@@ -54,7 +63,7 @@ in
           isEssential = true;
         };
       }
-      // optionalAttrs (domain != null) {
+      // optionalAttrs hasGateway {
         # ── development ────────
         "Server" = {
           id = "07324e6b-5fd0-4c7e-8872-0e8bbc66660b";

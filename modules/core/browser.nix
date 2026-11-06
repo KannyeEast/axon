@@ -31,6 +31,11 @@ in
           }
         );
       };
+      policies = mkOption {
+        type = types.attrsOf types.anything;
+        default = { };
+        description = "Browser policies, named as in about:policies.";
+      };
       nativeHosts = mkOption {
         type = types.listOf types.package;
         default = [ ];
