@@ -1,5 +1,5 @@
-# One encrypted file per host. The SSH host key is the age identity, so there is no
-# key file to lose. The user's private key is itself a secret, which lets the user
+# One encrypted file per host. The SSH host key is the age identity (sops-nix finds it through
+# services.openssh.hostKeys), so there is no key file to lose. The user's private key is itself a secret, which lets the user
 # edit secrets.json without any extra key material.
 { inputs, lib, ... }:
 {
@@ -51,7 +51,6 @@
           # JSON is YAML; sops-nix's JSON reader rejects nested keys these files use
           defaultSopsFormat = "yaml";
           validateSopsFiles = false;
-          age.sshKeyPaths = [ "/persist/etc/ssh/ssh_host_ed25519_key" ];
 
           secrets.user-privatekey = {
             path = "${home}/.ssh/id_ed25519";

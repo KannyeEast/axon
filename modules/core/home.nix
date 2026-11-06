@@ -45,6 +45,8 @@
 
           # drop links into either source whose file is gone; ownership is read off the link target
           for src in "$own" "$shared"; do
+            # a file at the top of ~ has no folder left to be found through below
+            find "$dst" -maxdepth 1 -xtype l -lname "$src/*" -delete
             [ -d "$src" ] || continue
             while IFS= read -r top; do
               [ -e "$dst/$top" ] || continue

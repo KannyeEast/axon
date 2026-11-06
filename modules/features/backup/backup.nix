@@ -88,7 +88,7 @@ in
         in
         {
           initialize = true;
-          repository = target.repository;
+          inherit (target) repository;
           passwordFile = config.sops.secrets."backup/${name}/password".path;
 
           inherit paths exclude;
@@ -117,7 +117,7 @@ in
       systemd.services = concatMapAttrs (
         name: data:
         optionalAttrs (hasPrefix "/" (rmSuffix data).repository) {
-          "restic-backups-${name}".unitConfig.RequiresMountsFor = (rmSuffix data).repository;
+          "restic-backups-${name}".unitConfig.RequiresMountsFor = [ (rmSuffix data).repository ];
         }
       ) targets;
     };
