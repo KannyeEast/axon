@@ -8,6 +8,7 @@ let
     filter
     fromHexString
     head
+    match
     mkIf
     mkMerge
     optionalAttrs
@@ -24,7 +25,7 @@ let
     sysfs:
     "PCI:"
     + concatMapStringsSep ":" (part: toString (fromHexString part)) (
-      builtins.match "[[:xdigit:]]+:([[:xdigit:]]+):([[:xdigit:]]+)\\.([0-7])" sysfs
+      match "[[:xdigit:]]+:([[:xdigit:]]+):([[:xdigit:]]+)\\.([0-7])" sysfs
     );
 in
 {

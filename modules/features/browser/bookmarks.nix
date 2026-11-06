@@ -1,12 +1,14 @@
+# Bookmarks. Anything tagged "shortcut" also becomes a new-tab tile.
 { lib, ... }:
 let
   inherit (lib)
     concatMap
+    elem
     filter
     optionalAttrs
+    toJSON
     ;
 
-  # Anything tagged "shortcut" also becomes a new-tab tile
   # get icons: curl -sL <website url> | grep -oE '<link[^>]+(icon|manifest)[^>]*>'
   tree = [
     {
@@ -70,7 +72,7 @@ let
     if b ? bookmarks then
       b // { bookmarks = forBookmarks b.bookmarks; }
     else
-      builtins.removeAttrs b [
+      removeAttrs b [
         "icon"
         "iconSize"
       ]
@@ -79,9 +81,7 @@ let
   shortcuts = map (
     b:
     {
-      inherit (b)
-        url
-        ;
+      inherit (b) url;
       label = b.name;
     }
     // optionalAttrs (b ? icon) {
@@ -89,18 +89,16 @@ let
       favicon = b.icon;
       faviconSize = b.iconSize or 96;
     }
-  ) (filter (b: builtins.elem "shortcut" (b.tags or [ ])) (flatten tree));
+  ) (filter (b: elem "shortcut" (b.tags or [ ])) (flatten tree));
 in
 {
   flake.modules.homeManager.browser = {
-    config = {
-      programs.zen-browser.profiles.default = {
-        bookmarks.force = true;
-        bookmarks.settings = forBookmarks tree;
+    programs.zen-browser.profiles.default = {
+      bookmarks.force = true;
+      bookmarks.settings = forBookmarks tree;
 
-        settings = {
-          "browser.newtabpage.pinned" = builtins.toJSON shortcuts;
-        };
+      settings = {
+        "browser.newtabpage.pinned" = toJSON shortcuts;
       };
     };
   };

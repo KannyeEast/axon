@@ -1,3 +1,4 @@
+# Time, language and keyboard, from [locale] in host.toml.
 { lib, ... }:
 {
   flake.modules.nixos.core =

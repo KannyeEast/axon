@@ -6,9 +6,10 @@
   flake.modules.nixos.vpn =
     { config, pkgs, ... }:
     let
+      inherit (config.axon.overlay) network;
+      nft = lib.getExe pkgs.nftables;
       # Mullvad's exclusion marks: traffic carrying them bypasses its tunnel and firewall
       exclude = "ct mark set 0x00000f41 meta mark set 0x6d6f6c65";
-      inherit (config.axon.overlay) network;
       rules = pkgs.writeText "mullvad-tailnet.nft" ''
         table inet mullvad-tailnet {
           chain output {
@@ -31,7 +32,7 @@
       };
 
       # while connected, Mullvad's firewall drops everything outside its tunnel, the tailnet
-      # included; marking tailnet traffic as excluded keeps node1 and the rest reachable
+      # included; marking tailnet traffic as excluded keeps the other machines reachable
       systemd.services.mullvad-tailnet = lib.mkIf (network != null) {
         description = "Let tailnet traffic past Mullvad";
         wantedBy = [ "mullvad-daemon.service" ];
@@ -39,8 +40,8 @@
         serviceConfig = {
           Type = "oneshot";
           RemainAfterExit = true;
-          ExecStart = "${pkgs.nftables}/bin/nft -f ${rules}";
-          ExecStop = "${pkgs.nftables}/bin/nft delete table inet mullvad-tailnet";
+          ExecStart = "${nft} -f ${rules}";
+          ExecStop = "${nft} delete table inet mullvad-tailnet";
         };
       };
 

@@ -1,17 +1,14 @@
+# Browser policies (about:policies), and the profile settings they don't cover.
 { lib, ... }:
 let
-  inherit (lib)
-    optionals
-    ;
+  inherit (lib) optionals;
 in
 {
   flake.modules.homeManager.browser =
     { osConfig, ... }:
     let
-      inherit (osConfig.axon) cluster;
-    in
-    let
-      mkPolicy = builtins.mapAttrs (_: Value: { inherit Value; });
+      inherit (osConfig.axon.cluster) domain;
+      mkPolicy = lib.mapAttrs (_: Value: { inherit Value; });
     in
     {
       # about:policies#documentation
@@ -39,8 +36,8 @@ in
             "https://cloudflare.com"
             "https://tailscale.com"
           ]
-          ++ optionals (cluster.domain != null) [
-            "https://${cluster.domain}"
+          ++ optionals (domain != null) [
+            "https://${domain}"
           ];
           Behavior = "reject-tracker-and-partition-foreign";
           BehaviorPrivateBrowsing = "reject-tracker-and-partition-foreign";

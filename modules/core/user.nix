@@ -2,11 +2,7 @@
 # on the side that holds the key.
 { lib, ... }:
 let
-  inherit (lib)
-    attrNames
-    elem
-    filterAttrs
-    ;
+  inherit (lib) attrNames elem filterAttrs;
 in
 {
   flake.modules.nixos.core =
@@ -32,7 +28,7 @@ in
         {
           # a server nobody can reach is a server you have to walk to
           assertion = host.class != "server" || keys != [ ];
-          message = "${host.name}: no member of cluster.toml [ssh] may log in to this server";
+          message = "cluster.toml: no member of [ssh] may log in to ${host.name}, and a server needs one";
         }
       ];
 

@@ -12,8 +12,14 @@ in
   flake.modules.nixos.gateway =
     { config, ... }:
     let
-      inherit (config.axon) user cluster services;
-      domain = cluster.domain;
+      inherit (config.axon)
+        user
+        domain
+        routes
+        services
+        ;
+      ph = config.sops.placeholder;
+      port = 9091;
       state = "/var/lib/authelia-main";
       keys = "${state}/keys";
 
@@ -21,9 +27,7 @@ in
         "login" = "one_factor";
         "2fa" = "two_factor";
       };
-      guarded = filterAttrs (
-        _: service: service.route != null && !service.route.public && service.route.access != "open"
-      ) services;
+      guarded = filterAttrs (_: service: service.route.access != "open") routes;
     in
     {
       sops.secrets."authelia/admin-hash" = { };
@@ -33,7 +37,7 @@ in
           ${user.name}:
             disabled: false
             displayname: "${user.name}"
-            password: "${config.sops.placeholder."authelia/admin-hash"}"
+            password: "${ph."authelia/admin-hash"}"
             email: ${user.email}
             groups:
               - admin
@@ -74,7 +78,7 @@ in
         };
         settings = {
           theme = "auto";
-          server.address = "tcp://127.0.0.1:9091";
+          server.address = "tcp://127.0.0.1:${toString port}";
           authentication_backend.file.path = "${state}/users.yml";
           # the guarded services are tailnet-only, so a login may last: idle a day, at most a week
           session.inactivity = "1d";
@@ -82,7 +86,7 @@ in
           session.cookies = [
             {
               inherit domain;
-              authelia_url = "https://auth.${domain}";
+              authelia_url = services.auth.route.url;
               default_redirection_url = "https://${domain}";
             }
           ];
@@ -92,7 +96,7 @@ in
           access_control = {
             default_policy = "deny";
             rules = mapAttrsToList (_: service: {
-              domain = "${service.route.subdomain}.${domain}";
+              domain = service.route.host;
               policy = policyOf.${service.route.access};
               subject = [ "group:admin" ];
             }) guarded;
@@ -111,7 +115,7 @@ in
 
       axon.services.auth = {
         route = {
-          port = 9091;
+          inherit port;
           access = "open";
         };
         dashboard = {

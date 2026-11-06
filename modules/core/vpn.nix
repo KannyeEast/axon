@@ -18,15 +18,23 @@ in
     in
     {
       options.axon.vpn = {
-        address = mkOption {
-          type = types.nullOr types.str;
+        network = mkOption {
           default = null;
-          description = "Where the host reaches a confined service. Set by the vpn feature; null means this host has no tunnel.";
-        };
-        subnet = mkOption {
-          type = types.nullOr types.str;
-          default = null;
-          description = "The range both ends of the link between the host and the tunnel sit in.";
+          description = "The tunnel on this host, set by the vpn feature. Null on a host without one.";
+          type = types.nullOr (
+            types.submodule {
+              options = {
+                address = mkOption {
+                  type = types.str;
+                  description = "Where the host reaches a confined service.";
+                };
+                subnet = mkOption {
+                  type = types.str;
+                  description = "The range both ends of the link between the host and the tunnel sit in.";
+                };
+              };
+            }
+          );
         };
         confined = mkOption {
           default = { };
@@ -50,7 +58,7 @@ in
 
       config.assertions = [
         {
-          assertion = vpn.confined == { } || vpn.address != null;
+          assertion = vpn.confined == { } || vpn.network != null;
           message = "hosts/${host.name}/host.toml: ${concatStringsSep ", " (attrNames vpn.confined)} must run inside a tunnel but this host has none; list the vpn feature here";
         }
       ];

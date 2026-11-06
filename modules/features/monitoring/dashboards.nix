@@ -18,11 +18,11 @@ in
   flake.modules.nixos.monitoring =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) cluster routed user;
+      inherit (config.axon) routed services user;
       port = 3001;
       state = "/var/lib/grafana";
-      address = if routed then "grafana.${cluster.domain}" else "127.0.0.1";
-      url = if routed then "https://${address}" else "http://${address}:${toString port}";
+      address = if routed then services.grafana.route.host else "127.0.0.1";
+      url = if routed then services.grafana.route.url else "http://${services.grafana.route.endpoint}";
 
       percent = {
         unit = "percent";
@@ -168,7 +168,7 @@ in
         ])
       ];
 
-      start = builtins.toJSON {
+      start = lib.toJSON {
         uid = "start";
         title = "Start page";
         time = {

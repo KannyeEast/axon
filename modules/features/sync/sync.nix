@@ -28,8 +28,14 @@ in
   flake.modules.nixos.sync =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) host user cluster;
-      home = "/home/${user.name}";
+      inherit (config.axon)
+        home
+        host
+        user
+        cluster
+        volumes
+        ;
+      peerPort = 22000;
 
       # folders this host is a member of, and everyone it shares them with
       folders = attrNames (filterAttrs (_: members: elem host.name members) cluster.sync);
@@ -44,17 +50,15 @@ in
               cluster.hosts.${peer}.sync.id
                 or (throw "cluster.toml: ${peer} shares a folder but its host.toml doesn't list the sync feature");
             # hosts reach each other by name over the tailnet
-            addresses = [ "tcp://${peer}:22000" ];
+            addresses = [ "tcp://${peer}:${toString peerPort}" ];
           }
         else if (cluster.external.${peer}.sync or null) != null then
           { id = cluster.external.${peer}.sync; }
         else
           throw "cluster.toml: ${peer} shares a folder but has no syncthing id; give [external.${peer}] a sync id";
 
-      volumeOn = folder: config.axon.volumes.${folder} or null;
-
-      pathOf = folder: if volumeOn folder != null then volumeOn folder else "${home}/${folder}";
-      onVolumes = filter (folder: volumeOn folder != null) folders;
+      pathOf = folder: volumes.${folder} or "${home}/${folder}";
+      onVolumes = filter (folder: volumes ? ${folder}) folders;
     in
     {
       services.syncthing = {
@@ -88,11 +92,12 @@ in
       systemd.services.syncthing = lib.mkIf (onVolumes != [ ]) {
         unitConfig.RequiresMountsFor = map pathOf onVolumes;
         serviceConfig.ExecStartPre = map (
-          folder: "+${pkgs.coreutils}/bin/install -d -o ${user.name} -g users -m 0700 ${pathOf folder}"
+          folder:
+          "+${lib.getExe' pkgs.coreutils "install"} -d -o ${user.name} -g users -m 0700 ${pathOf folder}"
         ) onVolumes;
       };
 
-      axon.overlay.tcpPorts = [ 22000 ];
+      axon.overlay.tcpPorts = [ peerPort ];
 
       axon.persist.directories = [
         {
@@ -103,7 +108,7 @@ in
         }
       ];
 
-      # producer side of the services contract; published everywhere, read only by a gateway
+      # producer side of the services contract: a gateway reads the route, backup the paths
       axon.services.sync = {
         route.port = 8384;
         dashboard = {

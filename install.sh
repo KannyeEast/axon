@@ -1090,13 +1090,14 @@ writeSecrets() {
   local hash pwd tailscale
   formPassword pwd "Login password for '$USERNAME'"
   hash="$(printf '%s' "$pwd" | mkpasswd -m sha-512 --stdin)"
-  formPassword tailscale "Tailscale auth key (admin console: Settings → Keys)" false 1
+  formPassword tailscale "Tailscale auth key (admin console: Settings → Keys), empty if no cluster.toml relation names this host" false 0
 
   jq -n \
     --arg pw "$hash" \
     --rawfile key "$TEMP_DIR/id_ed25519" \
     --arg tailscale "$tailscale" \
-    '{"user-password": $pw, "user-privatekey": $key, "tailscale-authkey": $tailscale}' \
+    '{"user-password": $pw, "user-privatekey": $key}
+      + if $tailscale == "" then {} else {"tailscale-authkey": $tailscale} end' \
     > "$FLAKE/hosts/$HOSTNAME/secrets.json"
 
   run sops --encrypt --in-place "$FLAKE/hosts/$HOSTNAME/secrets.json"
@@ -1607,6 +1608,9 @@ installRemote() {
   mkdir -p "$stage"
   stageFiles "$stage"
 
+  local -a owners=(--chown "/home/$USERNAME" 1000:100)
+  [[ -d $stage/persist/var/lib/syncthing ]] && owners+=(--chown /persist/var/lib/syncthing 1000:100)
+
   isInstaller || kexecTarget
   zeroBootDisk
   wipeExtra
@@ -1616,8 +1620,7 @@ installRemote() {
     --phases disko,install,reboot \
     --flake "$FLAKE#$HOSTNAME" \
     --extra-files "$stage" \
-    --chown "/home/$USERNAME" 1000:100 \
-    --chown /persist/var/lib/syncthing 1000:100 \
+    "${owners[@]}" \
     --target-host "$TARGET"
 
   verifyRemote || true

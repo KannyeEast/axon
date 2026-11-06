@@ -1,11 +1,11 @@
+# Extensions as policy: the ones here and in axon.browser are installed, every other is blocked.
 { lib, ... }:
 let
-  inherit (lib)
-    mapAttrs
-    ;
+  inherit (lib) isString mapAttrs;
 in
 {
   flake.modules.homeManager.browser =
+    { osConfig, ... }:
     let
       mkExtensionEntry =
         {
@@ -24,18 +24,12 @@ in
         if pinned then base // { default_area = "navbar"; } else base // { default_area = "menupanel"; };
 
       mkExtensionSettings = mapAttrs (
-        _: entry:
-        if builtins.isString entry then mkExtensionEntry { id = entry; } else mkExtensionEntry entry
+        _: entry: if isString entry then mkExtensionEntry { id = entry; } else mkExtensionEntry entry
       );
 
       extensions = {
         "uBlock0@raymondhill.net" = {
           id = "ublock-origin";
-          pinned = true;
-          private = true;
-        };
-        "keepassxc-browser@keepassxc.org" = {
-          id = "keepassxc-browser";
           pinned = true;
           private = true;
         };
@@ -50,16 +44,15 @@ in
           id = "consent-o-matic";
           private = true;
         };
-      };
+      }
+      // osConfig.axon.browser.extensions;
     in
     {
-      config = {
-        programs.zen-browser.policies.ExtensionSettings = mkExtensionSettings extensions // {
-          "*" = {
-            blocked_install_message = "Add extensions in the axon config";
-            install_sources = [ "https://addons.mozilla.org/*" ];
-            installation_mode = "blocked";
-          };
+      programs.zen-browser.policies.ExtensionSettings = mkExtensionSettings extensions // {
+        "*" = {
+          blocked_install_message = "Add extensions in the axon config";
+          install_sources = [ "https://addons.mozilla.org/*" ];
+          installation_mode = "blocked";
         };
       };
     };

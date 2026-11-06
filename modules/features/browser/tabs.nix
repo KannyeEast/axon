@@ -1,16 +1,13 @@
+# Spaces, pinned tabs and live folders, and which sites open in which space.
 { lib, ... }:
 let
-  inherit (lib)
-    optionalAttrs
-    optionalString
-    ;
+  inherit (lib) escapeRegex optionalAttrs optionalString;
 in
 {
   flake.modules.homeManager.browser =
     { osConfig, ... }:
     let
-      domain = if osConfig.axon.cluster.domain != null then osConfig.axon.cluster.domain else "";
-      escapeRegex = builtins.replaceStrings [ "." ] [ "\\." ];
+      inherit (osConfig.axon.cluster) domain;
 
       # one black for every space; spacesForce reapplies it on every switch, so change it here
       tint = {
@@ -19,7 +16,7 @@ in
         blue = 0;
       };
 
-      mkTheme = _: {
+      theme = {
         type = "gradient";
         colors = [
           (
@@ -57,7 +54,7 @@ in
           isEssential = true;
         };
       }
-      // optionalAttrs (domain != "") {
+      // optionalAttrs (domain != null) {
         # ── development ────────
         "Server" = {
           id = "07324e6b-5fd0-4c7e-8872-0e8bbc66660b";
@@ -143,7 +140,7 @@ in
         "Development" = {
           id = "779e73b8-5f81-4538-9d92-e7da96824c56";
           position = 2;
-          theme = mkTheme "base00";
+          inherit theme;
           routes = {
             "forges" = regexMatch "github|gitlab|codeberg|sr\\.ht|sourcehut";
             "nix" = regexMatch "nixos|nixpkgs|noogle|nixpk\\.gs|nix-community|determinate";
@@ -151,7 +148,8 @@ in
             "help" = regexMatch "stackoverflow|stackexchange|serverfault|superuser";
             "tools" = regexMatch "regex101|starship\\.rs|quickshell|just\\.systems";
             "infra" = regexMatch (
-              "dash\\.cloudflare|192\\.168\\.|tailscale" + optionalString (domain != "") "|${escapeRegex domain}"
+              "dash\\.cloudflare|192\\.168\\.|tailscale"
+              + optionalString (domain != null) "|${escapeRegex domain}"
             );
           };
         };
@@ -159,7 +157,7 @@ in
         "Entertainment" = {
           id = "a8fde799-77d2-4b1c-8c83-37dce87d30be";
           position = 1;
-          theme = mkTheme "base00";
+          inherit theme;
           routes = {
             "video" = regexMatch "youtube|youtu\\.be|twitch|vimeo|odysee";
             "music" = regexMatch "spotify|bandcamp|soundcloud|last\\.fm";
@@ -170,7 +168,7 @@ in
         "Admin" = {
           id = "6698068a-20c7-436b-9351-b024cde94686";
           position = 3;
-          theme = mkTheme "base00";
+          inherit theme;
           routes = {
             "accounts" = regexMatch "proton\\.me|simplelogin|keepass";
             "bank" = regexMatch "sparkasse";
@@ -180,27 +178,17 @@ in
       };
     in
     {
-      config = {
-        programs.zen-browser.profiles.default = {
-          pinsForce = true;
-          inherit
-            pins
-            ;
+      programs.zen-browser.profiles.default = {
+        pinsForce = true;
+        spacesForce = true;
+        inherit
+          pins
+          spaces
+          liveFolders
+          joinedTabs
+          ;
 
-          spacesForce = true;
-          inherit
-            spaces
-            ;
-
-          inherit
-            liveFolders
-            ;
-          inherit
-            joinedTabs
-            ;
-
-          spaceRouting.defaultExternalRoute = "most-recent-space";
-        };
+        spaceRouting.defaultExternalRoute = "most-recent-space";
       };
     };
 }

@@ -2,12 +2,11 @@ domain = "vexelvault.com"
 
 # who may log in where: the member's user key is authorised on each listed host
 [ssh]
-tower = ["laptop", "node1"]
-laptop = ["tower", "node1"]
+tower = ["node1"]
 
 # folders, and the members that keep them in sync with each other
 [sync]
-vault = ["tower", "laptop", "node1", "phone"]
+vault = ["tower", "node1", "phone"]
 
 # members that take part in relations but are not built from this repository
 [external.phone]

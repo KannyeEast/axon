@@ -1,4 +1,5 @@
-# Nextcloud at cloud.<domain> on servers; the sync client on desktops. Files on the data volume, or in the state folder on a host without one; database and app state on the system SSD.
+# Nextcloud at cloud.<domain> on servers; the sync client on desktops. Files on the data volume,
+# or in the state folder on a host without one; database and app state on the system SSD.
 # It's public (through the gateway's tunnel) so share links work for people without Tailscale;
 # its own login guards it. The first account is created by hand after install:
 #   nextcloud-occ user:add <you> && nextcloud-occ group:adduser admin <you>
@@ -9,8 +10,8 @@
   flake.modules.nixos.files =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) cluster mail;
-      hostName = "cloud.${cluster.domain}";
+      inherit (config.axon) mail;
+      hostName = config.axon.services.cloud.route.host;
       data = "${config.axon.volumes.data or "/var/lib"}/nextcloud";
       port = 8090;
     in
@@ -54,8 +55,17 @@
         ];
 
         # the files live on a data disk that may be missing at boot (nofail): never write to root instead
-        systemd.services.nextcloud-setup.unitConfig.RequiresMountsFor = [ data ];
-        systemd.services.phpfpm-nextcloud.unitConfig.RequiresMountsFor = [ data ];
+        systemd.services =
+          lib.genAttrs
+            [
+              "nextcloud-cron"
+              "nextcloud-setup"
+              "nextcloud-update-db"
+              "phpfpm-nextcloud"
+            ]
+            (_: {
+              unitConfig.RequiresMountsFor = [ data ];
+            });
 
         # a nightly database dump, so a file-level backup of the dump is consistent
         services.postgresqlBackup = {
@@ -117,7 +127,7 @@
       (lib.mkIf (config.axon.host.class == "server" && mail != null) {
         sops.templates."nextcloud.json" = {
           owner = "nextcloud";
-          content = builtins.toJSON {
+          content = lib.toJSON {
             mail_from_address = mail.user;
             mail_domain = mail.domain;
             mail_smtpname = mail.address;

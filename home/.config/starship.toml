@@ -1,8 +1,8 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
 # Colours are named so they resolve against the terminal palette. Set the
-# palette once in the terminal (Poimandres) and prompt, fzf, eza and bat all
-# follow. Nothing here needs touching for a theme change.
+# palette once in the terminal and prompt, fzf, eza and bat all follow.
+# Nothing here needs touching for a theme change.
 
 add_newline = true
 scan_timeout = 30

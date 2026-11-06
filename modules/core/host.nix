@@ -7,11 +7,7 @@
 #   [hardware]   model-specific fixes
 { config, lib, ... }:
 let
-  inherit (lib)
-    attrNames
-    mkOption
-    types
-    ;
+  inherit (lib) attrNames mkOption types;
 
   inherit (config.axon) classes features;
 
@@ -202,11 +198,19 @@ in
   flake.modules.nixos.core =
     { config, ... }:
     {
+      options.axon.home = mkOption {
+        type = types.str;
+        readOnly = true;
+        default = config.users.users.${config.axon.user.name}.home;
+        defaultText = "the home folder of user.name";
+        description = "The user's home folder.";
+      };
+
       options.axon.repo = mkOption {
         type = types.str;
         readOnly = true;
-        default = "/home/${config.axon.user.name}/axon";
-        defaultText = "/home/<user.name>/axon";
+        default = "${config.axon.home}/axon";
+        defaultText = "<home>/axon";
         description = "Where the checkout lives on the machine. Convention, not configuration.";
       };
     };

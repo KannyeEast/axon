@@ -6,9 +6,8 @@
   flake.modules.nixos.core =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) host user;
+      inherit (config.axon) home host user;
       file = host.dir + "/secrets.json";
-      home = "/home/${user.name}";
     in
     {
       imports = [ inputs.sops-nix.nixosModules.sops ];
@@ -16,7 +15,7 @@
       options.axon.secrets = lib.mkOption {
         type = lib.types.raw;
         readOnly = true;
-        default = removeAttrs (builtins.fromJSON (builtins.readFile file)) [ "sops" ];
+        default = removeAttrs (lib.fromJSON (lib.readFile file)) [ "sops" ];
         defaultText = "the key structure of secrets.json";
         description = ''
           The shape of secrets.json. sops encrypts values, not keys, so evaluation can see

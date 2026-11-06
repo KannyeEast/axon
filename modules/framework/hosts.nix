@@ -23,9 +23,13 @@ let
     evalModules
     filter
     filterAttrs
+    fromTOML
     genAttrs
     mapAttrs
     mkOption
+    pathExists
+    readDir
+    readFile
     subtractLists
     types
     unique
@@ -39,15 +43,13 @@ let
   hostsDir = root + "/hosts";
   clusterFile = root + "/cluster.toml";
 
-  readToml = file: builtins.fromTOML (builtins.readFile file);
+  readToml = file: fromTOML (readFile file);
 
   # a folder starting with _ is kept for reference and never built (e.g. hosts/_old)
   isHost =
     name: type:
-    type == "directory"
-    && !lib.hasPrefix "_" name
-    && builtins.pathExists (hostsDir + "/${name}/host.toml");
-  raw = genAttrs (attrNames (filterAttrs isHost (builtins.readDir hostsDir))) (
+    type == "directory" && !lib.hasPrefix "_" name && pathExists (hostsDir + "/${name}/host.toml");
+  raw = genAttrs (attrNames (filterAttrs isHost (readDir hostsDir))) (
     name: readToml (hostsDir + "/${name}/host.toml")
   );
 
@@ -117,7 +119,7 @@ let
   # so a cluster can be brought up one machine at a time.
   cluster =
     let
-      data = if builtins.pathExists clusterFile then readToml clusterFile else { };
+      data = if pathExists clusterFile then readToml clusterFile else { };
       checked =
         removeAttrs
           (evalModules {

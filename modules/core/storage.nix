@@ -87,7 +87,7 @@ in
   flake.modules.nixos.core =
     { config, ... }:
     let
-      inherit (config.axon.host) name;
+      inherit (config.axon) host;
       storage = removeAttrs config.axon.disk [ "boot" ];
     in
     {
@@ -102,7 +102,7 @@ in
       config = {
         assertions = mapAttrsToList (label: fs: {
           assertion = length fs.devices >= minimum.${fs.profile};
-          message = "hosts/${name}/host.toml: disk.${label} uses ${fs.profile}, which needs ${toString minimum.${fs.profile}} devices";
+          message = "hosts/${host.name}/host.toml: disk.${label} uses ${fs.profile}, which needs ${toString minimum.${fs.profile}} devices";
         }) storage;
 
         disko.devices.disk = concatMapAttrs disks storage;
@@ -115,10 +115,11 @@ in
           ) fs.mounts
         ) storage;
 
+        # one mountpoint per filesystem; the boot disk's subvolumes are one filesystem, reached at /
         services.btrfs.autoScrub = {
-          enable = storage != { };
+          enable = true;
           interval = "monthly";
-          fileSystems = map (fs: head (attrValues fs.mounts)) (attrValues storage);
+          fileSystems = [ "/" ] ++ map (fs: head (attrValues fs.mounts)) (attrValues storage);
         };
       };
     };

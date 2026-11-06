@@ -34,20 +34,15 @@ in
   flake.modules.nixos.gateway =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) cluster services;
+      inherit (config.axon) domain routes;
       ph = config.sops.placeholder;
 
-      domain =
-        if cluster.domain != null then
-          cluster.domain
-        else
-          throw "cluster.toml: the gateway feature needs a domain";
       port = 8082;
 
-      tiles = filterAttrs (_: service: service.dashboard != null && service.route != null) services;
+      tiles = filterAttrs (_: service: service.dashboard != null) routes;
       groups = unique (sort (a: b: a < b) (mapAttrsToList (_: service: service.dashboard.group) tiles));
 
-      internal = route: "http://${route.address}:${toString route.port}";
+      internal = route: "http://${route.endpoint}";
       # "dashboard/radarr/key" -> HOMEPAGE_VAR_DASHBOARD_RADARR_KEY
       envName = secret: "HOMEPAGE_VAR_${toUpper (replaceStrings [ "/" "-" ] [ "_" "_" ] secret)}";
       secrets = unique (concatMap (service: attrValues service.dashboard.secrets) (attrValues tiles));
@@ -55,7 +50,7 @@ in
       or' = value: fallback: if value != null then value else fallback;
       tile = service: name: instance: {
         ${name} = {
-          href = or' (instance.link or null) "https://${service.route.subdomain}.${domain}";
+          href = or' (instance.link or null) service.route.url;
           description = or' (instance.description or null) service.dashboard.description;
           icon = or' (instance.icon or null) service.dashboard.icon;
           siteMonitor = internal service.route + service.dashboard.monitor;
@@ -127,7 +122,7 @@ in
       services.homepage-dashboard = {
         enable = true;
         listenPort = port;
-        allowedHosts = "home.${domain}";
+        allowedHosts = routes.home.route.host;
         environmentFiles = [ config.sops.templates."homepage.env".path ];
 
         settings = {

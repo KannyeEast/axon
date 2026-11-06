@@ -41,7 +41,7 @@
     {
       services.prometheus = {
         rules = [
-          (builtins.toJSON {
+          (lib.toJSON {
             groups = [
               {
                 name = "axon";
@@ -87,8 +87,7 @@
           enable = true;
           listenAddress = "127.0.0.1";
           inherit port;
-          webExternalUrl =
-            if config.axon.routed then "https://alerts.${config.axon.cluster.domain}" else null;
+          webExternalUrl = if config.axon.routed then config.axon.services.alerts.route.url else null;
           # $MAIL_* are filled in from the environment file at start
           environmentFile = if mail != null then config.sops.templates."alertmanager.env".path else null;
           configuration = {

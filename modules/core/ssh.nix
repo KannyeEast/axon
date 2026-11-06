@@ -1,3 +1,4 @@
+# SSH: the server, with its host key in /persist, and the host keys this machine trusts.
 { lib, ... }:
 let
   # forges are trusted from the first boot, so a fresh install can clone over ssh
@@ -37,12 +38,6 @@ in
       # every host in the cluster trusts every other host by its recorded key
       programs.ssh.knownHosts =
         lib.mapAttrs (_: publicKey: { inherit publicKey; }) forges
-        // lib.mapAttrs (name: data: {
-          hostNames = [
-            name
-            "${name}.local"
-          ];
-          publicKey = data.host.key;
-        }) cluster.hosts;
+        // lib.mapAttrs (_: data: { publicKey = data.host.key; }) cluster.hosts;
     };
 }

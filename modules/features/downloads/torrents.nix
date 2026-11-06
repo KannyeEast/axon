@@ -7,11 +7,9 @@
     { config, ... }:
     let
       inherit (config.axon) volumes vpn;
-      media = volumes.media or null;
-      scratch = volumes.scratch or null;
       state = "/var/lib/qBittorrent";
       finished = "${volumes.media or state}/downloads";
-      incomplete = "${scratch}/torrents";
+      incomplete = "${volumes.scratch}/torrents";
       port = 8081;
     in
     {
@@ -29,24 +27,24 @@
             Downloads = {
               SavePath = finished;
             }
-            // lib.optionalAttrs (scratch != null) {
+            // lib.optionalAttrs (volumes ? scratch) {
               TempPathEnabled = true;
               TempPath = incomplete;
             };
             # the gateway login guards the UI; inside the namespace nothing else can reach it
             WebUI.AuthSubnetWhitelistEnabled = true;
-            WebUI.AuthSubnetWhitelist = "${vpn.subnet}, 127.0.0.1/32";
+            WebUI.AuthSubnetWhitelist = "${vpn.network.subnet}, 127.0.0.1/32";
           };
         };
       };
 
       # the library is on a data disk that may be missing at boot (nofail)
       systemd.services.qbittorrent.unitConfig.RequiresMountsFor =
-        lib.optional (media != null) media ++ lib.optional (scratch != null) scratch;
+        lib.optional (volumes ? media) volumes.media ++ lib.optional (volumes ? scratch) volumes.scratch;
 
       systemd.tmpfiles.rules =
-        lib.optional (media != null) "d ${finished} 2775 root media -"
-        ++ lib.optional (scratch != null) "d ${incomplete} 2775 root media -";
+        lib.optional (volumes ? media) "d ${finished} 2775 root media -"
+        ++ lib.optional (volumes ? scratch) "d ${incomplete} 2775 root media -";
 
       axon.persist.directories = [
         {
@@ -60,7 +58,7 @@
       axon.services.downloads = {
         route = {
           inherit port;
-          inherit (vpn) address;
+          inherit (vpn.network) address;
         };
         # the subnet whitelist above lets the widget in without a login
         dashboard = {
@@ -72,7 +70,7 @@
         };
         backup = {
           paths = [ state ];
-          exclude = lib.optional (media == null) finished;
+          exclude = lib.optional (!volumes ? media) finished;
         };
       };
     };

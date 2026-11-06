@@ -6,14 +6,14 @@
   flake.modules.nixos.downloads =
     { config, ... }:
     let
+      inherit (config.axon) vpn;
+      inherit (config.axon.volumes) media;
       apps = {
         radarr = 7878;
         sonarr = 8989;
         bazarr = 6767;
       };
       prowlarr = 9696;
-      inherit (config.axon) vpn;
-      inherit (config.axon.volumes) media;
 
       # fields: four values make labels like "FAIL QUERIES" wrap, and the whole row grows with them
       fields = {
@@ -93,7 +93,7 @@
           user = app;
           group = "media";
           mode = "0750";
-        }) (builtins.attrNames apps)
+        }) (lib.attrNames apps)
         ++ [
           {
             directory = "/var/lib/private/prowlarr";
@@ -111,7 +111,7 @@
           prowlarr = {
             route = {
               port = prowlarr;
-              inherit (vpn) address;
+              inherit (vpn.network) address;
             };
             dashboard = dashboard "prowlarr" "Indexers";
             backup.paths = [ "/var/lib/private/prowlarr" ];

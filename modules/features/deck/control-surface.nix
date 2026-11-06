@@ -1,6 +1,7 @@
 # The Stream Deck + as a control surface. A daemon runs commands from its dials and keys and draws
 # their state on the deck. What each control does lives in the dotfiles, in
 # .config/control-surface/layout.toml, which the daemon reloads when saved.
+{ lib, ... }:
 {
   flake.modules.nixos.deck =
     { pkgs, ... }:
@@ -26,7 +27,7 @@
         # the layout's commands see what the desktop has installed
         path = [ "/run/current-system/sw" ];
         serviceConfig = {
-          ExecStart = "${python}/bin/python3 ${./_control-surface/daemon.py}";
+          ExecStart = "${lib.getExe' python "python3"} ${./_control-surface/daemon.py}";
           Restart = "on-failure";
           RestartSec = 5;
         };

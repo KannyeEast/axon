@@ -17,14 +17,40 @@ in
   flake.modules.nixos.core =
     { config, ... }:
     let
-      inherit (config.axon) host routed services;
-      routes = attrNames (filterAttrs (_: service: service.route != null) services);
+      inherit (config.axon)
+        cluster
+        domain
+        host
+        routed
+        routes
+        services
+        ;
     in
     {
+      options.axon.domain = mkOption {
+        type = types.str;
+        readOnly = true;
+        default =
+          if cluster.domain != null then
+            cluster.domain
+          else
+            throw "cluster.toml: something on ${host.name} needs a domain; set domain at the top";
+        defaultText = "domain in cluster.toml";
+        description = "The cluster's domain, for what can't work without one. What can reads axon.cluster.domain and handles null.";
+      };
+
       options.axon.routed = mkOption {
         type = types.bool;
         default = false;
         description = "Set by the gateway: this host serves the routes in axon.services. Consumers fall back when it doesn't.";
+      };
+
+      options.axon.routes = mkOption {
+        type = types.attrsOf types.raw;
+        readOnly = true;
+        default = filterAttrs (_: service: service.route != null) services;
+        defaultText = "the entries of axon.services with a route";
+        description = "This host's services that have a route.";
       };
 
       options.axon.services = mkOption {
@@ -39,7 +65,7 @@ in
                   default = null;
                   description = "Publish through the gateway as <subdomain>.<cluster domain>.";
                   type = types.nullOr (
-                    types.submodule {
+                    types.submodule (route: {
                       options = {
                         port = mkOption { type = types.port; };
                         address = mkOption {
@@ -49,6 +75,27 @@ in
                         subdomain = mkOption {
                           type = types.str;
                           default = name;
+                        };
+                        host = mkOption {
+                          type = types.str;
+                          readOnly = true;
+                          default = "${route.config.subdomain}.${domain}";
+                          defaultText = "<subdomain>.<domain>";
+                          description = "The name it's published under.";
+                        };
+                        url = mkOption {
+                          type = types.str;
+                          readOnly = true;
+                          default = "https://${route.config.host}";
+                          defaultText = "https://<host>";
+                          description = "Where clients reach it, through the gateway.";
+                        };
+                        endpoint = mkOption {
+                          type = types.str;
+                          readOnly = true;
+                          default = "${route.config.address}:${toString route.config.port}";
+                          defaultText = "<address>:<port>";
+                          description = "Where the service itself answers, on this host.";
                         };
                         access = mkOption {
                           type = types.enum [
@@ -64,7 +111,7 @@ in
                           description = "Also reachable from the internet through the gateway's tunnel; on the tailnet either way. Only for services with their own login.";
                         };
                       };
-                    }
+                    })
                   );
                 };
 
@@ -153,7 +200,7 @@ in
       };
 
       config.warnings =
-        optional (host.class == "server" && !routed && routes != [ ])
-          "hosts/${host.name}/host.toml: ${concatStringsSep ", " routes} have routes but this host runs no gateway, so other machines can't reach them; list the gateway feature here or use ssh -L";
+        optional (host.class == "server" && !routed && routes != { })
+          "hosts/${host.name}/host.toml: ${concatStringsSep ", " (attrNames routes)} have routes but this host runs no gateway, so other machines can't reach them; list the gateway feature here or use ssh -L";
     };
 }

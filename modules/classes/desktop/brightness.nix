@@ -6,7 +6,7 @@
   flake.modules.nixos.desktop =
     { config, pkgs, ... }:
     let
-      formFactor = config.hardware.facter.report.hardware.system.form_factor or null;
+      report = config.hardware.facter.report;
       backlight = pkgs.writeShellApplication {
         name = "backlight";
         runtimeInputs = [
@@ -42,7 +42,7 @@
         '';
       };
     in
-    lib.mkIf (formFactor == "laptop") {
+    lib.mkIf ((report.hardware.system.form_factor or "") == "laptop") {
       environment.systemPackages = [
         pkgs.brightnessctl
         backlight

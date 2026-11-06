@@ -8,13 +8,8 @@
   flake.modules.nixos.mail =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) host cluster mail;
+      inherit (config.axon) domain host mail;
       ph = config.sops.placeholder;
-      recipients =
-        if cluster.domain != null then
-          cluster.domain
-        else
-          throw "cluster.toml: the mail feature needs a domain for its recipients";
       sendmail = "/run/wrappers/bin/sendmail";
     in
     {
@@ -25,8 +20,8 @@
         domain = ph."mail/domain";
         address = "${mail.user}@${mail.domain}";
         token = ph."mail/token";
-        alert = "srv-alert@${recipients}";
-        report = "srv-report@${recipients}";
+        alert = "srv-alert@${domain}";
+        report = "srv-report@${domain}";
       };
 
       sops.secrets = {

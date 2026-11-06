@@ -16,6 +16,7 @@ let
     mapAttrs'
     mapAttrsToList
     nameValuePair
+    optional
     optionalAttrs
     removeSuffix
     unique
@@ -25,6 +26,9 @@ in
   flake.modules.nixos.backup =
     { config, pkgs, ... }:
     let
+      inherit (config.axon) host;
+      ph = config.sops.placeholder;
+
       # targets are data in secrets.json: backup.<name>.{password, repository_unencrypted, schedule_unencrypted, env}
       targets = config.axon.secrets.backup or { };
 
@@ -42,7 +46,7 @@ in
             if hasSuffix "_unencrypted" key then
               "${removeSuffix "_unencrypted" key}='${value}'"
             else
-              "${key}='${config.sops.placeholder."backup/${name}/env/${key}"}'"
+              "${key}='${ph."backup/${name}/env/${key}"}'"
           ) env
         );
 
@@ -52,68 +56,69 @@ in
       exclude = unique (concatMap (service: service.backup.exclude) backups);
     in
     {
-      config = {
-        sops.secrets = concatMapAttrs (
-          name: data:
-          {
-            "backup/${name}/password" = { };
-          }
-          // concatMapAttrs (key: _: { "backup/${name}/env/${key}" = { }; }) (secretEnv (envOf data))
-        ) targets;
+      warnings =
+        optional (targets == { })
+          "hosts/${host.name}/secrets.json: the backup feature has no targets, so nothing is backed up; add backup.<name> with `just secrets ${host.name}`";
 
-        sops.templates = mapAttrs' (
-          name: data: nameValuePair "restic-${name}.env" { content = mkEnv name (envOf data); }
-        ) (filterAttrs (_: data: envOf data != { }) targets);
+      sops.secrets = concatMapAttrs (
+        name: data:
+        {
+          "backup/${name}/password" = { };
+        }
+        // concatMapAttrs (key: _: { "backup/${name}/env/${key}" = { }; }) (secretEnv (envOf data))
+      ) targets;
 
-        axon.persist.directories = [
-          "/root/.cache/restic"
-        ];
+      sops.templates = mapAttrs' (
+        name: data: nameValuePair "restic-${name}.env" { content = mkEnv name (envOf data); }
+      ) (filterAttrs (_: data: envOf data != { }) targets);
 
-        environment.systemPackages = [
-          pkgs.restic
-          pkgs.rclone
-        ];
+      axon.persist.directories = [
+        "/root/.cache/restic"
+      ];
 
-        services.restic.backups = mapAttrs (
-          name: data:
-          let
-            target = rmSuffix data;
-          in
-          {
-            initialize = true;
-            repository = target.repository;
-            passwordFile = config.sops.secrets."backup/${name}/password".path;
+      environment.systemPackages = [
+        pkgs.restic
+        pkgs.rclone
+      ];
 
-            inherit paths;
-            inherit exclude;
-            pruneOpts = [
-              "--keep-daily 7"
-              "--keep-weekly 5"
-              "--keep-monthly 12"
-              "--keep-yearly 75"
-            ];
+      services.restic.backups = mapAttrs (
+        name: data:
+        let
+          target = rmSuffix data;
+        in
+        {
+          initialize = true;
+          repository = target.repository;
+          passwordFile = config.sops.secrets."backup/${name}/password".path;
 
-            timerConfig = {
-              OnCalendar = target.schedule;
-              RandomizedDelaySec = "20m";
-              Persistent = true;
-            };
+          inherit paths exclude;
+          pruneOpts = [
+            "--keep-daily 7"
+            "--keep-weekly 5"
+            "--keep-monthly 12"
+            "--keep-yearly 75"
+          ];
 
-          }
-          // optionalAttrs (hasPrefix "/" target.repository) {
-            checkOpts = [ "--read-data-subset=5%" ];
-          }
-          // optionalAttrs (envOf data != { }) {
-            environmentFile = config.sops.templates."restic-${name}.env".path;
-          }
-        ) targets;
+          timerConfig = {
+            OnCalendar = target.schedule;
+            RandomizedDelaySec = "20m";
+            Persistent = true;
+          };
 
-        systemd.services = concatMapAttrs (
-          name: data:
-          optionalAttrs (hasPrefix "/" (rmSuffix data).repository) {
-            "restic-backups-${name}".unitConfig.RequiresMountsFor = (rmSuffix data).repository;
-          }
-        ) targets;
-      };
+        }
+        // optionalAttrs (hasPrefix "/" target.repository) {
+          checkOpts = [ "--read-data-subset=5%" ];
+        }
+        // optionalAttrs (envOf data != { }) {
+          environmentFile = config.sops.templates."restic-${name}.env".path;
+        }
+      ) targets;
+
+      systemd.services = concatMapAttrs (
+        name: data:
+        optionalAttrs (hasPrefix "/" (rmSuffix data).repository) {
+          "restic-backups-${name}".unitConfig.RequiresMountsFor = (rmSuffix data).repository;
+        }
+      ) targets;
     };
 }

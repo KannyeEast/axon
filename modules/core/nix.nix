@@ -1,3 +1,4 @@
+# Nix itself: flakes, binary caches, cleanup through nh, and what a host needs to rebuild itself.
 {
   flake.modules.nixos.core =
     { config, pkgs, ... }:

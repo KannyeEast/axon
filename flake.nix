@@ -34,14 +34,14 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # desktop
+    # browser
     zen-browser = {
       url = "github:0xc000022070/zen-browser-flake";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
 
-    # server
+    # vpn
     vpn-confinement.url = "github:Maroka-chan/VPN-Confinement";
 
     # dev
