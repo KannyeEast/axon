@@ -9,35 +9,40 @@
       inherit (config.axon) vpn;
       inherit (config.axon.volumes) media;
       apps = {
-        radarr = 7878;
-        sonarr = 8989;
-        bazarr = 6767;
+        radarr = {
+          port = 7878;
+          description = "Movies";
+        };
+        sonarr = {
+          port = 8989;
+          description = "Shows";
+        };
+        bazarr = {
+          port = 6767;
+          description = "Subtitles";
+        };
       };
-      prowlarr = 9696;
-
-      # fields: four values make labels like "FAIL QUERIES" wrap, and the whole row grows with them
-      fields = {
-        prowlarr = [
+      prowlarr = {
+        port = 9696;
+        description = "Indexers";
+        # four values make labels like "FAIL QUERIES" wrap, and the whole row grows with them
+        fields = [
           "numberOfGrabs"
           "numberOfQueries"
           "numberOfFailGrabs"
         ];
       };
-      dashboard = app: description: {
-        name = lib.toSentenceCase app;
+
+      dashboard = name: app: {
+        name = lib.toSentenceCase name;
         group = "Media";
-        inherit description;
-        icon = "${app}.svg";
+        inherit (app) description;
+        icon = "${name}.svg";
         widget = {
-          type = app;
+          type = name;
         }
-        // lib.optionalAttrs (fields ? ${app}) { fields = fields.${app}; };
-        secrets.key = "dashboard/${app}/key";
-      };
-      descriptions = {
-        radarr = "Movies";
-        sonarr = "Shows";
-        bazarr = "Subtitles";
+        // lib.optionalAttrs (app ? fields) { inherit (app) fields; };
+        secrets.key = "dashboard/${name}/key";
       };
     in
     lib.mkIf (config.axon.volumes ? media) {
@@ -71,11 +76,11 @@
       axon.vpn = {
         # Prowlarr talks to the trackers' sites, so it searches through the tunnel like
         # qBittorrent downloads; Radarr and Sonarr only talk to the two of them
-        confined.prowlarr.ports = [ prowlarr ];
+        confined.prowlarr.ports = [ prowlarr.port ];
         # Prowlarr hands its indexers to Radarr and Sonarr on the host
         hostPorts = [
-          apps.radarr
-          apps.sonarr
+          apps.radarr.port
+          apps.sonarr.port
         ];
       };
 
@@ -102,18 +107,18 @@
         ];
 
       axon.services =
-        lib.mapAttrs (app: port: {
-          route.port = port;
-          dashboard = dashboard app descriptions.${app};
-          backup.paths = [ "/var/lib/${app}" ];
+        lib.mapAttrs (name: app: {
+          route.port = app.port;
+          dashboard = dashboard name app;
+          backup.paths = [ "/var/lib/${name}" ];
         }) apps
         // {
           prowlarr = {
             route = {
-              port = prowlarr;
+              inherit (prowlarr) port;
               inherit (vpn.network) address;
             };
-            dashboard = dashboard "prowlarr" "Indexers";
+            dashboard = dashboard "prowlarr" prowlarr;
             backup.paths = [ "/var/lib/private/prowlarr" ];
           };
         };

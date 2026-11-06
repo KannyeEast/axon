@@ -1,6 +1,7 @@
 # qBittorrent, locked into the VPN. Finished downloads go next to the library on the media volume
 # so imports are instant, or into its state folder on a host without one. In progress on the
-# scratch volume where the host has one.
+# scratch volume where the host has one. The module rewrites qBittorrent.conf on every start, so
+# what its UI changes is gone after a restart: settings that matter belong here.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
@@ -23,17 +24,19 @@
         webuiPort = port;
         serverConfig = {
           LegalNotice.Accepted = true;
-          Preferences = {
-            Downloads = {
-              SavePath = finished;
-            }
-            // lib.optionalAttrs (volumes ? scratch) {
-              TempPathEnabled = true;
-              TempPath = incomplete;
-            };
-            # the gateway login guards the UI; inside the namespace nothing else can reach it
-            WebUI.AuthSubnetWhitelistEnabled = true;
-            WebUI.AuthSubnetWhitelist = "${vpn.network.subnet}, 127.0.0.1/32";
+          BitTorrent.Session = {
+            DefaultSavePath = finished;
+            GlobalMaxRatio = 1; # then stop: finished means finished
+            QueueingSystemEnabled = true;
+          }
+          // lib.optionalAttrs (volumes ? scratch) {
+            TempPathEnabled = true;
+            TempPath = incomplete;
+          };
+          # the gateway login guards the UI; inside the namespace nothing else can reach it
+          WebUI = {
+            AuthSubnetWhitelistEnabled = true;
+            AuthSubnetWhitelist = "${vpn.network.subnet}, 127.0.0.1/32";
           };
         };
       };
