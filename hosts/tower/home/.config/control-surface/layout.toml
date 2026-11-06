@@ -1,0 +1,72 @@
+# What each control on the Stream Deck + does. Saved changes apply within a second.
+# Commands run through sh. Anything that opens a window goes through `niri msg action spawn`,
+# so it belongs to the session and not to this service.
+#
+# Dials: {amount} in up and down is step times the ticks turned. read prints a level from
+# 0 to 1; MUTED anywhere in its output shows the dial as muted.
+#
+# Keys: slots 0 to 3 are the top row, 4 to 7 the bottom. press runs on press. read runs every
+# `every` seconds (default 5) and prints a level, on, off, warn or alert, which colours the
+# key, then optional short text to show on it. timeout is in seconds (default 2).
+
+brightness = 60
+
+[[dial]]
+slot = 0
+label = "Volume"
+step = 2
+up = "wpctl set-volume --limit 1.0 @DEFAULT_AUDIO_SINK@ {amount}%+"
+down = "wpctl set-volume @DEFAULT_AUDIO_SINK@ {amount}%-"
+push = "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+read = "wpctl get-volume @DEFAULT_AUDIO_SINK@"
+
+[[key]]
+slot = 0
+label = "Lock"
+press = "niri msg action spawn -- swaylock"
+
+[[key]]
+slot = 1
+label = "Shot"
+press = "niri msg action screenshot"
+
+[[key]]
+slot = 2
+label = "VPN"
+press = "if mullvad status | grep -q '^Connected'; then mullvad disconnect; else mullvad connect; fi"
+read = "if mullvad status | grep -q '^Connected'; then echo on; else echo off; fi"
+every = 3
+
+[[key]]
+slot = 4
+label = "Grafana"
+press = "niri msg action spawn -- xdg-open https://grafana.vexelvault.com"
+
+[[key]]
+slot = 5
+label = "Photos"
+press = "niri msg action spawn -- xdg-open https://photos.vexelvault.com"
+
+[[key]]
+slot = 6
+label = "Docs"
+press = "niri msg action spawn -- xdg-open https://docs.vexelvault.com"
+
+# Status from node1 goes over ssh, because these services only listen on localhost there.
+# Empty output or a failed ssh shows the key as `?`, so a quiet key means node1 answered.
+
+[[key]]
+slot = 3
+label = "Alerts"
+press = "niri msg action spawn -- xdg-open https://alerts.vexelvault.com"
+read = '''ssh -o BatchMode=yes -o ConnectTimeout=5 node1 'curl -sf "127.0.0.1:9093/api/v2/alerts?active=true&silenced=false&inhibited=false"' | jq -r 'if length > 0 then "alert \(length)" else "off 0" end' '''
+every = 30
+timeout = 10
+
+[[key]]
+slot = 7
+label = "Down"
+press = "niri msg action spawn -- xdg-open https://downloads.vexelvault.com"
+read = '''ssh -o BatchMode=yes -o ConnectTimeout=5 node1 'curl -sf "192.168.15.1:8081/api/v2/torrents/info?filter=downloading"' | jq -r 'if length > 0 then "on \(map(.progress) | add / length * 100 | floor)%" else "off" end' '''
+every = 30
+timeout = 10

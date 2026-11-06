@@ -1,11 +1,12 @@
-# Alert rules over Prometheus' metrics, and Alertmanager to mail them to srv-alert@ through the
-# same SMTP account as notifications.nix: one mail when an alert fires, again every 12 hours
-# while it lasts, and one when it's resolved. Silences are set in its UI at alerts.<domain>.
+# Alert rules over Prometheus' metrics, and Alertmanager to mail them through axon.mail: one
+# mail when an alert fires, again every 12 hours while it lasts, and one when it's resolved.
+# Without an account they only show in its UI, at alerts.<domain> where silences are set too.
+{ lib, ... }:
 {
   flake.modules.nixos.monitoring =
     { config, ... }:
     let
-      ph = config.sops.placeholder;
+      inherit (config.axon) host mail;
       port = 9093;
 
       rule = alert: expr: wait: summary: {
@@ -14,6 +15,28 @@
         annotations.summary = summary;
       };
       days = 86400;
+
+      receiver =
+        if mail == null then
+          { name = "none"; }
+        else
+          {
+            name = "mail";
+            email_configs = [
+              {
+                to = mail.alert;
+                send_resolved = true;
+                headers.Subject = ''[{{ .CommonLabels.host }}] {{ .CommonAnnotations.summary }}{{ if eq .Status "resolved" }} (resolved){{ end }}'';
+                # plain text, like the other mails
+                html = "";
+                text = ''
+                  {{ range .Alerts }}{{ .Labels.alertname }} on {{ .Labels.host }}: {{ .Annotations.summary }}
+                  since {{ .StartsAt.Local.Format "Mon 02.01. 15:04" }}{{ if eq .Status "resolved" }}, resolved {{ .EndsAt.Local.Format "Mon 02.01. 15:04" }}{{ end }}
+
+                  {{ end }}'';
+              }
+            ];
+          };
     in
     {
       services.prometheus = {
@@ -64,18 +87,19 @@
           enable = true;
           listenAddress = "127.0.0.1";
           inherit port;
-          webExternalUrl = "https://alerts.${config.axon.cluster.domain}";
+          webExternalUrl =
+            if config.axon.routed then "https://alerts.${config.axon.cluster.domain}" else null;
           # $MAIL_* are filled in from the environment file at start
-          environmentFile = config.sops.templates."alertmanager.env".path;
+          environmentFile = if mail != null then config.sops.templates."alertmanager.env".path else null;
           configuration = {
-            global = {
-              smtp_smarthost = "smtp.protonmail.ch:587";
+            global = lib.optionalAttrs (mail != null) {
+              smtp_smarthost = "${mail.host}:${toString mail.port}";
               smtp_from = "$MAIL_FROM";
               smtp_auth_username = "$MAIL_FROM";
               smtp_auth_password = "$MAIL_TOKEN";
             };
             route = {
-              receiver = "mail";
+              receiver = receiver.name;
               group_by = [
                 "alertname"
                 "host"
@@ -85,36 +109,22 @@
               group_interval = "5m";
               repeat_interval = "12h";
             };
-            receivers = [
-              {
-                name = "mail";
-                email_configs = [
-                  {
-                    to = config.axon.mail.alert;
-                    send_resolved = true;
-                    headers.Subject = ''[{{ .CommonLabels.host }}] {{ .CommonAnnotations.summary }}{{ if eq .Status "resolved" }} (resolved){{ end }}'';
-                    # plain text, like the other mails
-                    html = "";
-                    text = ''
-                      {{ range .Alerts }}{{ .Labels.alertname }} on {{ .Labels.host }}: {{ .Annotations.summary }}
-                      since {{ .StartsAt.Local.Format "Mon 02.01. 15:04" }}{{ if eq .Status "resolved" }}, resolved {{ .EndsAt.Local.Format "Mon 02.01. 15:04" }}{{ end }}
-
-                      {{ end }}'';
-                  }
-                ];
-              }
-            ];
+            receivers = [ receiver ];
           };
         };
       };
 
-      sops.templates."alertmanager.env" = {
+      sops.templates."alertmanager.env" = lib.mkIf (mail != null) {
         content = ''
-          MAIL_FROM=${ph."mail/user"}@${ph."mail/domain"}
-          MAIL_TOKEN=${ph."mail/token"}
+          MAIL_FROM=${mail.address}
+          MAIL_TOKEN=${mail.token}
         '';
         restartUnits = [ "alertmanager.service" ];
       };
+
+      warnings =
+        lib.optional (mail == null)
+          "hosts/${host.name}/host.toml: alerts only show in Alertmanager's UI; list the mail feature here to have them mailed";
 
       axon.persist.directories = [
         {

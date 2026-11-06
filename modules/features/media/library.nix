@@ -1,28 +1,27 @@
-# Watching and requesting: Jellyfin plays the library, Seerr takes requests and hands them
-# to Radarr (movies) and Sonarr (shows). Both bring their own login and are public.
-# Library layout on the bulk disks, shared through the media group:
-#   /server/media/{movies,shows}   what Jellyfin shows
-#   /server/media/downloads        finished downloads, same filesystem so imports are instant
+# Jellyfin plays what's on the media volume, shared through the media group. It brings its own
+# login and is public.
+{ lib, ... }:
 {
   flake.modules.nixos.media =
-    { ... }:
+    { config, ... }:
     let
-      media = "/server/media";
+      inherit (config.axon) host volumes;
+      media = volumes.media;
     in
-    {
-      users.groups.media = { };
-
-      systemd.tmpfiles.rules = map (dir: "d ${media}/${dir} 2775 root media -") [
-        "movies"
-        "shows"
-        "downloads"
+    lib.mkIf (host.class == "server") {
+      assertions = [
+        {
+          assertion = volumes ? media;
+          message = "hosts/${host.name}/host.toml: the media feature needs a volume called media; add it to the mounts of a [disk.<label>] table";
+        }
       ];
+
+      users.groups.media = { };
 
       services.jellyfin = {
         enable = true;
         group = "media";
       };
-      services.seerr.enable = true;
 
       # the library is on a data disk that may be missing at boot (nofail)
       systemd.services.jellyfin.unitConfig.RequiresMountsFor = [ media ];
@@ -34,50 +33,28 @@
           group = "media";
           mode = "0750";
         }
-        {
-          directory = "/var/lib/private/seerr";
-          mode = "0700";
-        }
       ];
 
-      axon.services = {
-        jellyfin = {
-          route = {
-            port = 8096;
-            access = "open";
-            public = true;
-          };
-          dashboard = {
-            name = "Jellyfin";
-            group = "Media";
-            description = "Movies and shows";
-            icon = "jellyfin.svg";
-            widget = {
-              type = "jellyfin";
-              version = 2;
-              enableBlocks = true;
-              enableNowPlaying = false;
-            };
-            secrets.key = "dashboard/jellyfin/key";
-          };
-          backup.paths = [ "/var/lib/jellyfin" ];
+      axon.services.jellyfin = {
+        route = {
+          port = 8096;
+          access = "open";
+          public = true;
         };
-        requests = {
-          route = {
-            port = 5055;
-            access = "open";
-            public = true;
+        dashboard = {
+          name = "Jellyfin";
+          group = "Media";
+          description = "Movies and shows";
+          icon = "jellyfin.svg";
+          widget = {
+            type = "jellyfin";
+            version = 2;
+            enableBlocks = true;
+            enableNowPlaying = false;
           };
-          dashboard = {
-            name = "Seerr";
-            group = "Media";
-            description = "Requests";
-            icon = "jellyseerr.svg";
-            widget.type = "seerr";
-            secrets.key = "dashboard/requests/key";
-          };
-          backup.paths = [ "/var/lib/private/seerr" ];
+          secrets.key = "dashboard/jellyfin/key";
         };
+        backup.paths = [ "/var/lib/jellyfin" ];
       };
     };
 }

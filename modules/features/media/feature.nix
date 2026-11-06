@@ -1,6 +1,9 @@
 {
   axon.features.media = {
-    description = "Jellyfin and the *arr stack, with downloads locked into a VPN";
-    classes = [ "server" ];
+    description = "Movies and shows: Jellyfin on servers, the Jellyfin player on desktops";
+    classes = [
+      "desktop"
+      "server"
+    ];
   };
 }

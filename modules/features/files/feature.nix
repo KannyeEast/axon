@@ -1,6 +1,6 @@
 {
   axon.features.files = {
-    description = "Your files across machines: Syncthing between members, Nextcloud on servers (public for share links), its client on desktops";
+    description = "Your data on a server: Nextcloud (public for share links), photos and documents; the Nextcloud client on desktops";
     classes = [
       "desktop"
       "server"

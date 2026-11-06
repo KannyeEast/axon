@@ -24,10 +24,8 @@ let
     filter
     filterAttrs
     genAttrs
-    head
     mapAttrs
     mkOption
-    splitString
     subtractLists
     types
     unique
@@ -134,20 +132,17 @@ let
           [ "_module" ];
       members = attrNames hosts ++ attrNames checked.external;
       known = name: elem name members;
-      ownerOf = location: head (splitString ":" location);
 
       mentioned = unique (
         attrNames checked.ssh
         ++ concatLists (attrValues checked.ssh)
         ++ concatLists (attrValues checked.sync)
-        ++ map ownerOf (attrValues checked.volumes)
       );
       strangers = subtractLists members mentioned;
 
       present = checked // {
         ssh = mapAttrs (_: filter known) (filterAttrs (name: _: known name) checked.ssh);
         sync = mapAttrs (_: filter known) checked.sync;
-        volumes = filterAttrs (_: location: known (ownerOf location)) checked.volumes;
         inherit hosts;
       };
     in

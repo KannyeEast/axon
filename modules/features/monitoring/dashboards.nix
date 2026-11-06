@@ -1,6 +1,7 @@
 # Grafana at grafana.<domain>: graphs over Prometheus, with its data source and dashboards
 # provisioned from here. Behind the gateway login, which Grafana trusts: the user the login names
 # is signed in, and the host.toml user is Grafana's admin, with monitoring/password for the API.
+# Without a gateway on this host it stays on localhost, with only its own login.
 # Its secret key is made on first start and kept in its persisted state folder.
 # The "Start page" dashboard is written here; its panels are the System graphs on the gateway's
 # start page, each embedded on its own.
@@ -17,10 +18,11 @@ in
   flake.modules.nixos.monitoring =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) cluster user;
+      inherit (config.axon) cluster routed user;
       port = 3001;
       state = "/var/lib/grafana";
-      url = "https://grafana.${cluster.domain}";
+      address = if routed then "grafana.${cluster.domain}" else "127.0.0.1";
+      url = if routed then "https://${address}" else "http://${address}:${toString port}";
 
       percent = {
         unit = "percent";
@@ -226,7 +228,7 @@ in
           server = {
             http_addr = "127.0.0.1";
             http_port = port;
-            domain = "grafana.${cluster.domain}";
+            domain = address;
             root_url = "${url}/";
           };
           security = {
@@ -238,7 +240,7 @@ in
           };
           # Caddy, on this host, passes the gateway login's user
           "auth.proxy" = {
-            enabled = true;
+            enabled = routed;
             header_name = "Remote-User";
             header_property = "username";
             auto_sign_up = true;

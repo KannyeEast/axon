@@ -1,6 +1,6 @@
 # Paperless-ngx at docs.<domain> on servers: scanned and filed documents, OCR in German and
-# English. Tailnet only; its own login. Documents on the bulk disks, sorted by correspondent
-# and year; database in the shared Postgres. The first account is created by hand after install:
+# English. Tailnet only; its own login. Documents on the data volume, or in the state folder on
+# a host without one, sorted by correspondent and year; database in the shared Postgres. The first account is created by hand after install:
 #   sudo paperless-manage createsuperuser
 # A nightly export (originals, OCR'd copies, tags and metadata) is what gets backed up.
 { lib, ... }:
@@ -9,7 +9,7 @@
     { config, ... }:
     let
       inherit (config.axon) cluster;
-      data = "/server/data/paperless";
+      data = "${config.axon.volumes.data or "/var/lib"}/paperless";
       port = 28981;
     in
     lib.mkIf (config.axon.host.class == "server") {

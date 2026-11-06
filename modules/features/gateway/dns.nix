@@ -1,8 +1,12 @@
 # DNS filtering for the tailnet (AdGuard Home). Settings are owned by Nix; the web UI is for
 # looking, not changing. Point the tailnet's DNS at this host in the Tailscale admin console.
+{ lib, ... }:
 {
   flake.modules.nixos.gateway =
     { config, ... }:
+    let
+      inherit (config.axon.overlay) network;
+    in
     {
       config = {
         axon.persist.directories = [
@@ -34,8 +38,8 @@
               upstream_dns = [
                 "https://security.cloudflare-dns.com/dns-query"
                 "https://dns.quad9.net/dns-query"
-                "[/ts.net/]100.100.100.100"
-              ];
+              ]
+              ++ lib.optional (network != null) "[/${network.domain}/]${network.resolver}";
 
               bootstrap_dns = [ "1.1.1.1" ];
 
@@ -80,9 +84,9 @@
           };
         };
 
-        networking.firewall.interfaces.${config.services.tailscale.interfaceName} = {
-          allowedTCPPorts = [ 53 ];
-          allowedUDPPorts = [ 53 ];
+        axon.overlay = {
+          tcpPorts = [ 53 ];
+          udpPorts = [ 53 ];
         };
 
         axon.services.dns = {

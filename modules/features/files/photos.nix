@@ -1,5 +1,6 @@
 # Immich at photos.<domain> on servers: phone photo backup with face and place search.
-# Originals on the bulk disks; database in the shared Postgres, machine learning on the CPU.
+# Originals on the data volume, or in the state folder on a host without one; database in the
+# shared Postgres, machine learning on the CPU.
 # Every account is its own library; sharing is through shared albums or partner sharing.
 # The first account made in the web UI is the admin.
 # Uploads through the tunnel are capped at 100 MB per file; larger ones go over the tailnet.
@@ -8,7 +9,7 @@
   flake.modules.nixos.files =
     { config, ... }:
     let
-      data = "/server/data/immich";
+      data = "${config.axon.volumes.data or "/var/lib"}/immich";
       port = 2283;
     in
     lib.mkIf (config.axon.host.class == "server") {

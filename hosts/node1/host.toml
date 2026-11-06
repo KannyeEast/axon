@@ -1,6 +1,6 @@
 [host]
 class = "server"
-features = ["dev", "files", "gateway", "media", "monitoring"]
+features = ["backup", "dev", "downloads", "files", "gateway", "mail", "media", "metrics", "monitoring", "sync", "terminal", "vpn"]
 state = "26.11" # written once at install, never changed
 key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKMXrIta7SmDEzxW21OIxtMNb1M6t5EVHNOyowknN/1G root@node1"
 

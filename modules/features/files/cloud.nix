@@ -1,4 +1,4 @@
-# Nextcloud at cloud.<domain> on servers; the sync client on desktops. Files on the bulk disks, database and app state on the system SSD.
+# Nextcloud at cloud.<domain> on servers; the sync client on desktops. Files on the data volume, or in the state folder on a host without one; database and app state on the system SSD.
 # It's public (through the gateway's tunnel) so share links work for people without Tailscale;
 # its own login guards it. The first account is created by hand after install:
 #   nextcloud-occ user:add <you> && nextcloud-occ group:adduser admin <you>
@@ -9,10 +9,9 @@
   flake.modules.nixos.files =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) cluster;
-      ph = config.sops.placeholder;
+      inherit (config.axon) cluster mail;
       hostName = "cloud.${cluster.domain}";
-      data = "/server/data/nextcloud";
+      data = "${config.axon.volumes.data or "/var/lib"}/nextcloud";
       port = 8090;
     in
     lib.mkMerge [
@@ -22,17 +21,6 @@
       })
 
       (lib.mkIf (config.axon.host.class == "server") {
-        # sender address and token are the ones notifications.nix sends with
-        sops.templates."nextcloud.json" = {
-          owner = "nextcloud";
-          content = builtins.toJSON {
-            mail_from_address = ph."mail/user";
-            mail_domain = ph."mail/domain";
-            mail_smtpname = "${ph."mail/user"}@${ph."mail/domain"}";
-            mail_smtppassword = ph."mail/token";
-          };
-        };
-
         services.nextcloud = {
           enable = true;
           package = pkgs.nextcloud35;
@@ -53,12 +41,7 @@
             default_phone_region = "DE";
             serverid = 1; # unique per PHP server; there is one, but Nextcloud warns without it
             maintenance_window_start = 1; # 01:00 UTC
-            mail_smtpmode = "smtp";
-            mail_smtphost = "smtp.protonmail.ch";
-            mail_smtpport = 587;
-            mail_smtpauth = true;
           };
-          secretFile = config.sops.templates."nextcloud.json".path;
           phpOptions."opcache.interned_strings_buffer" = "16";
         };
 
@@ -127,6 +110,29 @@
             "/var/lib/nextcloud"
             "/var/backup/postgresql"
           ];
+        };
+      })
+
+      # without an account Nextcloud runs the same, but invites and password resets fail
+      (lib.mkIf (config.axon.host.class == "server" && mail != null) {
+        sops.templates."nextcloud.json" = {
+          owner = "nextcloud";
+          content = builtins.toJSON {
+            mail_from_address = mail.user;
+            mail_domain = mail.domain;
+            mail_smtpname = mail.address;
+            mail_smtppassword = mail.token;
+          };
+        };
+
+        services.nextcloud = {
+          settings = {
+            mail_smtpmode = "smtp";
+            mail_smtphost = mail.host;
+            mail_smtpport = mail.port;
+            mail_smtpauth = true;
+          };
+          secretFile = config.sops.templates."nextcloud.json".path;
         };
       })
     ];

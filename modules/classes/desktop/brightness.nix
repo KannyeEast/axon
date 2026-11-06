@@ -1,9 +1,12 @@
+# On laptops, as facter reports them; a desktop's monitor has no backlight to control here.
 # Brightness keys step by a ratio, not a fixed percentage: perceived brightness is roughly
 # logarithmic, so 5% is invisible at the top of the range and a third of it at the bottom.
+{ lib, ... }:
 {
   flake.modules.nixos.desktop =
-    { pkgs, ... }:
+    { config, pkgs, ... }:
     let
+      formFactor = config.hardware.facter.report.hardware.system.form_factor or null;
       backlight = pkgs.writeShellApplication {
         name = "backlight";
         runtimeInputs = [
@@ -39,7 +42,7 @@
         '';
       };
     in
-    {
+    lib.mkIf (formFactor == "laptop") {
       environment.systemPackages = [
         pkgs.brightnessctl
         backlight

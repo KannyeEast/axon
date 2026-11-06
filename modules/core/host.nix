@@ -58,7 +58,7 @@ let
       };
       mounts = mkOption {
         type = types.attrsOf types.str;
-        description = "Subvolume name to mountpoint.";
+        description = "Subvolume name to mountpoint. Features ask for a volume by this name.";
       };
     };
   };
@@ -175,11 +175,6 @@ in
         type = types.attrsOf (types.listOf types.str);
         default = { };
         description = "Folder to the members that share it with each other.";
-      };
-      volumes = mkOption {
-        type = types.attrsOf (types.strMatching "[a-z0-9-]+:/.*");
-        default = { };
-        description = "Shared stores as host:/path. Services ask for a volume by name.";
       };
       external = mkOption {
         default = { };

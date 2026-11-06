@@ -1,14 +1,17 @@
-# Prometheus: scrapes the exporters on every host in the cluster (core/metrics.nix) every 30 s
-# and keeps 90 days. Its own UI at prometheus.<domain>, behind the gateway login.
-# The blackbox exporter checks every route twice: "service" asks the service directly (any
-# answer below 500 means it runs), and https://<name>.<domain> is called the way clients do
-# (DNS, Caddy, certificate, the tunnel for public ones): "route" for services with their own
-# login must answer, "guarded" for those behind the gateway login must refuse with 401.
+# Prometheus: scrapes the exporters on every host listing the metrics feature every 30 s and
+# keeps 90 days. Its own UI at prometheus.<domain>, behind the gateway login.
+# The blackbox exporter checks every route: "service" asks the service directly (any answer
+# below 500 means it runs). Where this host runs the gateway, https://<name>.<domain> is also
+# called the way clients do (DNS, Caddy, certificate, the tunnel for public ones): "route" for
+# services with their own login must answer, "guarded" for those behind the gateway login must
+# refuse with 401.
 { lib, ... }:
 let
   inherit (lib)
+    elem
     filterAttrs
     mapAttrsToList
+    optionals
     range
     ;
 in
@@ -16,12 +19,18 @@ in
   flake.modules.nixos.monitoring =
     { config, ... }:
     let
-      inherit (config.axon) cluster host services;
+      inherit (config.axon)
+        cluster
+        host
+        routed
+        services
+        ;
       exporters = config.services.prometheus.exporters;
       port = 9090;
-      routed = filterAttrs (_: service: service.route != null) services;
-      open = filterAttrs (_: service: service.route.access == "open") routed;
-      guarded = filterAttrs (_: service: service.route.access != "open") routed;
+      scraped = filterAttrs (_: data: elem "metrics" data.host.features) cluster.hosts;
+      withRoute = filterAttrs (_: service: service.route != null) services;
+      open = filterAttrs (_: service: service.route.access == "open") withRoute;
+      guarded = filterAttrs (_: service: service.route.access != "open") withRoute;
       external = route: "https://${route.subdomain}.${cluster.domain}";
 
       # every series carries the host it's about, and its class: alerts that a machine is off
@@ -34,7 +43,7 @@ in
             host = name;
             class = data.host.class;
           };
-        }) cluster.hosts;
+        }) scraped;
         # "node1" instead of "node1:9100" in graphs and alerts
         relabel_configs = [
           {
@@ -118,7 +127,9 @@ in
         scrapeConfigs = [
           (job "node" exporters.node.port)
           (job "smartctl" exporters.smartctl.port)
-          (probe "service" (route: "http://${route.address}:${toString route.port}") routed)
+          (probe "service" (route: "http://${route.address}:${toString route.port}") withRoute)
+        ]
+        ++ optionals routed [
           (probe "route" external open)
           (probe "guarded" external guarded)
         ];

@@ -1028,7 +1028,7 @@ generate() {
   export SOPS_AGE_KEY
 
   # == syncthing: the device id is its certificate's ==
-  if printf '%s\n' "${FEATURES[@]}" | grep -qx files; then
+  if printf '%s\n' "${FEATURES[@]}" | grep -qx sync; then
     local sync="$TEMP_DIR/syncthing"
     mkdir -p "$sync"
     if [[ -s $sync/cert.pem && -s $sync/key.pem ]]; then

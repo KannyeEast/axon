@@ -32,6 +32,8 @@ in
       tls = "tls /var/lib/acme/${domain}/fullchain.pem /var/lib/acme/${domain}/key.pem";
     in
     {
+      axon.routed = true;
+
       assertions = [
         {
           assertion = length gateways == 1;
@@ -85,7 +87,7 @@ in
         ) routed;
       };
 
-      networking.firewall.interfaces.${config.services.tailscale.interfaceName}.allowedTCPPorts = [
+      axon.overlay.tcpPorts = [
         80
         443
       ];

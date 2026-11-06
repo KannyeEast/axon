@@ -12,7 +12,7 @@ for confirmation on anything beyond a single obvious fix, and don't bundle unreq
 
 ```
 flake.nix            inputs; outputs = every .nix under modules/ (import-tree)
-cluster.toml         relations between machines: [ssh], [sync], [volumes], [external]
+cluster.toml         relations between machines: [ssh], [sync], [external]
 hosts/<name>/        host.toml, facter.json, secrets.json (sops), optional home/
 hosts/_old/          previous hosts, kept for reference, never built
 home/                dotfiles every host shares; hosts/<name>/home wins per file
