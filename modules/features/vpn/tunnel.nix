@@ -1,7 +1,7 @@
 # Mullvad over WireGuard in a network namespace on servers. Whatever axon.vpn.confined lists runs
 # inside it, and if the tunnel drops that service has no network at all. The host reaches those
-# services through the namespace bridge (axon.vpn.network.address). Mullvad has no port forwarding, so
-# peers can't connect in: downloads work, seeding only reaches peers that are themselves reachable.
+# services through the namespace bridge (axon.vpn.network.address). Mullvad has no port forwarding,
+# so peers can't connect in.
 { inputs, lib, ... }:
 {
   flake.modules.nixos.vpn =
@@ -16,7 +16,7 @@
       config = lib.mkIf (host.class == "server") {
         axon.vpn.network = {
           address = namespace.namespaceAddress;
-          subnet = "192.168.15.0/24";
+          subnet = "${namespace.bridgeAddress}/24";
         };
 
         axon.links.Mullvad = {

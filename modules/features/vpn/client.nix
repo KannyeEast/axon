@@ -1,5 +1,5 @@
-# Mullvad on demand on desktops: the app connects when asked (tray, or `mullvad connect`), not at boot,
-# and leaves the network alone while disconnected. Login, location and LAN sharing are
+# Mullvad on demand on desktops: the app connects when asked (tray, or `mullvad connect`), not at
+# boot, and leaves the network alone while disconnected. Login, location and LAN sharing are
 # runtime settings it keeps in /etc/mullvad-vpn.
 { lib, ... }:
 {

@@ -82,6 +82,12 @@ in
           folders = genAttrs folders (folder: {
             path = pathOf folder;
             devices = peersOf folder;
+            # sync passes on a deletion or a damaged file as readily as a good change; the machine
+            # receiving it keeps the old copy in .stversions for 30 days
+            versioning = {
+              type = "staggered";
+              params.maxAge = "2592000";
+            };
           });
         };
       };
