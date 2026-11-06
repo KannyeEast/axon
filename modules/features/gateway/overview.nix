@@ -1,10 +1,12 @@
 # The start page (Homepage) at home.<domain>: a tile for every service with a dashboard entry,
 # grouped, linked to its route and with a status dot; live numbers where it sets a widget, one
 # tile per instance where it lists several. Widget credentials come from this host's
-# secrets.json. Below the tiles, links to the admin pages of what runs outside the cluster.
+# secrets.json; a service only makes its key once it runs, so until the key is there its tile
+# shows no numbers. Below the tiles, axon.links and the [gateway] links of this host.
 { lib, ... }:
 let
   inherit (lib)
+    all
     attrNames
     attrValues
     concatLists
@@ -16,25 +18,51 @@ let
     filter
     filterAttrs
     genAttrs
+    hasAttrByPath
     head
     length
     mapAttrs
     mapAttrsToList
+    match
+    mkOption
     nameValuePair
+    optional
     optionalAttrs
     replaceStrings
     sort
+    splitString
     subtractLists
     toJSON
     toUpper
+    types
     unique
     ;
 in
 {
+  axon.schema.gateway = {
+    options.gateway.links = mkOption {
+      type = types.attrsOf (types.attrsOf types.str);
+      default = { };
+      example = {
+        Router = {
+          url = "http://192.168.1.1";
+          icon = "router.svg";
+        };
+      };
+      description = "More links on the start page, name to url and icon: what runs outside the cluster and no feature knows about.";
+    };
+  };
+
   flake.modules.nixos.gateway =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) domain routes;
+      inherit (config.axon)
+        domain
+        gateway
+        host
+        links
+        routes
+        ;
       ph = config.sops.placeholder;
 
       port = 8082;
@@ -45,7 +73,12 @@ in
       internal = route: "http://${route.endpoint}";
       # "dashboard/radarr/key" -> HOMEPAGE_VAR_DASHBOARD_RADARR_KEY
       envName = secret: "HOMEPAGE_VAR_${toUpper (replaceStrings [ "/" "-" ] [ "_" "_" ] secret)}";
-      secrets = unique (concatMap (service: attrValues service.dashboard.secrets) (attrValues tiles));
+      hasSecret = secret: hasAttrByPath (splitString "/" secret) config.axon.secrets;
+      hasKeys = service: all hasSecret (attrValues service.dashboard.secrets);
+      waiting = attrNames (filterAttrs (_: service: !hasKeys service) tiles);
+      secrets = unique (
+        concatMap (service: attrValues service.dashboard.secrets) (filter hasKeys (attrValues tiles))
+      );
 
       or' = value: fallback: if value != null then value else fallback;
       tile = service: name: instance: {
@@ -55,14 +88,17 @@ in
           icon = or' (instance.icon or null) service.dashboard.icon;
           siteMonitor = internal service.route + service.dashboard.monitor;
         }
-        // optionalAttrs (service.dashboard.widget != null || instance.widget or { } != { }) {
-          widget = {
-            url = internal service.route;
-          }
-          // (or' service.dashboard.widget { })
-          // mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
-          // instance.widget or { };
-        };
+        //
+          optionalAttrs
+            (hasKeys service && (service.dashboard.widget != null || instance.widget or { } != { }))
+            {
+              widget = {
+                url = internal service.route;
+              }
+              // (or' service.dashboard.widget { })
+              // mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
+              // instance.widget or { };
+            };
       };
       tilesOf =
         service:
@@ -148,49 +184,24 @@ in
             { ${rowName row} = map (group: { ${group} = inGroup group; }) row; }
         ) rows;
 
-        bookmarks = [
-          {
-            Admin = [
+        bookmarks = optional (links != { }) {
+          Admin = mapAttrsToList (name: link: {
+            ${name} = [
               {
-                Cloudflare = [
-                  {
-                    icon = "cloudflare.svg";
-                    href = "https://dash.cloudflare.com";
-                    description = "dash.cloudflare.com ↗";
-                  }
-                ];
-              }
-              {
-                Tailscale = [
-                  {
-                    icon = "tailscale.svg";
-                    href = "https://console.tailscale.com";
-                    description = "console.tailscale.com ↗";
-                  }
-                ];
-              }
-              {
-                Mullvad = [
-                  {
-                    icon = "mullvad.svg";
-                    href = "https://mullvad.net/en/account";
-                    description = "mullvad.net ↗";
-                  }
-                ];
-              }
-              {
-                "FRITZ!Box" = [
-                  {
-                    icon = "fritzbox.svg";
-                    href = "http://192.168.178.1";
-                    description = "192.168.178.1 ↗";
-                  }
-                ];
+                inherit (link) icon;
+                href = link.url;
+                description = "${head (match "[a-z]+://([^/]+).*" link.url)} ↗";
               }
             ];
-          }
-        ];
+          }) links;
+        };
       };
+
+      axon.links = gateway.links;
+
+      warnings =
+        optional (waiting != [ ])
+          "hosts/${host.name}/secrets.json: no widget key yet for ${concatStringsSep ", " waiting}, so those tiles show no numbers; add the keys with `just secrets ${host.name}`";
 
       # Node exits with 143 on SIGTERM; without this every restart counts as a failure and mails
       systemd.services.homepage-dashboard.serviceConfig.SuccessExitStatus = [ 143 ];

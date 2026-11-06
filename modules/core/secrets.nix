@@ -19,7 +19,7 @@
         defaultText = "the key structure of secrets.json";
         description = ''
           The shape of secrets.json. sops encrypts values, not keys, so evaluation can see
-          which secrets exist. Read it for data (which networks, which backup targets),
+          which secrets exist. Read it for data (which networks, which backup targets, which widget keys),
           never to decide whether something is enabled.
         '';
       };

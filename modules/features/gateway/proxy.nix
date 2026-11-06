@@ -23,7 +23,6 @@ in
         cluster
         domain
         routes
-        services
         ;
 
       ph = config.sops.placeholder;
@@ -77,7 +76,7 @@ in
             extraConfig = ''
               ${tls}
               ${optionalString (service.route.access != "open") ''
-                forward_auth ${services.auth.route.endpoint} {
+                forward_auth ${routes.auth.route.endpoint} {
                   uri /api/authz/forward-auth
                   copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
                 }
@@ -92,6 +91,11 @@ in
         80
         443
       ];
+
+      axon.links.Cloudflare = {
+        url = "https://dash.cloudflare.com";
+        icon = "cloudflare.svg";
+      };
 
       axon.persist.directories = [
         {

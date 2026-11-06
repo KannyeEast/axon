@@ -35,4 +35,8 @@ mounts = { vault = "/server/vault" }
 id = "7B5WETD-2BBTFMG-OKJBRDP-A5NJ3UC-3A7HECI-IEB6UP4-KZLTLWF-7RVIPQD"
 
 [gateway]
-tunnel = "27709698-c197-4b97-80f1-85b1309e8c72" 
+tunnel = "27709698-c197-4b97-80f1-85b1309e8c72"
+
+[gateway.links."FRITZ!Box"]
+url = "http://192.168.178.1"
+icon = "fritzbox.svg"

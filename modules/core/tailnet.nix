@@ -85,6 +85,11 @@ in
           allowedUDPPorts = overlay.udpPorts;
         };
 
+        axon.links.Tailscale = {
+          url = "https://console.tailscale.com";
+          icon = "tailscale.svg";
+        };
+
         axon.persist.directories = [
           {
             directory = "/var/lib/tailscale";

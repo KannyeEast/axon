@@ -19,6 +19,11 @@
           subnet = "192.168.15.0/24";
         };
 
+        axon.links.Mullvad = {
+          url = "https://mullvad.net/en/account";
+          icon = "mullvad.svg";
+        };
+
         # a wg-quick file from Mullvad's config generator
         sops.secrets.mullvad-wireguard = { };
 

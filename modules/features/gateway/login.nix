@@ -12,12 +12,7 @@ in
   flake.modules.nixos.gateway =
     { config, ... }:
     let
-      inherit (config.axon)
-        user
-        domain
-        routes
-        services
-        ;
+      inherit (config.axon) user domain routes;
       ph = config.sops.placeholder;
       port = 9091;
       state = "/var/lib/authelia-main";
@@ -86,8 +81,8 @@ in
           session.cookies = [
             {
               inherit domain;
-              authelia_url = services.auth.route.url;
-              default_redirection_url = "https://${domain}";
+              authelia_url = routes.auth.route.url;
+              default_redirection_url = routes.home.route.url;
             }
           ];
           storage.local.path = "${state}/db.sqlite3";
