@@ -18,11 +18,38 @@ from pathlib import Path
 VERSION = Path("/run/current-system/nixos-version")
 PROFILE = Path("/nix/var/nix/profiles/system")
 UPTIME = Path("/proc/uptime")
-LOG_LINES = 40
+LOG_LINES = 30  # shown; more are read, as repeats and systemd's own lines fall away
+LOG_READ = 300
+LONGEST_LINE = 300
 FULL_PERCENT = 85  # the same line as the DiskFull alert
 MUTED = "#6b7280"
 LINE = "#e6e8ee"
 TRACK = "#eef0f4"
+# on the dark log block
+LOG_TEXT = "#e6e8ee"
+LOG_TIME = "#8b93a1"
+LOG_LEVELS = {"fail": "#ff9aa8", "warn": "#f1c27d"}
+
+# what systemd's own words for a failure mean
+RESULTS = {
+    "exit-code": "it exited with an error",
+    "signal": "it was killed by a signal",
+    "core-dump": "it crashed",
+    "timeout": "it took too long",
+    "watchdog": "it stopped responding",
+    "start-limit-hit": "it kept failing, so systemd gave up restarting it",
+    "dependency": "a service it needs failed",
+    "oom-kill": "it ran out of memory",
+    "resources": "it couldn't get what it needs to start",
+}
+# systemd's lines that only repeat the facts above the log
+NOISE = re.compile(
+    r"(^|: )(Started|Starting|Stopped|Stopping|Deactivated|Scheduled restart|Consumed"
+    r"|Triggering OnFailure|Failed with result|Main process exited)"
+)
+ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+LOGFMT = re.compile(r"""(\w+)=("(?:[^"\\]|\\.)*"|\S+)""")
+ALARMING = re.compile(r"\b(error|fatal|failed|failure|panic|refused|denied|cannot|can't)\b", re.I)
 
 config = {}
 host = platform.node()
@@ -102,13 +129,30 @@ class Mail:
             markup += f'<tr>{"".join(columns)}</tr>'
         self.markup.append(markup + "</table>")
 
-    def log(self, lines):
-        self.text += [f"  {line}" for line in lines]
-        body = html.escape("\n".join(lines))
+    def callout(self, title, text):
+        self.text += [f"{title}: {text}", ""]
+        colours = config["levels"]["fail"]
         self.markup.append(
-            '<pre style="margin:0;padding:12px 14px;background:#14161b;color:#e6e8ee;border-radius:6px;'
+            f'<div style="margin:0 0 16px;padding:12px 16px;background:{colours["tint"]};'
+            f'border-left:3px solid {colours["color"]};border-radius:4px;">'
+            f'<div style="color:{colours["color"]};font-size:12px;font-weight:600;">{html.escape(title)}</div>'
+            f'<div style="margin-top:2px;word-break:break-word;">{html.escape(text)}</div></div>'
+        )
+
+    def log(self, lines):
+        self.text += [f"  {line.when}  {line.shown()}" for line in lines]
+        rows = []
+        for line in lines:
+            colour = LOG_LEVELS.get(line.level, LOG_TEXT)
+            rows.append(
+                f'<span style="color:{LOG_TIME};">{html.escape(line.when)}</span>  '
+                f'<span style="color:{colour};">{html.escape(line.shown())}</span>'
+            )
+        body = "\n".join(rows)
+        self.markup.append(
+            f'<pre style="margin:0;padding:12px 14px;background:#14161b;color:{LOG_TEXT};border-radius:6px;'
             "font-family:ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;font-size:12px;"
-            f'line-height:1.5;white-space:pre-wrap;word-break:break-word;">{body}</pre>'
+            f'line-height:1.6;white-space:pre-wrap;word-break:break-word;">{body}</pre>'
         )
 
 
@@ -135,16 +179,104 @@ def send(recipient, subject, level, label, title, plain_title, subtitle, mail):
     subprocess.run([config["sendmail"], "-t"], input=message.as_bytes(), check=True)
 
 
+class Line:
+    """One log line, as a person wants to read it."""
+
+    def __init__(self, stamp, text, level):
+        self.when = time.strftime("%b %d %H:%M:%S", time.localtime(stamp))
+        self.text = text
+        self.level = level
+        self.count = 1
+
+    def shown(self):
+        text = self.text
+        if len(text) > LONGEST_LINE:
+            text = text[:LONGEST_LINE] + "…"
+        return f"{text}  (×{self.count})" if self.count > 1 else text
+
+
+def level_of(name):
+    name = str(name).lower()
+    if name.startswith(("err", "fatal", "panic", "crit", "alert", "emerg")):
+        return "fail"
+    return "warn" if name.startswith("warn") else None
+
+
+def readable(fields):
+    """The part of a structured line a person reads: its message, its error and what it was about."""
+    text = str(fields.get("msg") or fields.get("message") or "")
+    for key in ("error", "err"):
+        detail = fields.get(key)
+        if detail and str(detail) not in text:
+            text = f"{text}: {detail}" if text else str(detail)
+    request = fields.get("request")
+    if isinstance(request, dict):
+        text += f' ({request.get("method", "")} {request.get("host", "")}{request.get("uri", "")})'
+    return text
+
+
+def simplify(message):
+    """Returns (text, level) for a log message, which may be JSON or key=value pairs."""
+    message = ANSI.sub("", message).strip()
+    fields = None
+    if message.startswith("{"):
+        try:
+            fields = json.loads(message)
+        except ValueError:
+            pass
+    elif "msg=" in message and "level=" in message:
+        fields = {key: value.strip('"') for key, value in LOGFMT.findall(message)}
+    if isinstance(fields, dict):
+        text = readable(fields)
+        if text:
+            return text, level_of(fields.get("level") or fields.get("lvl") or "")
+    return message, None
+
+
+def read_log(unit, state):
+    """The lines of the run that failed, most recent last, without repeats and systemd's small talk."""
+    run_id = state.get("InvocationID")
+    wanted = [f"_SYSTEMD_INVOCATION_ID={run_id}", "+", f"INVOCATION_ID={run_id}"] if run_id else [f"--unit={unit}"]
+    output = run("journalctl", "--boot", f"--lines={LOG_READ}", "--output=json", "--no-pager", *wanted)
+    lines = {}
+    for raw in output.splitlines():
+        try:
+            entry = json.loads(raw)
+        except ValueError:
+            continue
+        message = entry.get("MESSAGE") or ""
+        if isinstance(message, list):  # journald's way of saying it isn't valid text
+            message = bytes(message).decode("utf-8", "replace")
+        if entry.get("SYSLOG_IDENTIFIER") == "systemd" and NOISE.search(message):
+            continue
+        text, level = simplify(message)
+        priority = int(entry.get("PRIORITY", 6))
+        level = level or ("fail" if priority <= 3 else "warn" if priority == 4 else None)
+        line = Line(int(entry.get("__REALTIME_TIMESTAMP", 0)) / 1e6, text, level)
+        if text in lines:
+            line.count += lines.pop(text).count
+        lines[text] = line
+    return list(lines.values())[-LOG_LINES:]
+
+
+def reason(lines):
+    """The line most likely to say what went wrong."""
+    errors = [line for line in lines if line.level == "fail"]
+    errors = errors or [line for line in lines if ALARMING.search(line.text)]
+    return errors[-1].text if errors else None
+
+
 def unit_state(unit):
-    wanted = "Description,Result,ActiveState,SubState,ExecMainStatus,NRestarts,StateChangeTimestamp"
+    wanted = "Description,Result,ActiveState,SubState,ExecMainStatus,NRestarts,StateChangeTimestamp,InvocationID"
     pairs = run("systemctl", "show", f"--property={wanted}", unit).splitlines()
     return dict(pair.split("=", 1) for pair in pairs if "=" in pair)
 
 
-def describe(mail, unit, state):
+def describe(mail, unit, state, lines):
     active, sub = state.get("ActiveState", "?"), state.get("SubState", "?")
+    result = state.get("Result", "?")
     rows = [("State", active if active == sub else f"{active} ({sub})")]
-    rows.append(("Result", state.get("Result", "?")))
+    rows.append(("Why", RESULTS.get(result, result)))
     if state.get("ExecMainStatus", "0") != "0":
         rows.append(("Exit status", state["ExecMainStatus"]))
     if state.get("NRestarts", "0") != "0":
@@ -152,13 +284,12 @@ def describe(mail, unit, state):
     if state.get("StateChangeTimestamp"):
         rows.append(("Since", state["StateChangeTimestamp"]))
     mail.facts(rows)
-    # status only shows the log of the unit's current run; once it has restarted, the failed run's
-    # lines are only in the journal
-    log = run(
-        "journalctl", f"--unit={unit}", "--boot", f"--lines={LOG_LINES}", "--no-pager", "--no-hostname"
-    )
-    mail.section(f"Log of {unit}")
-    mail.log(log.splitlines() or ["(nothing in the journal)"])
+    mail.section(f"Log of the failed run of {unit}")
+    if lines:
+        mail.log(lines)
+    else:
+        mail.line("Nothing in the journal.")
+    mail.line(f"Everything: journalctl --unit={unit} --boot, on {host}")
 
 
 def alert(recipient, unit):
@@ -166,15 +297,20 @@ def alert(recipient, unit):
     time.sleep(2)
     run("journalctl", "--sync")
 
-    state = unit_state(unit)
-    mail = Mail()
-    describe(mail, unit, state)
     # a "dependency" failure has its error in the unit it depends on
-    needed = run("systemctl", "show", "--property=Requires,Requisite,BindsTo", "--value", unit)
-    for dependency in needed.split():
-        if subprocess.run(["systemctl", "--quiet", "is-failed", dependency]).returncode == 0:
-            mail.section(f"It needs {dependency}, which failed too")
-            describe(mail, dependency, unit_state(dependency))
+    needed = run("systemctl", "show", "--property=Requires,Requisite,BindsTo", "--value", unit).split()
+    causes = [name for name in needed if subprocess.run(["systemctl", "--quiet", "is-failed", name]).returncode == 0]
+    states = {name: unit_state(name) for name in [unit, *causes]}
+    logs = {name: read_log(name, states[name]) for name in states}
+
+    mail = Mail()
+    found = next(filter(None, (reason(logs[name]) for name in [*causes, unit])), None)
+    if found:
+        mail.callout("What went wrong", found)
+    describe(mail, unit, states[unit], logs[unit])
+    for name in causes:
+        mail.section(f"It needs {name}, which failed too")
+        describe(mail, name, states[name], logs[name])
 
     send(
         recipient,
@@ -183,7 +319,7 @@ def alert(recipient, unit):
         label="Failed",
         title=f"<b>{html.escape(unit)}</b> failed",
         plain_title=f"{unit} failed",
-        subtitle=f'{state.get("Description", unit)}, on {host}',
+        subtitle=f'{states[unit].get("Description", unit)}, on {host}',
         mail=mail,
     )
 
