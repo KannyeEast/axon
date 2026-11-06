@@ -30,18 +30,6 @@ LOG_TEXT = "#e6e8ee"
 LOG_TIME = "#8b93a1"
 LOG_LEVELS = {"fail": "#ff9aa8", "warn": "#f1c27d"}
 
-# what systemd's own words for a failure mean
-RESULTS = {
-    "exit-code": "it exited with an error",
-    "signal": "it was killed by a signal",
-    "core-dump": "it crashed",
-    "timeout": "it took too long",
-    "watchdog": "it stopped responding",
-    "start-limit-hit": "it kept failing, so systemd gave up restarting it",
-    "dependency": "a service it needs failed",
-    "oom-kill": "it ran out of memory",
-    "resources": "it couldn't get what it needs to start",
-}
 # systemd's lines that only repeat the facts above the log
 NOISE = re.compile(
     r"(^|: )(Started|Starting|Stopped|Stopping|Deactivated|Scheduled restart|Consumed"
@@ -49,7 +37,6 @@ NOISE = re.compile(
 )
 ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 LOGFMT = re.compile(r"""(\w+)=("(?:[^"\\]|\\.)*"|\S+)""")
-ALARMING = re.compile(r"\b(error|fatal|failed|failure|panic|refused|denied|cannot|can't)\b", re.I)
 
 config = {}
 host = platform.node()
@@ -128,16 +115,6 @@ class Mail:
             columns += [f'<td style="{cells}word-break:break-word;">{cell.markup}</td>' for cell in row[1:]]
             markup += f'<tr>{"".join(columns)}</tr>'
         self.markup.append(markup + "</table>")
-
-    def callout(self, title, text):
-        self.text += [f"{title}: {text}", ""]
-        colours = config["levels"]["fail"]
-        self.markup.append(
-            f'<div style="margin:0 0 16px;padding:12px 16px;background:{colours["tint"]};'
-            f'border-left:3px solid {colours["color"]};border-radius:4px;">'
-            f'<div style="color:{colours["color"]};font-size:12px;font-weight:600;">{html.escape(title)}</div>'
-            f'<div style="margin-top:2px;word-break:break-word;">{html.escape(text)}</div></div>'
-        )
 
     def log(self, lines):
         self.text += [f"  {line.when}  {line.shown()}" for line in lines]
@@ -259,13 +236,6 @@ def read_log(unit, state):
     return list(lines.values())[-LOG_LINES:]
 
 
-def reason(lines):
-    """The line most likely to say what went wrong."""
-    errors = [line for line in lines if line.level == "fail"]
-    errors = errors or [line for line in lines if ALARMING.search(line.text)]
-    return errors[-1].text if errors else None
-
-
 def unit_state(unit):
     wanted = "Description,Result,ActiveState,SubState,ExecMainStatus,NRestarts,StateChangeTimestamp,InvocationID"
     pairs = run("systemctl", "show", f"--property={wanted}", unit).splitlines()
@@ -274,9 +244,8 @@ def unit_state(unit):
 
 def describe(mail, unit, state, lines):
     active, sub = state.get("ActiveState", "?"), state.get("SubState", "?")
-    result = state.get("Result", "?")
     rows = [("State", active if active == sub else f"{active} ({sub})")]
-    rows.append(("Why", RESULTS.get(result, result)))
+    rows.append(("Result", state.get("Result", "?")))
     if state.get("ExecMainStatus", "0") != "0":
         rows.append(("Exit status", state["ExecMainStatus"]))
     if state.get("NRestarts", "0") != "0":
@@ -284,12 +253,11 @@ def describe(mail, unit, state, lines):
     if state.get("StateChangeTimestamp"):
         rows.append(("Since", state["StateChangeTimestamp"]))
     mail.facts(rows)
-    mail.section(f"Log of the failed run of {unit}")
+    mail.section(f"Log of {unit}")
     if lines:
         mail.log(lines)
     else:
         mail.line("Nothing in the journal.")
-    mail.line(f"Everything: journalctl --unit={unit} --boot, on {host}")
 
 
 def alert(recipient, unit):
@@ -304,9 +272,6 @@ def alert(recipient, unit):
     logs = {name: read_log(name, states[name]) for name in states}
 
     mail = Mail()
-    found = next(filter(None, (reason(logs[name]) for name in [*causes, unit])), None)
-    if found:
-        mail.callout("What went wrong", found)
     describe(mail, unit, states[unit], logs[unit])
     for name in causes:
         mail.section(f"It needs {name}, which failed too")
