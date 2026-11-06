@@ -42,6 +42,14 @@ in
               type = types.str;
               description = "Recipient for notices: worth reading, but nothing is wrong.";
             };
+            page = mkOption {
+              type = types.str;
+              description = "The HTML around a mail's content, for the sender to fill in: @label@, @color@, @tint@, @title@, @subtitle@, @footer@ and @body@.";
+            };
+            levels = mkOption {
+              type = types.attrsOf (types.attrsOf types.str);
+              description = "The label's colours per level (ok, warn, fail): a color and a tint.";
+            };
           };
         }
       );

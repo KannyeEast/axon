@@ -16,6 +16,12 @@
       };
       days = 86400;
 
+      # the same page as the other mails; whether the alert is over is only known when it's sent
+      status =
+        firing: resolved: ''{{ if eq .Status "resolved" }}${resolved}{{ else }}${firing}{{ end }}'';
+      level = field: status mail.levels.fail.${field} mail.levels.ok.${field};
+      alertTimes = ''since {{ .StartsAt.Local.Format "Mon 02.01. 15:04" }}{{ if eq .Status "resolved" }}, resolved {{ .EndsAt.Local.Format "Mon 02.01. 15:04" }}{{ end }}'';
+
       receiver =
         if mail == null then
           { name = "none"; }
@@ -27,11 +33,34 @@
                 to = mail.alert;
                 send_resolved = true;
                 headers.Subject = ''[{{ .CommonLabels.host }}] {{ .CommonAnnotations.summary }}{{ if eq .Status "resolved" }} (resolved){{ end }}'';
-                # plain text, like the other mails
-                html = "";
+                html =
+                  lib.replaceStrings
+                    [
+                      "@label@"
+                      "@color@"
+                      "@tint@"
+                      "@title@"
+                      "@subtitle@"
+                      "@footer@"
+                      "@body@"
+                    ]
+                    [
+                      (status "Firing" "Resolved")
+                      (level "color")
+                      (level "tint")
+                      "<b>{{ .CommonLabels.alertname }}</b>"
+                      "on {{ .CommonLabels.host }}"
+                      "Sent by ${host.name}"
+                      ''
+                        {{ range .Alerts }}
+                        <p style="margin:0 0 2px;font-weight:600;">{{ .Annotations.summary }}</p>
+                        <p style="margin:0 0 14px;color:#6b7280;font-size:14px;">${alertTimes}</p>
+                        {{ end }}''
+                    ]
+                    mail.page;
                 text = ''
                   {{ range .Alerts }}{{ .Labels.alertname }} on {{ .Labels.host }}: {{ .Annotations.summary }}
-                  since {{ .StartsAt.Local.Format "Mon 02.01. 15:04" }}{{ if eq .Status "resolved" }}, resolved {{ .EndsAt.Local.Format "Mon 02.01. 15:04" }}{{ end }}
+                  ${alertTimes}
 
                   {{ end }}'';
               }
