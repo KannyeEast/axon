@@ -1,6 +1,7 @@
 # Paperless-ngx at docs.<domain> on servers: scanned and filed documents, OCR in German and
-# English. Tailnet only; its own login. Documents on the data volume, or in the state folder on
-# a host without one, sorted by correspondent and year; database in the shared Postgres.
+# English. Tailnet only; its own login. Without a gateway on this host it stays on localhost.
+# Documents on the data volume, or in the state folder on a host without one, sorted by
+# correspondent and year; database in the shared Postgres.
 # The first account is created by hand after install:
 #   sudo paperless-manage createsuperuser
 # A nightly export (originals, OCR'd copies, tags and metadata) is what gets backed up.
@@ -9,6 +10,7 @@
   flake.modules.nixos.files =
     { config, ... }:
     let
+      inherit (config.axon) routed services;
       data = "${config.axon.volumes.data or "/var/lib"}/paperless";
       port = 28981;
     in
@@ -16,7 +18,7 @@
       services.paperless = {
         enable = true;
         inherit port;
-        domain = config.axon.services.docs.route.host;
+        domain = if routed then services.docs.route.host else null;
         mediaDir = "${data}/media";
         consumptionDir = "${data}/consume";
         database.createLocally = true;

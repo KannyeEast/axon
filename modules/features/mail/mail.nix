@@ -58,13 +58,18 @@
       # the rendered config with the secrets in it replaces the one Nix would write
       environment.etc."msmtprc" = lib.mkForce { source = config.sops.templates.msmtprc.path; };
 
-      # every failing service mails srv-alert@, except the mailer itself
+      # every failing service mails srv-alert@, except the mailer itself and one-off commands run
+      # through systemd-run, like nextcloud-occ: those fail in front of whoever ran them
       systemd.packages = [
         (pkgs.writeTextDir "lib/systemd/system/service.d/90-axon-alert.conf" ''
           [Unit]
           OnFailure=alert@%n.service
         '')
         (pkgs.writeTextDir "lib/systemd/system/alert@.service.d/99-axon-no-loop.conf" ''
+          [Unit]
+          OnFailure=
+        '')
+        (pkgs.writeTextDir "lib/systemd/system/run-.service.d/99-axon-no-alert.conf" ''
           [Unit]
           OnFailure=
         '')

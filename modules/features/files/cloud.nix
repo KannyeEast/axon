@@ -1,7 +1,8 @@
-# Nextcloud at cloud.<domain> on servers; the sync client on desktops. Files on the data volume,
-# or in the state folder on a host without one; database and app state on the system SSD.
+# Nextcloud at cloud.<domain> on servers. Files on the data volume, or in the state folder on a
+# host without one; app state on the system SSD, database in the shared Postgres.
 # It's public (through the gateway's tunnel) so share links work for people without Tailscale;
-# its own login guards it. The first account is created by hand after install:
+# its own login guards it. Without a gateway on this host it stays on localhost.
+# The first account is created by hand after install:
 #   nextcloud-occ user:add <you> && nextcloud-occ group:adduser admin <you>
 # then turn on two-factor in the web UI.
 # Major versions upgrade one at a time: bump the package by one, switch, repeat.
@@ -10,23 +11,20 @@
   flake.modules.nixos.files =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) mail;
-      hostName = config.axon.services.cloud.route.host;
+      inherit (config.axon) mail routed services;
+      inherit (services.cloud) route;
+      hostName = if routed then route.host else route.address;
+      url = if routed then route.url else "http://${route.endpoint}";
       data = "${config.axon.volumes.data or "/var/lib"}/nextcloud";
       port = 8090;
     in
     lib.mkMerge [
-      # the desktop half: the client that syncs Nextcloud folders to this machine
-      (lib.mkIf (config.axon.host.class == "desktop") {
-        environment.systemPackages = [ pkgs.nextcloud-client ];
-      })
-
       (lib.mkIf (config.axon.host.class == "server") {
         services.nextcloud = {
           enable = true;
           package = pkgs.nextcloud35;
           inherit hostName;
-          https = true;
+          https = routed;
           datadir = data;
           database.createLocally = true;
           configureRedis = true;
@@ -38,12 +36,19 @@
               "127.0.0.1"
               "::1"
             ];
-            overwriteprotocol = "https";
+            overwriteprotocol = lib.mkIf routed "https";
+            # what background jobs put in links; they have no request to read the address from
+            "overwrite.cli.url" = url;
             default_phone_region = "DE";
             serverid = 1; # unique per PHP server; there is one, but Nextcloud warns without it
             maintenance_window_start = 1; # 01:00 UTC
           };
-          phpOptions."opcache.interned_strings_buffer" = "16";
+          phpOptions = {
+            "opcache.interned_strings_buffer" = "16";
+            # the module ties this to maxUploadSize, but uploads stream and one process needn't be
+            # able to take all the memory
+            memory_limit = lib.mkForce "1G";
+          };
         };
 
         # nextcloud's nginx only on localhost; caddy owns 80/443
@@ -67,12 +72,6 @@
               unitConfig.RequiresMountsFor = [ data ];
             });
 
-        # a nightly database dump, so a file-level backup of the dump is consistent
-        services.postgresqlBackup = {
-          enable = true;
-          databases = [ "nextcloud" ];
-        };
-
         axon.persist.directories = [
           {
             directory = "/var/lib/nextcloud";
@@ -80,27 +79,19 @@
             group = "nextcloud";
             mode = "0750";
           }
-          {
-            directory = "/var/lib/postgresql";
-            user = "postgres";
-            group = "postgres";
-            mode = "0750";
-          }
           "/var/lib/redis-nextcloud"
-          "/var/backup/postgresql"
         ];
 
         axon.services.cloud = {
           route = {
             inherit port;
-            subdomain = "cloud";
             access = "open"; # Nextcloud's own login
             public = true;
           };
           dashboard = {
             name = "Nextcloud";
             group = "Files";
-            description = "Files, calendar, contacts";
+            description = "Files";
             icon = "nextcloud.svg";
             # / redirects to https on this plain http port
             monitor = "/status.php";
@@ -115,11 +106,14 @@
             };
             secrets.key = "dashboard/cloud/key";
           };
-          backup.paths = [
-            data
-            "/var/lib/nextcloud"
-            "/var/backup/postgresql"
-          ];
+          backup = {
+            paths = [
+              data
+              "/var/lib/nextcloud"
+            ];
+            # rebuilt from the files
+            exclude = [ "${data}/data/appdata_*/preview" ];
+          };
         };
       })
 
