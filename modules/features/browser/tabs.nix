@@ -97,14 +97,8 @@ in
         # ── entertainment ────────
         "F1 Stream" = {
           id = "7f3c9a21-6d84-4e59-b1a7-2c8e5f0d3b46";
-          url = "https://f1tv.formula1.com/";
+          url = "https://f1live.dpdns.org/1";
           position = 201;
-          workspace = spaces."Entertainment".id;
-        };
-        "F1 Timing" = {
-          id = "d5a81e6c-3b09-4f72-8e14-9a7c6b2d5f80";
-          url = "https://www.formula1.com/en/timing/f1-live";
-          position = 202;
           workspace = spaces."Entertainment".id;
         };
 
@@ -125,22 +119,6 @@ in
           workspace = spaces."Development".id;
           position = 102;
           github.authorMe = true;
-        };
-      };
-
-      # ── joined tabs ────────
-      joinedTabs = {
-        "Rawe Ceek" = {
-          id = "race-split";
-          gridType = "hsep";
-          tabs = [
-            pins."F1 Stream".id
-            pins."F1 Timing".id
-          ];
-          sizes = [
-            66
-            34
-          ];
         };
       };
 
@@ -170,7 +148,7 @@ in
           routes = {
             "video" = regexMatch "youtube|youtu\\.be|twitch|vimeo|odysee";
             "music" = regexMatch "spotify|bandcamp|soundcloud|last\\.fm";
-            "streaming" = regexMatch "netflix|f1tv|formula1|streamed|dpdns";
+            "streaming" = regexMatch "netflix|formula1|streamed|dpdns";
           };
         };
 
@@ -190,12 +168,7 @@ in
       programs.zen-browser.profiles.default = {
         pinsForce = true;
         spacesForce = true;
-        inherit
-          pins
-          spaces
-          liveFolders
-          joinedTabs
-          ;
+        inherit pins spaces liveFolders;
 
         spaceRouting.defaultExternalRoute = "most-recent-space";
       };

@@ -23,11 +23,6 @@
           name = "Streaming";
           bookmarks = [
             {
-              name = "F1TV";
-              url = "https://f1tv.formula1.com/";
-              tags = [ "streaming" ];
-            }
-            {
               name = "F1";
               url = "https://f1live.dpdns.org/1";
               tags = [ "streaming" ];
