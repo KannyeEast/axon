@@ -50,6 +50,9 @@ in
       };
       property = id: value: { inherit id value; };
 
+      # tunnels and bridges carry the same traffic a second time
+      physical = ''device=~"en.*|eth.*|wl.*"'';
+
       # in tile order, two per row
       panels = [
         (timeseries "CPU" percent [
@@ -59,8 +62,8 @@ in
           (query "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)" "{{host}}")
         ])
         (timeseries "Network" { unit = "Bps"; } [
-          (query ''sum by (host) (rate(node_network_receive_bytes_total{device!~"lo|veth.*|br.*|vb-.*|tailscale.*"}[5m]))'' "{{host}} in")
-          (query ''sum by (host) (rate(node_network_transmit_bytes_total{device!~"lo|veth.*|br.*|vb-.*|tailscale.*"}[5m]))'' "{{host}} out")
+          (query "sum by (host) (rate(node_network_receive_bytes_total{${physical}}[5m]))" "{{host}} in")
+          (query "sum by (host) (rate(node_network_transmit_bytes_total{${physical}}[5m]))" "{{host}} out")
         ])
         (timeseries "Temperature" { unit = "celsius"; } [
           (query "max by (host) (node_hwmon_temp_celsius)" "{{host}}")

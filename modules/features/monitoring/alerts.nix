@@ -76,6 +76,9 @@
                 name = "axon";
                 rules = [
                   (rule "HostDown" ''up{job="node",class="server"} == 0'' "5m" "unreachable for 5 minutes")
+                  (rule "ExporterDown" ''up{job!="node",class="server"} == 0'' "5m"
+                    "the {{ $labels.job }} exporter doesn't answer"
+                  )
                   (rule "DiskFull"
                     ''1 - node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes > 0.85''
                     "15m"
@@ -92,6 +95,9 @@
                   )
                   (rule "DiskUnhealthy" "smartctl_device_smart_status != 1" "0m"
                     "SMART reports {{ $labels.device }} as failing"
+                  )
+                  (rule "BtrfsErrors" "increase(node_btrfs_device_errors_total[1h]) > 0" "0m"
+                    "{{ $labels.device }} has new {{ $labels.type }} errors"
                   )
                   (rule "ServiceDown" ''probe_success{job="service"} == 0'' "2m"
                     "{{ $labels.service }} doesn't answer"
@@ -138,6 +144,17 @@
               repeat_interval = "12h";
             };
             receivers = [ receiver ];
+            # a service that's down takes its route with it, and one mail says so
+            inhibit_rules = [
+              {
+                source_matchers = [ ''alertname="ServiceDown"'' ];
+                target_matchers = [ ''alertname="RouteDown"'' ];
+                equal = [
+                  "host"
+                  "service"
+                ];
+              }
+            ];
           };
         };
       };
