@@ -11,3 +11,13 @@ vault = ["tower", "node1", "phone"]
 # members that take part in relations but are not built from this repository
 [external.phone]
 sync = "FEHJ4VH-KTUCWO7-FLWTHY4-KNLHYMZ-ABVK3EP-RRD54NG-6PSKTPB-SWIWSQW"
+
+# where this repository lives: `just remotes` sets these up, and origin pushes to all of them
+[repo]
+origin = "forgejo"
+
+[repo.remotes]
+forgejo = "forgejo@git.vexelvault.com:ye/axon.git"
+codeberg = "git@codeberg.org:KanyeSouth/axon.git"
+github = "git@github.com:KannyeEast/axon.git"
+gitlab = "git@gitlab.com:KanyeNorth/axon.git"
