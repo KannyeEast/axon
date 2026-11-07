@@ -31,6 +31,14 @@ mounts = { scratch = "/server/scratch" }
 devices = ["/dev/disk/by-id/ata-Samsung_SSD_860_EVO_500GB_S4CNNF0M701774A"]
 mounts = { vault = "/server/vault" }
 
+# most each may hold on bulk
+[limits]
+media = "5T"
+immich = "1T"
+nextcloud = "1T"
+paperless = "100G"
+forgejo = "100G"
+
 [sync]
 id = "7B5WETD-2BBTFMG-OKJBRDP-A5NJ3UC-3A7HECI-IEB6UP4-KZLTLWF-7RVIPQD"
 

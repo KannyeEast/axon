@@ -10,7 +10,7 @@
   flake.modules.nixos.files =
     { config, ... }:
     let
-      data = "${config.axon.volumes.data or "/var/lib"}/immich";
+      data = config.axon.spaces.immich.path;
       port = 2283;
     in
     lib.mkIf (config.axon.host.class == "server") {
@@ -22,10 +22,11 @@
         mediaLocation = data;
       };
 
-      systemd.tmpfiles.rules = [ "d ${data} 0750 immich immich -" ];
-
-      # the files live on a data disk that may be missing at boot (nofail): never write to root instead
-      systemd.services.immich-server.unitConfig.RequiresMountsFor = [ data ];
+      axon.spaces.immich = {
+        user = "immich";
+        group = "immich";
+        units = [ "immich-server" ];
+      };
 
       axon.persist.directories = [
         {

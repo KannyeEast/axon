@@ -10,7 +10,7 @@
   flake.modules.nixos.forge =
     { config, ... }:
     let
-      inherit (config.axon) routed services volumes;
+      inherit (config.axon) routed services spaces;
       cfg = config.services.forgejo;
       route = services.git.route;
       port = 3030;
@@ -18,7 +18,7 @@
     {
       services.forgejo = {
         enable = true;
-        stateDir = "${volumes.data or "/var/lib"}/forgejo";
+        stateDir = spaces.forgejo.path;
         database.type = "sqlite3";
         dump.enable = true;
         settings = {
@@ -36,11 +36,15 @@
       # the admin command line
       environment.systemPackages = [ cfg.package ];
 
-      # the data disk may be missing at boot (nofail): never write to root instead
-      systemd.services.forgejo.unitConfig.RequiresMountsFor = [ cfg.stateDir ];
-      systemd.services.forgejo-dump.unitConfig.RequiresMountsFor = [ cfg.stateDir ];
+      axon.spaces.forgejo = {
+        inherit (cfg) user group;
+        units = [
+          "forgejo"
+          "forgejo-dump"
+        ];
+      };
 
-      axon.persist.directories = lib.optional (!(volumes ? data)) {
+      axon.persist.directories = lib.optional (!spaces.forgejo.onVolume) {
         directory = cfg.stateDir;
         user = cfg.user;
         group = cfg.group;

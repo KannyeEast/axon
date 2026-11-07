@@ -51,8 +51,8 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
 - **Dotfiles are runtime, user-space files.** Nix never reads `home/`. Nix installs programs and
   loads what needs a store path; settings live in dotfiles.
 - **Contracts are declared in core**: `axon.services` (routes, backup paths), `axon.persist`,
-  `axon.volumes`, `axon.mail`, `axon.vpn`, `axon.overlay`, `axon.browser`. Add one for two or
-  more consumers or a realistic swap. Producers set them unconditionally; consumers handle an empty set or null.
+  `axon.volumes`, `axon.spaces` (a service's own subvolume, capped by `[limits]`), `axon.mail`,
+  `axon.vpn`, `axon.overlay`, `axon.browser`. Add one for two or more consumers or a realistic swap. Producers set them unconditionally; consumers handle an empty set or null.
 - **One way per thing.** Modules that produce the same result do it the same way. A shared helper
   only when many modules use it.
 - **State lives next to the module that creates it**: add its path to `axon.persist.directories`
