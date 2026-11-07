@@ -23,6 +23,7 @@
       # niri's startup.kdl decides what runs
       environment.systemPackages = [
         pkgs.alacritty
+        pkgs.xdg-terminal-exec # apps marked Terminal=true (nvim, …) open in alacritty from the file manager
         pkgs.fuzzel
         pkgs.waybar
         pkgs.swaybg
