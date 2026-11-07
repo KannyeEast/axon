@@ -199,7 +199,14 @@ in
               overrides = [
                 (column "host" [ (property "displayName" "Host") ])
                 (column "CPU" (gauge 70 90))
-                (column "GPU" (gauge 70 90))
+                # text, not a gauge: a gauge draws its empty bar on hosts without a GPU too
+                (column "GPU" [
+                  (property "unit" "percent")
+                  (property "decimals" 2)
+                  (property "noValue" "–")
+                  (property "custom.cellOptions" { type = "color-text"; })
+                  (thresholds 70 90)
+                ])
                 (column "Memory" (gauge 80 90))
                 (column "Temperature" [
                   (property "unit" "celsius")
@@ -218,7 +225,8 @@ in
               { Size = byDisk "node_filesystem_size_bytes"; }
               { Used = "${byDisk "node_filesystem_size_bytes"} - ${byDisk "node_filesystem_avail_bytes"}"; }
               {
-                Use = percentOf "1 - ${byDisk "node_filesystem_avail_bytes"} / ${byDisk "node_filesystem_size_bytes"}";
+                "Used %" =
+                  percentOf "1 - ${byDisk "node_filesystem_avail_bytes"} / ${byDisk "node_filesystem_size_bytes"}";
               }
             ]
           // {
@@ -229,7 +237,7 @@ in
                 (column "disk" [ (property "displayName" "Disk") ])
                 (column "Size" [ (property "unit" "decbytes") ])
                 (column "Used" [ (property "unit" "decbytes") ])
-                (column "Use" (gauge 70 85))
+                (column "Used %" (gauge 70 85 ++ [ (property "custom.align" "right") ]))
               ];
             };
           }
