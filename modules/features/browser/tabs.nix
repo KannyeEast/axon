@@ -16,7 +16,8 @@ in
     let
       inherit (osConfig.axon) cluster;
       inherit (cluster) domain;
-      hasGateway = any (data: elem "gateway" data.host.features) (attrValues cluster.hosts);
+      hasFeature = feature: any (data: elem feature data.host.features) (attrValues cluster.hosts);
+      hasGateway = hasFeature "gateway";
 
       # one black for every space; spacesForce reapplies it on every switch, so change it here
       tint = {
@@ -72,9 +73,16 @@ in
           workspace = spaces."Development".id;
         };
       }
-      // {
-
+      // optionalAttrs (hasGateway && hasFeature "forge") {
         # Forges
+        "Forgejo" = {
+          id = "e4b71c09-8a3d-4f62-9c15-7d20b6e9f3a8";
+          url = "https://git.${domain}";
+          position = 150;
+          workspace = spaces."Development".id;
+        };
+      }
+      // {
         "Codeberg" = {
           id = "c81d4a6f-2e39-4b57-a0d8-1f6e93b7c052";
           url = "https://codeberg.org/";

@@ -3,22 +3,39 @@
 # is signed in, and the host.toml user is Grafana's admin, with monitoring/password for the API.
 # Without a gateway on this host it stays on localhost, with only its own login.
 # Its secret key is made on first start and kept in its persisted state folder.
-# The "Start page" dashboard is written here; its panels are the System graphs on the gateway's
-# start page, each embedded on its own.
+# The "Start page" dashboard is written here: two tables on top, each embedded on the gateway's
+# start page (every host's CPU, memory and temperature; every disk's use), graphs over the last
+# day below them.
 { lib, ... }:
 let
   inherit (lib)
-    genAttrs
+    attrNames
+    attrValues
+    concatMap
+    concatStringsSep
+    elem
+    elemAt
+    filterAttrs
+    head
+    imap0
     imap1
+    length
     listToAttrs
+    mapAttrsToList
     nameValuePair
+    take
     ;
 in
 {
   flake.modules.nixos.monitoring =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) routed services user;
+      inherit (config.axon)
+        cluster
+        routed
+        services
+        user
+        ;
       port = 3001;
       state = "/var/lib/grafana";
       address = if routed then services.grafana.route.host else "127.0.0.1";
@@ -49,12 +66,166 @@ in
         inherit properties;
       };
       property = id: value: { inherit id value; };
+      thresholds =
+        orange: red:
+        property "thresholds" {
+          mode = "absolute";
+          steps = [
+            {
+              color = "green";
+              value = null;
+            }
+            {
+              color = "orange";
+              value = orange;
+            }
+            {
+              color = "red";
+              value = red;
+            }
+          ];
+        };
+      gauge = orange: red: [
+        (property "unit" "percent")
+        (property "min" 0)
+        (property "max" 100)
+        (property "custom.cellOptions" {
+          type = "gauge";
+          mode = "basic";
+        })
+        (thresholds orange red)
+      ];
+
+      # instant values side by side, one row per label set: columns are { name = expr; } in order,
+      # and every query aggregates down to the labels in keys
+      table =
+        title: keys: columns:
+        let
+          names = map (column: head (attrNames column)) columns;
+          refs = take (length columns) [
+            "A"
+            "B"
+            "C"
+            "D"
+          ];
+        in
+        {
+          type = "table";
+          inherit title;
+          targets = imap0 (i: column: {
+            expr = head (attrValues column);
+            refId = elemAt refs i;
+            format = "table";
+            instant = true;
+          }) columns;
+          transformations = [
+            {
+              id = "merge";
+              options = { };
+            }
+            {
+              id = "organize";
+              options = {
+                excludeByName.Time = true;
+                indexByName = listToAttrs (
+                  imap0 (i: key: nameValuePair key i) (keys ++ map (ref: "Value #${ref}") refs)
+                );
+                renameByName = listToAttrs (imap0 (i: ref: nameValuePair "Value #${ref}" (elemAt names i)) refs);
+              };
+            }
+          ];
+          options.cellHeight = "sm";
+        };
 
       # tunnels and bridges carry the same traffic a second time
       physical = ''device=~"en.*|eth.*|wl.*"'';
 
-      # in tile order, two per row
-      panels = [
+      # every disk of every scraped host, by its host.toml label: the boot disk as "system" through
+      # /, any other through its first mount
+      scraped = filterAttrs (_: data: elem "metrics" data.host.features) cluster.hosts;
+      disks = concatMap (
+        name:
+        let
+          data = scraped.${name};
+          mounted = filterAttrs (label: disk: label != "boot" && (disk.mounts or { }) != { }) data.disk;
+        in
+        [
+          {
+            host = name;
+            label = "system";
+            mountpoint = "/";
+          }
+        ]
+        ++ mapAttrsToList (label: disk: {
+          host = name;
+          inherit label;
+          mountpoint = head (attrValues disk.mounts);
+        }) mounted
+      ) (attrNames scraped);
+      byDisk =
+        metric:
+        "max by (host, disk) (${
+          concatStringsSep " or " (
+            map (
+              disk:
+              ''label_replace(${metric}{host="${disk.host}",mountpoint="${disk.mountpoint}"}, "disk", "${disk.label}", "", "")''
+            ) disks
+          )
+        })";
+
+      # the start page's tables, then the graphs
+      overview = [
+        (
+          table "System"
+            [ "host" ]
+            [
+              { CPU = ''100 * (1 - avg by (host) (rate(node_cpu_seconds_total{mode="idle"}[5m])))''; }
+              {
+                Memory = "100 * (1 - sum by (host) (node_memory_MemAvailable_bytes) / sum by (host) (node_memory_MemTotal_bytes))";
+              }
+              { Temperature = "max by (host) (node_hwmon_temp_celsius)"; }
+            ]
+          // {
+            fieldConfig = {
+              defaults = { };
+              overrides = [
+                (column "host" [ (property "displayName" "Host") ])
+                (column "CPU" (gauge 70 90))
+                (column "Memory" (gauge 80 90))
+                (column "Temperature" [
+                  (property "unit" "celsius")
+                  (property "custom.cellOptions" { type = "color-text"; })
+                  (thresholds 70 85)
+                ])
+              ];
+            };
+          }
+        )
+        (
+          table "Disks"
+            [ "host" "disk" ]
+            [
+              { Size = byDisk "node_filesystem_size_bytes"; }
+              { Used = "${byDisk "node_filesystem_size_bytes"} - ${byDisk "node_filesystem_avail_bytes"}"; }
+              {
+                Use = "100 * (1 - ${byDisk "node_filesystem_avail_bytes"} / ${byDisk "node_filesystem_size_bytes"})";
+              }
+            ]
+          // {
+            fieldConfig = {
+              defaults = { };
+              overrides = [
+                (column "host" [ (property "displayName" "Host") ])
+                (column "disk" [ (property "displayName" "Disk") ])
+                (column "Size" [ (property "unit" "decbytes") ])
+                (column "Used" [ (property "unit" "decbytes") ])
+                (column "Use" (gauge 70 85))
+              ];
+            };
+          }
+        )
+      ];
+      graphs = [
         (timeseries "CPU" percent [
           (query ''100 * (1 - avg by (host) (rate(node_cpu_seconds_total{mode="idle"}[5m])))'' "{{host}}")
         ])
@@ -68,108 +239,13 @@ in
         (timeseries "Temperature" { unit = "celsius"; } [
           (query "max by (host) (node_hwmon_temp_celsius)" "{{host}}")
         ])
-        {
-          type = "table";
-          title = "Disks";
-          targets =
-            imap1
-              (i: expr: {
-                inherit expr;
-                refId = lib.elemAt [ "A" "B" "C" ] (i - 1);
-                format = "table";
-                instant = true;
-              })
-              [
-                ''node_filesystem_size_bytes{fstype!="tmpfs"}''
-                ''node_filesystem_size_bytes{fstype!="tmpfs"} - node_filesystem_avail_bytes{fstype!="tmpfs"}''
-                ''100 * (1 - node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})''
-              ];
-          # one row per filesystem with its three values side by side
-          transformations = [
-            {
-              id = "merge";
-              options = { };
-            }
-            {
-              id = "organize";
-              options = {
-                excludeByName = genAttrs [
-                  "Time"
-                  "class"
-                  "device"
-                  "fstype"
-                  "instance"
-                  "job"
-                ] (_: true);
-                indexByName = {
-                  host = 0;
-                  mountpoint = 1;
-                  "Value #A" = 2;
-                  "Value #B" = 3;
-                  "Value #C" = 4;
-                };
-                renameByName = {
-                  host = "Host";
-                  mountpoint = "Filesystem";
-                  "Value #A" = "Size";
-                  "Value #B" = "Used";
-                  "Value #C" = "Use";
-                };
-              };
-            }
-          ];
-          fieldConfig = {
-            defaults = { };
-            overrides = [
-              (column "Size" [ (property "unit" "decbytes") ])
-              (column "Used" [ (property "unit" "decbytes") ])
-              (column "Use" [
-                (property "unit" "percent")
-                (property "min" 0)
-                (property "max" 100)
-                (property "custom.cellOptions" {
-                  type = "gauge";
-                  mode = "basic";
-                })
-                (property "thresholds" {
-                  mode = "absolute";
-                  steps = [
-                    {
-                      color = "green";
-                      value = null;
-                    }
-                    {
-                      color = "orange";
-                      value = 70;
-                    }
-                    {
-                      color = "red";
-                      value = 85;
-                    }
-                  ];
-                })
-              ])
-            ];
-          };
-          options = {
-            cellHeight = "sm";
-            sortBy = [
-              {
-                displayName = "Filesystem";
-                desc = false;
-              }
-              {
-                displayName = "Host";
-                desc = false;
-              }
-            ];
-          };
-        }
         (timeseries "Disk I/O" { unit = "Bps"; } [
           (query ''sum by (host) (rate(node_disk_read_bytes_total{device!~"loop.*|zram.*|dm-.*"}[5m]))'' "{{host}} read")
           (query ''sum by (host) (rate(node_disk_written_bytes_total{device!~"loop.*|zram.*|dm-.*"}[5m]))'' "{{host}} write")
         ])
       ];
+      # two per row, in this order
+      panels = overview ++ graphs;
 
       start = lib.toJSON {
         uid = "start";
@@ -296,21 +372,22 @@ in
           name = "Grafana";
           group = "System";
           icon = "grafana.svg";
+          # the overview tables come first in the dashboard, so their panel ids are 1 and 2
           instances = listToAttrs (
             imap1 (
               id: panel:
               nameValuePair panel.title {
-                description = "last 24 hours";
+                description = "right now";
                 link = "${url}/d/start";
                 widget = {
                   type = "iframe";
                   name = "grafana-${toString id}";
-                  src = "${url}/d-solo/start/start?panelId=${toString id}&theme=dark&from=now-24h&to=now&refresh=1m";
+                  src = "${url}/d-solo/start/start?panelId=${toString id}&theme=dark&refresh=1m";
                   classes = "h-60 sm:h-60 md:h-60 lg:h-60 xl:h-60 2xl:h-72";
                   allowScrolling = "no";
                 };
               }
-            ) panels
+            ) overview
           );
         };
         backup.paths = [ state ];

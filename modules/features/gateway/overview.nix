@@ -120,6 +120,7 @@ in
           "Files"
           "Network"
         ]
+        [ "Code" ]
         [ "System" ]
       ];
       columns = 4;
@@ -160,6 +161,16 @@ in
         listenPort = port;
         allowedHosts = routes.home.route.host;
         environmentFiles = [ config.sops.templates."homepage.env".path ];
+
+        # the reload button, which Homepage puts in the footer, stays in the top right corner
+        customCSS = ''
+          #revalidate {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 20;
+          }
+        '';
 
         settings = {
           title = domain;
