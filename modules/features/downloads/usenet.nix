@@ -25,8 +25,11 @@
           misc = {
             host = "127.0.0.1";
             inherit port;
-            # the gateway login guards the UI; SABnzbd itself only checks the name it's reached by
+            # the gateway login guards the UI; SABnzbd itself only checks the name it's reached by.
+            # It listens on loopback only, so the forwarded address (a tailnet one, which it
+            # doesn't count as local) has nothing to add
             host_whitelist = lib.optionalString routed services.usenet.route.host;
+            verify_xff_header = false;
             download_dir = incomplete;
             complete_dir = finished;
             # Radarr and Sonarr, in the media group, move and delete what lands here
