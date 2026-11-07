@@ -49,7 +49,7 @@ in
           icon = "router.svg";
         };
       };
-      description = "More links on the start page, name to url and icon: what runs outside the cluster and no feature knows about.";
+      description = "More links on the start page, name to url, icon and optionally group (Infrastructure by default): what runs outside the cluster and no feature knows about.";
     };
   };
 
@@ -69,6 +69,7 @@ in
 
       tiles = filterAttrs (_: service: service.dashboard != null) routes;
       groups = unique (sort (a: b: a < b) (mapAttrsToList (_: service: service.dashboard.group) tiles));
+      linkGroups = unique (sort (a: b: a < b) (mapAttrsToList (_: link: link.group) links));
 
       internal = route: "http://${route.endpoint}";
       # "dashboard/radarr/key" -> HOMEPAGE_VAR_DASHBOARD_RADARR_KEY
@@ -217,8 +218,9 @@ in
             { ${rowName row} = map (group: { ${group} = inGroup group; }) row; }
         ) rows;
 
-        bookmarks = optional (links != { }) {
-          Admin = mapAttrsToList (name: link: {
+        # one list per link group, the groups and the links in each alphabetical
+        bookmarks = map (group: {
+          ${group} = mapAttrsToList (name: link: {
             ${name} = [
               {
                 inherit (link) icon;
@@ -226,8 +228,8 @@ in
                 description = "${head (match "[a-z]+://([^/]+).*" link.url)} ↗";
               }
             ];
-          }) links;
-        };
+          }) (filterAttrs (_: link: link.group == group) links);
+        }) linkGroups;
       };
 
       axon.links = gateway.links;

@@ -77,6 +77,7 @@ in
           nameValuePair (capitalise name) {
             url = remote.web;
             icon = "${name}.svg";
+            group = "Mirrors";
           }
         ) (filterAttrs (_: remote: !remote.origin && remote.web != null && !own remote) remotes);
       };
