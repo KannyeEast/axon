@@ -13,7 +13,7 @@
       public = lib.filterAttrs (_: service: service.route.public) routes;
     in
     {
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = "/var/lib/private/AdGuardHome";
           mode = "0700";

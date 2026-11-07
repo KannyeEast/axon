@@ -132,7 +132,7 @@ in
         };
       };
 
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = state;
           user = "authelia-main";

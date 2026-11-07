@@ -105,7 +105,7 @@ in
 
       axon.overlay.tcpPorts = [ peerPort ];
 
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = "/var/lib/syncthing";
           user = user.name;

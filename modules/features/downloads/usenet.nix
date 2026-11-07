@@ -56,7 +56,7 @@
         lib.optional (volumes ? media) "d ${finished} 2775 root media -"
         ++ lib.optional (volumes ? scratch) "d ${incomplete} 2775 root media -";
 
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = state;
           user = "sabnzbd";

@@ -70,7 +70,7 @@
           ];
         };
 
-        axon.persist.directories = [
+        axon.persist.state.directories = [
           {
             directory = "/var/lib/nextcloud";
             user = "nextcloud";

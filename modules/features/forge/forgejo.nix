@@ -44,7 +44,7 @@
         ];
       };
 
-      axon.persist.directories = lib.optional (!spaces.forgejo.onVolume) {
+      axon.persist.state.directories = lib.optional (!spaces.forgejo.onVolume) {
         directory = cfg.stateDir;
         user = cfg.user;
         group = cfg.group;

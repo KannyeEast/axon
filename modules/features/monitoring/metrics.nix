@@ -133,7 +133,7 @@ in
         ];
       };
 
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = "/var/lib/prometheus2";
           user = "prometheus";

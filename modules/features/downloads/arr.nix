@@ -98,7 +98,7 @@
         mode = "0750";
       };
 
-      axon.persist.directories =
+      axon.persist.state.directories =
         map (app: {
           directory = "/var/lib/${app}";
           user = app;

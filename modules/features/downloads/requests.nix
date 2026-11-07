@@ -7,7 +7,7 @@
     lib.mkIf (config.axon.volumes ? media) {
       services.seerr.enable = true;
 
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = "/var/lib/private/seerr";
           mode = "0700";

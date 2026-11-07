@@ -371,7 +371,7 @@ in
 
       sops.secrets."monitoring/password".owner = "grafana";
 
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = state;
           user = "grafana";

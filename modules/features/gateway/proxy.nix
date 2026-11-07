@@ -97,7 +97,7 @@ in
         icon = "cloudflare.svg";
       };
 
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = "/var/lib/caddy";
           user = "caddy";

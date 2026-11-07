@@ -55,8 +55,10 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   `axon.vpn`, `axon.overlay`, `axon.browser`. Add one for two or more consumers or a realistic swap. Producers set them unconditionally; consumers handle an empty set or null.
 - **One way per thing.** Modules that produce the same result do it the same way. A shared helper
   only when many modules use it.
-- **State lives next to the module that creates it**: add its path to `axon.persist.directories`
-  in the same file. `DynamicUser` services keep state in `/var/lib/private/<name>`.
+- **State lives next to the module that creates it**, in the same file: a feature adds its path to
+  `axon.persist.state.directories` (on the host's state volume when it has one), core and classes
+  to `axon.persist.directories` (the boot disk). `DynamicUser` services keep state in
+  `/var/lib/private/<name>`.
 - **Name files for what they do** (`passwords.nix`, not `keepassxc.nix`).
 - **Formatting**: `nix fmt`. Never align `=` or values with extra spaces, in any file type.
 - **Errors** read `<file or option>: <what is wrong>`, and say what to do where possible.

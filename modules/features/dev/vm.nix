@@ -19,7 +19,7 @@
 
       users.users.${config.axon.user.name}.extraGroups = [ "libvirtd" ];
 
-      axon.persist.directories = [ "/var/lib/libvirt" ];
+      axon.persist.state.directories = [ "/var/lib/libvirt" ];
 
       networking.firewall.trustedInterfaces = [ "virbr0" ];
     };

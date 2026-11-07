@@ -5,6 +5,8 @@
 # The first account made in the web UI is the admin.
 # Uploads through the tunnel are capped at 100 MB per file; tailnet devices skip the tunnel (the
 # gateway's DNS sends them straight to it), so the cap only applies from outside.
+# Thumbnails and transcoded videos, what the timeline loads by the hundred, live in Immich's state
+# when the host has a state volume, mounted into the photo folder.
 { lib, ... }:
 {
   flake.modules.nixos.files =
@@ -12,6 +14,10 @@
     let
       data = config.axon.spaces.immich.path;
       port = 2283;
+      generated = lib.optionals (config.axon.volumes ? state && config.axon.spaces.immich.onVolume) [
+        "thumbs"
+        "encoded-video"
+      ];
     in
     lib.mkIf (config.axon.host.class == "server") {
       services.immich = {
@@ -28,7 +34,26 @@
         units = [ "immich-server" ];
       };
 
-      axon.persist.directories = [
+      fileSystems = lib.listToAttrs (
+        map (dir: {
+          name = "${data}/${dir}";
+          value = {
+            device = "/var/lib/immich/${dir}";
+            fsType = "none";
+            options = [
+              "bind"
+              "nofail"
+              "x-systemd.requires-mounts-for=/var/lib/immich"
+              "x-systemd.requires=storage-immich.service"
+              "x-systemd.after=storage-immich.service"
+            ];
+          };
+        }) generated
+      );
+      systemd.tmpfiles.rules = map (dir: "d /var/lib/immich/${dir} 0750 immich immich -") generated;
+      systemd.services.immich-server.unitConfig.RequiresMountsFor = map (dir: "${data}/${dir}") generated;
+
+      axon.persist.state.directories = [
         {
           directory = "/var/lib/immich";
           user = "immich";
