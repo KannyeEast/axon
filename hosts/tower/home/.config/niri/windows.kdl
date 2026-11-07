@@ -27,6 +27,7 @@ window-rule {
 // Small or short-lived windows: players, previews, utilities, an IDE's project picker
 window-rule {
     match app-id=r#"^mpv$"#
+    match app-id=r#"^com\.github\.iwalton3\.jellyfin-mpv-shim$"#
     match app-id=r#"^org\.gnome\.NautilusPreviewer$"#
     match app-id=r#"^org\.gnome\.Calculator$"#
     match app-id=r#"^org\.pulseaudio\.pavucontrol$"#

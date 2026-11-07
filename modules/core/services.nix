@@ -123,6 +123,11 @@ in
                       options = {
                         name = mkOption { type = types.str; };
                         group = mkOption { type = types.str; };
+                        order = mkOption {
+                          type = types.int;
+                          default = 100;
+                          description = "Position within its group, which fills rows left to right; equal positions go alphabetically.";
+                        };
                         description = mkOption {
                           type = types.str;
                           default = "";

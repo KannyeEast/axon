@@ -69,6 +69,7 @@
         route = { inherit port; };
         dashboard = {
           name = "SABnzbd";
+          order = 6;
           group = "Media";
           description = "Downloads from Usenet";
           icon = "sabnzbd.svg";

@@ -107,10 +107,16 @@ in
           [ (tile service service.dashboard.name { }) ]
         else
           mapAttrsToList (tile service) service.dashboard.instances;
+      before =
+        a: b:
+        if a.dashboard.order != b.dashboard.order then
+          a.dashboard.order < b.dashboard.order
+        else
+          a.dashboard.name < b.dashboard.name;
       inGroup =
         group:
-        sort (a: b: head (attrNames a) < head (attrNames b)) (
-          concatMap tilesOf (attrValues (filterAttrs (_: service: service.dashboard.group == group) tiles))
+        concatMap tilesOf (
+          sort before (attrValues (filterAttrs (_: service: service.dashboard.group == group) tiles))
         );
 
       # top to bottom on a grid of four; groups in one row share it, each with an equal part.
