@@ -50,10 +50,13 @@ in
         ];
       };
 
-      # it registers with Forgejo on start, so Forgejo has to be up first
+      # it registers with Forgejo on start, so Forgejo has to be up first. A deploy runs right after
+      # its push started a job here, so a switch leaves the runner alone instead of cancelling that
+      # job; a changed runner takes effect on the next reboot or `systemctl restart`
       systemd.services.forgejo-runner-native = {
         after = [ "forgejo.service" ];
         wants = [ "forgejo.service" ];
+        restartIfChanged = false;
       };
 
       axon.persist.state.directories = [
