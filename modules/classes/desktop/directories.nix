@@ -4,9 +4,8 @@
     xdg.userDirs = {
       enable = true;
       createDirectories = true;
-      # desktop, documents, download, pictures and videos keep their ~/<Name> default
+      # desktop, documents, download, pictures, projects and videos keep their ~/<Name> default
       music = null;
-      projects = null;
       publicShare = null;
       templates = null;
     };

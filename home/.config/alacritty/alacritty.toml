@@ -1,4 +1,4 @@
-    [general]
+[general]
 live_config_reload = true
 working_directory = "None"
 
@@ -22,11 +22,10 @@ columns = 160
 lines = 80
 
 [cursor.style]
-shape= "Block"
+shape = "Block"
 blinking = "Never"
 
 [colors]
-#transparent_background_colors = true
 draw_bold_text_with_bright_colors = true
 
 [env]

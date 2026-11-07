@@ -25,12 +25,16 @@ text/plain=org.gnome.TextEditor.desktop
 text/x-log=org.gnome.TextEditor.desktop
 text/markdown=org.gnome.TextEditor.desktop
 text/csv=org.gnome.TextEditor.desktop
-application/json=org.gnome.TextEditor.desktop
-application/toml=org.gnome.TextEditor.desktop
-application/x-yaml=org.gnome.TextEditor.desktop
 application/xml=org.gnome.TextEditor.desktop
-application/x-shellscript=org.gnome.TextEditor.desktop
-text/x-nix=org.gnome.TextEditor.desktop
+
+text/x-nix=nvim.desktop
+text/x-shellscript=nvim.desktop
+text/x-python=nvim.desktop
+text/x-python3=nvim.desktop
+text/x-lua=nvim.desktop
+application/toml=nvim.desktop
+application/json=nvim.desktop
+application/yaml=nvim.desktop
 
 video/mp4=mpv.desktop
 video/x-matroska=mpv.desktop
