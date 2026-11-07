@@ -6,7 +6,7 @@ layout {
         active-color "#1c1e27"
         inactive-color "#1c1e27"
     }
-    
+
     border {
         active-color "#8aa2ff"
         inactive-color "#3f4757"

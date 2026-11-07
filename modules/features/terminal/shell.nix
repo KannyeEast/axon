@@ -87,6 +87,7 @@
         pkgs.fd
         pkgs.fzf
         pkgs.jq
+        pkgs.lazygit
         pkgs.nil
         pkgs.ripgrep
         pkgs.starship

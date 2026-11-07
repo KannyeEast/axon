@@ -1,9 +1,16 @@
-// Kanshi defines the monitor output profiles
-// @TODO: Script to auto switch monitor inputs. Either when usb switcher button is pressed or when kanshi triggers profile switch
-spawn-at-startup "kanshi"
+// @TODO: Script to auto switch monitor inputs when the usb switcher button is pressed
+// Modes are the exact ones from `niri msg outputs`; positions are in logical pixels.
 
-// Extra settings unavailable in kanshi
+output "Acer Technologies QG271 M3 A4121352C3W01" {
+    mode "1920x1080@179.998"
+    position x=0 y=192
+    scale 1
+}
+
 output "GIGA-BYTE TECHNOLOGY CO., LTD. Gigabyte M32U 24081B002226" {
+    mode "3840x2160@143.988"
+    position x=1920 y=192
+    scale 1.5
     focus-at-startup
 
     layout {
@@ -12,12 +19,18 @@ output "GIGA-BYTE TECHNOLOGY CO., LTD. Gigabyte M32U 24081B002226" {
             proportion 0.5
             proportion 0.66667
         }
-        
+
         default-column-width { proportion 0.33333; }
     }
 }
 
+// over HDMI this panel stops at 144 Hz
 output "PNP(BNQ) ZOWIE XL LCD EBLAL01265SL0" {
+    mode "1920x1080@143.981"
+    position x=4480 y=0
+    transform "90"
+    scale 1
+
     layout {
         preset-window-heights {
             proportion 0.5

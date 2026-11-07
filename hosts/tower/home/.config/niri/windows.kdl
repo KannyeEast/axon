@@ -1,4 +1,3 @@
-// @TODO: Have a proper look at window/layer rules
 workspace "side" {
     open-on-output "PNP(BNQ) ZOWIE XL LCD EBLAL01265SL0"
 }
@@ -16,13 +15,23 @@ window-rule {
 // Keep credentials out of screenshots and screen shares
 window-rule {
     match app-id=r#"^org\.keepassxc\.KeePassXC$"#
-    match app-id=r#"^org\.gnome\.World\.Secrets$"#
     block-out-from "screen-capture"
 }
 
 // Dialogs and pickers are transient by nature
 window-rule {
     match app-id=r#"^org\.gnome\.Nautilus$"# title=r#"^(Open|Save|Rename)"#
+    open-floating true
+}
+
+// Small or short-lived windows: players, previews, utilities, an IDE's project picker
+window-rule {
+    match app-id=r#"^mpv$"#
+    match app-id=r#"^org\.gnome\.NautilusPreviewer$"#
+    match app-id=r#"^org\.gnome\.Calculator$"#
+    match app-id=r#"^org\.pulseaudio\.pavucontrol$"#
+    match title=r#"^Picture-in-Picture$"#
+    match app-id=r#"^jetbrains-"# title=r#"^Welcome to "#
     open-floating true
 }
 

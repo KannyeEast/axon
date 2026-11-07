@@ -90,34 +90,21 @@ secrets HOST=host:
 stage:
   git -C {{flake}} add .
 
-# Commit, asking for a conventional type and scope when no message is given
+# Commit everything with the given message; without one, stage and commit in lazygit
 [group("git")]
-commit MESSAGE="": stage
+commit MESSAGE="":
   #!/usr/bin/env bash
   set -euo pipefail
   cd {{flake}}
+  if [ -z "{{MESSAGE}}" ]; then
+    exec lazygit
+  fi
+  git add .
   if git diff --cached --quiet; then
     echo "Nothing to commit."
     exit 0
   fi
-  msg="{{MESSAGE}}"
-  if [ -z "$msg" ]; then
-    echo "Select commit type:"
-    select type in feat fix docs refactor revert test chore skip; do
-      case $type in
-        skip) break ;;
-        "") echo "Invalid selection"; exit 1 ;;
-        *)
-          read -rp "Enter scope: " scope
-          read -rp "Enter description: " desc
-          if [ -n "$scope" ]; then msg="$type($scope): $desc"; else msg="$type: $desc"; fi
-          break
-          ;;
-      esac
-    done
-  fi
-  [ -n "$msg" ] || { echo "Commit aborted."; exit 1; }
-  git commit -m "$msg"
+  git commit -m "{{MESSAGE}}"
 
 # Commit, then push to every forge
 [group("git")]

@@ -1,0 +1,18 @@
+# Colours only, from the shared palette (alacritty.toml); swaylock's own default is light grey.
+color=0c0c12
+inside-color=1c1e27
+inside-clear-color=1c1e27
+inside-ver-color=1c1e27
+inside-wrong-color=1c1e27
+ring-color=3f4757
+ring-clear-color=3f4757
+ring-ver-color=8aa2ff
+ring-wrong-color=ff6b7a
+key-hl-color=8aa2ff
+bs-hl-color=ff6b7a
+line-uses-inside
+separator-color=00000000
+text-color=a5b6cf
+text-clear-color=a5b6cf
+text-ver-color=8aa2ff
+text-wrong-color=ff6b7a

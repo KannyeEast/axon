@@ -5,17 +5,9 @@ input {
         }
     }
 
-    touchpad {
-        natural-scroll
-        scroll-method "two-finger"
-        tap
-        dwt
-        click-method "clickfinger"
-    }
-
     mouse {
         accel-profile "flat"
     }
-    
+
     warp-mouse-to-focus
 }

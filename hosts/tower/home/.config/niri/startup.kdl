@@ -2,4 +2,5 @@
 // mako starts by itself on the first notification; KeePassXC and the polkit agent are services.
 spawn-at-startup "waybar"
 spawn-at-startup "swaybg" "-i" "/home/gldn/Pictures/Wallpapers/48FBjzC.jpeg" "-m" "fill"
-spawn-at-startup "swayidle" "-w" "timeout" "300" "swaylock -f" "before-sleep" "swaylock -f"
+// lock after 15 minutes, monitors off after 20; video players and browsers playing video hold it off
+spawn-at-startup "swayidle" "-w" "timeout" "900" "swaylock -f" "timeout" "1200" "niri msg action power-off-monitors" "before-sleep" "swaylock -f"
