@@ -90,9 +90,7 @@
         '';
       };
     in
-    {
-      config = lib.mkIf (config.axon.host.class == "desktop") {
-        environment.systemPackages = [ sandbox ];
-      };
+    lib.mkIf (config.axon.host.class == "desktop") {
+      environment.systemPackages = [ sandbox ];
     };
 }

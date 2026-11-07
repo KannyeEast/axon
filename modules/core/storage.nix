@@ -13,8 +13,10 @@ let
     mapAttrs'
     mapAttrsToList
     mkForce
+    mkOption
     nameValuePair
     tail
+    types
     ;
 
   minimum = {
@@ -85,29 +87,40 @@ in
   flake.modules.nixos.core =
     { config, ... }:
     let
-      inherit (config.axon.host) name;
+      inherit (config.axon) host;
       storage = removeAttrs config.axon.disk [ "boot" ];
     in
     {
-      assertions = mapAttrsToList (label: fs: {
-        assertion = length fs.devices >= minimum.${fs.profile};
-        message = "hosts/${name}/host.toml: disk.${label} uses ${fs.profile}, which needs ${toString minimum.${fs.profile}} devices";
-      }) storage;
+      options.axon.volumes = mkOption {
+        type = types.attrsOf types.str;
+        readOnly = true;
+        default = concatMapAttrs (_: fs: fs.mounts) storage;
+        defaultText = "the mounts of every [disk.<label>] table";
+        description = "This host's data disks, name to mountpoint. A feature that can't work without a volume asserts it; one that can falls back to its state folder.";
+      };
 
-      disko.devices.disk = concatMapAttrs disks storage;
+      config = {
+        assertions = mapAttrsToList (label: fs: {
+          assertion = length fs.devices >= minimum.${fs.profile};
+          message = "hosts/${host.name}/host.toml: disk.${label} uses ${fs.profile}, which needs ${toString minimum.${fs.profile}} devices";
+        }) storage;
 
-      # disko mounts by the first device's path; mounting by label survives losing that disk
-      fileSystems = concatMapAttrs (
-        label: fs:
-        mapAttrs' (
-          _: mountpoint: nameValuePair mountpoint { device = mkForce "/dev/disk/by-label/${label}"; }
-        ) fs.mounts
-      ) storage;
+        disko.devices.disk = concatMapAttrs disks storage;
 
-      services.btrfs.autoScrub = {
-        enable = storage != { };
-        interval = "monthly";
-        fileSystems = map (fs: head (attrValues fs.mounts)) (attrValues storage);
+        # disko mounts by the first device's path; mounting by label survives losing that disk
+        fileSystems = concatMapAttrs (
+          label: fs:
+          mapAttrs' (
+            _: mountpoint: nameValuePair mountpoint { device = mkForce "/dev/disk/by-label/${label}"; }
+          ) fs.mounts
+        ) storage;
+
+        # one mountpoint per filesystem; the boot disk's subvolumes are one filesystem, reached at /
+        services.btrfs.autoScrub = {
+          enable = true;
+          interval = "monthly";
+          fileSystems = [ "/" ] ++ map (fs: head (attrValues fs.mounts)) (attrValues storage);
+        };
       };
     };
 }

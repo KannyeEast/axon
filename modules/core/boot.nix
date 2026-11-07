@@ -1,3 +1,4 @@
+# GRUB on EFI, listing another OS on the same machine and the last ten generations.
 { lib, ... }:
 {
   flake.modules.nixos.core = {

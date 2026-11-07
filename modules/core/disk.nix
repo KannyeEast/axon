@@ -3,7 +3,7 @@
 # host.toml only chooses the device, the swap size and the space left for another OS.
 { inputs, lib, ... }:
 let
-  inherit (lib) length optionalAttrs;
+  inherit (lib) head length optionalAttrs;
 
   subvolume = mountpoint: {
     inherit mountpoint;
@@ -32,7 +32,7 @@ in
 
       disko.devices.disk.main = {
         type = "disk";
-        device = builtins.head boot.devices;
+        device = head boot.devices;
         content = {
           type = "gpt";
           partitions = {

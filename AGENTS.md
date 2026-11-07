@@ -12,14 +12,14 @@ for confirmation on anything beyond a single obvious fix, and don't bundle unreq
 
 ```
 flake.nix            inputs; outputs = every .nix under modules/ (import-tree)
-cluster.toml         relations between machines: [ssh], [sync], [volumes], [external]
+cluster.toml         relations between machines: [ssh], [sync], [external]; the repo's remotes: [repo]
 hosts/<name>/        host.toml, facter.json, secrets.json (sops), optional home/
 hosts/_old/          previous hosts, kept for reference, never built
 home/                dotfiles every host shares; hosts/<name>/home wins per file
 modules/framework/   the registry, host discovery, docs output
 modules/core/        every host
 modules/classes/     exactly one per host: desktop, server
-modules/features/    opt-in areas: dev, files, gateway, media
+modules/features/    opt-in areas, one folder each; a host lists the ones it subscribes to
 ```
 
 A file under `modules/<kind>/<name>/` declares into `flake.modules.{nixos,homeManager}.<name>`.
@@ -38,12 +38,23 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
 - **Setting, derived value, or host data?** Same on every host: just set it. Differs and can be
   detected: derive it (facter). Differs and is a choice: a field in `host.toml`. A different
   behaviour: a feature, never an option.
+- **Core, class or feature?** Core: a machine can't boot, log in or be managed from this repo
+  without it. Class: the barest machine of that class needs it. Feature: you can name a host of
+  that class that wouldn't want it.
 - **A feature is an area, not a program.** Add a new service to the feature whose area it is.
-  Parts that only fit one class check `config.axon.host.class` inside the feature.
+  Parts that only fit one class check `config.axon.host.class` inside the feature. Split a feature
+  only when a named host wants one part and not the other.
+- **A dependency is a hard need or an extra.** A hard need is `requires` or an assertion. Anything
+  that can work without the other piece must, and the piece only adds to it; never fail silently.
+  Features read contracts, not each other's names; the feature lists in `cluster.hosts` are the
+  only cross-host data, so reading those is fine.
 - **Dotfiles are runtime, user-space files.** Nix never reads `home/`. Nix installs programs and
   loads what needs a store path; settings live in dotfiles.
-- **Contracts are declared in core**: `axon.services` (routes, backup paths), `axon.persist`.
-  Producers set them unconditionally; consumers handle an empty set.
+- **Contracts are declared in core**: `axon.services` (routes, backup paths), `axon.persist`,
+  `axon.volumes`, `axon.mail`, `axon.vpn`, `axon.overlay`, `axon.browser`. Add one for two or
+  more consumers or a realistic swap. Producers set them unconditionally; consumers handle an empty set or null.
+- **One way per thing.** Modules that produce the same result do it the same way. A shared helper
+  only when many modules use it.
 - **State lives next to the module that creates it**: add its path to `axon.persist.directories`
   in the same file. `DynamicUser` services keep state in `/var/lib/private/<name>`.
 - **Name files for what they do** (`passwords.nix`, not `keepassxc.nix`).
@@ -67,11 +78,12 @@ to build or a service that fails to start. Say when a change is unverified and w
 
 ## Boundaries
 
-**Never:** delete or rename files (say which and why, the user does it); use git beyond
-`git add --intent-to-add`; run disko against an existing machine.
+**Never:** use git beyond `git add --intent-to-add`; run disko against an existing machine.
 
-**Ask first:** anything in `hosts/` (host.toml, facter.json), secrets and `.sops.yaml`, new flake
-inputs, moving files between bundles, new features or classes.
+**Ask first:** anything in `hosts/` (host.toml, facter.json, dotfiles), secrets and `.sops.yaml`,
+new flake inputs, new features or classes.
+
+Moves and deletes outside `hosts/` need no asking; say what moved.
 
 **Deliberate, don't "fix":**
 

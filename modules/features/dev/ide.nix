@@ -7,15 +7,13 @@
     let
       withPlugins = inputs.nix-jetbrains-plugins.lib.buildIdeWithPlugins pkgs;
     in
-    {
-      config = lib.mkIf (config.axon.host.class == "desktop") {
-        environment.systemPackages = [
-          (withPlugins "rider" [
-            "nix-idea"
-            "nl.rubensten.texifyidea"
-          ])
-          (withPlugins "webstorm" [ ])
-        ];
-      };
+    lib.mkIf (config.axon.host.class == "desktop") {
+      environment.systemPackages = [
+        (withPlugins "rider" [
+          "nix-idea"
+          "nl.rubensten.texifyidea"
+        ])
+        (withPlugins "webstorm" [ ])
+      ];
     };
 }

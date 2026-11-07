@@ -2,11 +2,6 @@
 flake := justfile_directory()
 host := shell("hostname -s")
 
-# Forges: the first is origin; `just remotes` sets every one up as a push target.
-forges := "codeberg=git@codeberg.org:KanyeSouth/axon.git " + \
-  "github=git@github.com:KannyeEast/axon.git " + \
-  "gitlab=git@gitlab.com:KanyeNorth/axon.git"
-
 alias s := switch
 alias b := boot
 alias c := check
@@ -32,6 +27,11 @@ boot *ARGS: pull _stage
 [group("system")]
 build *ARGS: _stage
   nh os build {{flake}} -H {{host}} {{ARGS}}
+
+# Push, then switch another host to it
+[group("system")]
+deploy HOST MESSAGE="": (push MESSAGE)
+  ssh -t {{HOST}} just -f axon/justfile switch
 
 # Regenerate this machine's hardware report after a hardware change
 [group("system")]
@@ -85,33 +85,24 @@ secrets HOST=host:
 stage:
   git -C {{flake}} add .
 
-# Commit, asking for a conventional type and scope when no message is given
+# Commit everything with the given message; without one, stage and commit in lazygit, or type
+# a message where lazygit isn't installed
 [group("git")]
-commit MESSAGE="": stage
+commit MESSAGE="":
   #!/usr/bin/env bash
   set -euo pipefail
   cd {{flake}}
+  msg="{{MESSAGE}}"
+  if [ -z "$msg" ]; then
+    command -v lazygit >/dev/null && exec lazygit
+    read -rp "Commit message: " msg
+    [ -n "$msg" ] || { echo "Commit aborted."; exit 1; }
+  fi
+  git add .
   if git diff --cached --quiet; then
     echo "Nothing to commit."
     exit 0
   fi
-  msg="{{MESSAGE}}"
-  if [ -z "$msg" ]; then
-    echo "Select commit type:"
-    select type in feat fix docs refactor revert test chore skip; do
-      case $type in
-        skip) break ;;
-        "") echo "Invalid selection"; exit 1 ;;
-        *)
-          read -rp "Enter scope: " scope
-          read -rp "Enter description: " desc
-          if [ -n "$scope" ]; then msg="$type($scope): $desc"; else msg="$type: $desc"; fi
-          break
-          ;;
-      esac
-    done
-  fi
-  [ -n "$msg" ] || { echo "Commit aborted."; exit 1; }
   git commit -m "$msg"
 
 # Commit, then push to every forge
@@ -144,18 +135,36 @@ sync:
   fi
   git switch dev
 
-# (Re)create the forge remotes; origin pushes to all of them
+# (Re)create the remotes under [repo] in cluster.toml; origin pushes to all of them
 [group("git")]
 remotes:
   #!/usr/bin/env bash
   set -euo pipefail
   cd {{flake}}
-  read -ra pairs <<< "{{forges}}"
-  for p in "${pairs[@]}" origin=x all=x; do git remote remove "${p%%=*}" 2>/dev/null || true; done
-  for p in "${pairs[@]}"; do git remote add "${p%%=*}" "${p#*=}"; done
-  git remote add origin "${pairs[0]#*=}"
+  # origin's name, then "<name> <url>" per remote
+  mapfile -t lines < <(nix eval --raw --impure --expr '
+    let
+      repo = (builtins.fromTOML (builtins.readFile ./cluster.toml)).repo or { };
+    in
+    builtins.concatStringsSep "\n" (
+      [ (repo.origin or "") ]
+      ++ builtins.attrValues (builtins.mapAttrs (name: url: "${name} ${url}") (repo.remotes or { }))
+    )')
+  origin=${lines[0]:-}
+  remotes=("${lines[@]:1}")
+  if [ ${#remotes[@]} -eq 0 ]; then
+    echo "cluster.toml: no [repo.remotes], nothing to set up."
+    exit 0
+  fi
+  if [ -z "$origin" ]; then
+    echo "cluster.toml: [repo] needs an origin, one of the names under [repo.remotes]." >&2
+    exit 1
+  fi
+  for r in "${remotes[@]}" "origin x" "all x"; do git remote remove "${r%% *}" 2>/dev/null || true; done
+  for r in "${remotes[@]}"; do git remote add "${r%% *}" "${r#* }"; done
+  git remote add origin "$(git remote get-url "$origin")"
   git remote set-url --delete --push origin '.*' 2>/dev/null || true
-  for p in "${pairs[@]}"; do git remote set-url --add --push origin "${p#*=}"; done
+  for r in "${remotes[@]}"; do git remote set-url --add --push origin "${r#* }"; done
   git fetch --all --prune
   for b in main dev; do
     git show-ref --verify -q "refs/heads/$b" && git branch --set-upstream-to="origin/$b" "$b" 2>/dev/null || true

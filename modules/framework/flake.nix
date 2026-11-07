@@ -1,3 +1,4 @@
+# The flake's own outputs: systems, the formatter, the host.toml reference and the devshell.
 {
   inputs,
   config,
@@ -24,7 +25,7 @@
         (pkgs.nixosOptionsDoc {
           options =
             (lib.evalModules {
-              modules = builtins.attrValues config.axon.schema ++ [
+              modules = lib.attrValues config.axon.schema ++ [
                 { options.cluster = lib.mkOption { type = lib.types.submodule config.axon.clusterSchema; }; }
               ];
             }).options;

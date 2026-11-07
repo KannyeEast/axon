@@ -8,12 +8,9 @@
       programs.niri.enable = true;
       services.displayManager.gdm.enable = true;
 
-      xdg.portal = {
-        enable = true;
-        extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
-      };
       security.polkit.enable = true;
       programs.dconf.enable = true;
+      services.speechd.enable = false;
 
       # the account picture on the login screen
       axon.persist.directories = [ "/var/lib/AccountsService" ];
@@ -26,6 +23,7 @@
       # niri's startup.kdl decides what runs
       environment.systemPackages = [
         pkgs.alacritty
+        pkgs.xdg-terminal-exec # apps marked Terminal=true (nvim, …) open in alacritty from the file manager
         pkgs.fuzzel
         pkgs.waybar
         pkgs.swaybg
@@ -33,7 +31,6 @@
         pkgs.swaylock
         pkgs.kanshi
         pkgs.xwayland-satellite # niri starts it on demand when it's on PATH
-        pkgs.nautilus
         pkgs.wl-clipboard
         pkgs.libnotify
         pkgs.mako # makoctl

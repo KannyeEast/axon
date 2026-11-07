@@ -1,6 +1,8 @@
-# Nextcloud at cloud.<domain> on servers; the sync client on desktops. Files on the bulk disks, database and app state on the system SSD.
+# Nextcloud at cloud.<domain> on servers. Files on the data volume, or in the state folder on a
+# host without one; app state on the system SSD, database in the shared Postgres.
 # It's public (through the gateway's tunnel) so share links work for people without Tailscale;
-# its own login guards it. The first account is created by hand after install:
+# its own login guards it. Without a gateway on this host it stays on localhost.
+# The first account is created by hand after install:
 #   nextcloud-occ user:add <you> && nextcloud-occ group:adduser admin <you>
 # then turn on two-factor in the web UI.
 # Major versions upgrade one at a time: bump the package by one, switch, repeat.
@@ -9,35 +11,20 @@
   flake.modules.nixos.files =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) cluster;
-      ph = config.sops.placeholder;
-      hostName = "cloud.${cluster.domain}";
-      data = "/server/data/nextcloud";
+      inherit (config.axon) mail routed services;
+      inherit (services.cloud) route;
+      hostName = if routed then route.host else route.address;
+      url = if routed then route.url else "http://${route.endpoint}";
+      data = "${config.axon.volumes.data or "/var/lib"}/nextcloud";
       port = 8090;
     in
     lib.mkMerge [
-      # the desktop half: the client that syncs Nextcloud folders to this machine
-      (lib.mkIf (config.axon.host.class == "desktop") {
-        environment.systemPackages = [ pkgs.nextcloud-client ];
-      })
-
       (lib.mkIf (config.axon.host.class == "server") {
-        # sender address and token come from the mail feature's secrets
-        sops.templates."nextcloud.json" = {
-          owner = "nextcloud";
-          content = builtins.toJSON {
-            mail_from_address = ph."mail/user";
-            mail_domain = ph."mail/domain";
-            mail_smtpname = "${ph."mail/user"}@${ph."mail/domain"}";
-            mail_smtppassword = ph."mail/token";
-          };
-        };
-
         services.nextcloud = {
           enable = true;
           package = pkgs.nextcloud35;
           inherit hostName;
-          https = true;
+          https = routed;
           datadir = data;
           database.createLocally = true;
           configureRedis = true;
@@ -49,17 +36,19 @@
               "127.0.0.1"
               "::1"
             ];
-            overwriteprotocol = "https";
+            overwriteprotocol = lib.mkIf routed "https";
+            # what background jobs put in links; they have no request to read the address from
+            "overwrite.cli.url" = url;
             default_phone_region = "DE";
             serverid = 1; # unique per PHP server; there is one, but Nextcloud warns without it
             maintenance_window_start = 1; # 01:00 UTC
-            mail_smtpmode = "smtp";
-            mail_smtphost = "smtp.protonmail.ch";
-            mail_smtpport = 587;
-            mail_smtpauth = true;
           };
-          secretFile = config.sops.templates."nextcloud.json".path;
-          phpOptions."opcache.interned_strings_buffer" = "16";
+          phpOptions = {
+            "opcache.interned_strings_buffer" = "16";
+            # the module ties this to maxUploadSize, but uploads stream and one process needn't be
+            # able to take all the memory
+            memory_limit = lib.mkForce "1G";
+          };
         };
 
         # nextcloud's nginx only on localhost; caddy owns 80/443
@@ -71,14 +60,17 @@
         ];
 
         # the files live on a data disk that may be missing at boot (nofail): never write to root instead
-        systemd.services.nextcloud-setup.unitConfig.RequiresMountsFor = [ data ];
-        systemd.services.phpfpm-nextcloud.unitConfig.RequiresMountsFor = [ data ];
-
-        # a nightly database dump, so a file-level backup of the dump is consistent
-        services.postgresqlBackup = {
-          enable = true;
-          databases = [ "nextcloud" ];
-        };
+        systemd.services =
+          lib.genAttrs
+            [
+              "nextcloud-cron"
+              "nextcloud-setup"
+              "nextcloud-update-db"
+              "phpfpm-nextcloud"
+            ]
+            (_: {
+              unitConfig.RequiresMountsFor = [ data ];
+            });
 
         axon.persist.directories = [
           {
@@ -87,28 +79,64 @@
             group = "nextcloud";
             mode = "0750";
           }
-          {
-            directory = "/var/lib/postgresql";
-            user = "postgres";
-            group = "postgres";
-            mode = "0750";
-          }
           "/var/lib/redis-nextcloud"
-          "/var/backup/postgresql"
         ];
 
         axon.services.cloud = {
           route = {
             inherit port;
-            subdomain = "cloud";
             access = "open"; # Nextcloud's own login
             public = true;
           };
-          backup.paths = [
-            data
-            "/var/lib/nextcloud"
-            "/var/backup/postgresql"
-          ];
+          dashboard = {
+            name = "Nextcloud";
+            group = "Files";
+            description = "Files";
+            icon = "nextcloud.svg";
+            # / redirects to https on this plain http port
+            monitor = "/status.php";
+            widget = {
+              type = "nextcloud";
+              # four values make labels like "ACTIVE USERS" wrap, and the whole row grows with them
+              fields = [
+                "freespace"
+                "numfiles"
+                "activeusers"
+              ];
+            };
+            secrets.key = "dashboard/cloud/key";
+          };
+          backup = {
+            paths = [
+              data
+              "/var/lib/nextcloud"
+            ];
+            # rebuilt from the files
+            exclude = [ "${data}/data/appdata_*/preview" ];
+          };
+        };
+      })
+
+      # without an account Nextcloud runs the same, but invites and password resets fail
+      (lib.mkIf (config.axon.host.class == "server" && mail != null) {
+        sops.templates."nextcloud.json" = {
+          owner = "nextcloud";
+          content = lib.toJSON {
+            mail_from_address = mail.user;
+            mail_domain = mail.domain;
+            mail_smtpname = mail.address;
+            mail_smtppassword = mail.token;
+          };
+        };
+
+        services.nextcloud = {
+          settings = {
+            mail_smtpmode = "smtp";
+            mail_smtphost = mail.host;
+            mail_smtpport = mail.port;
+            mail_smtpauth = true;
+          };
+          secretFile = config.sops.templates."nextcloud.json".path;
         };
       })
     ];

@@ -7,11 +7,7 @@
 #   [hardware]   model-specific fixes
 { config, lib, ... }:
 let
-  inherit (lib)
-    attrNames
-    mkOption
-    types
-    ;
+  inherit (lib) attrNames mkOption types;
 
   inherit (config.axon) classes features;
 
@@ -58,7 +54,7 @@ let
       };
       mounts = mkOption {
         type = types.attrsOf types.str;
-        description = "Subvolume name to mountpoint.";
+        description = "Subvolume name to mountpoint. Features ask for a volume by this name.";
       };
     };
   };
@@ -176,11 +172,6 @@ in
         default = { };
         description = "Folder to the members that share it with each other.";
       };
-      volumes = mkOption {
-        type = types.attrsOf (types.strMatching "[a-z0-9-]+:/.*");
-        default = { };
-        description = "Shared stores as host:/path. Services ask for a volume by name.";
-      };
       external = mkOption {
         default = { };
         description = "Members that take part in relations but are not built from this repository.";
@@ -201,17 +192,48 @@ in
           }
         );
       };
+      repo = {
+        remotes = mkOption {
+          type = types.attrsOf types.str;
+          default = { };
+          description = "Remote name to git URL for this repository; `just remotes` sets them up.";
+        };
+        origin = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+          description = "The remote that is origin: pulled from, and pushing to every remote.";
+        };
+      };
     };
   };
 
   flake.modules.nixos.core =
     { config, ... }:
+    let
+      inherit (config.axon.cluster) repo;
+    in
     {
+      # nothing in the system reads [repo], so it is checked here rather than by its type
+      config.assertions = [
+        {
+          assertion = repo.origin == null || repo.remotes ? ${repo.origin};
+          message = "cluster.toml: [repo] origin '${toString repo.origin}' is not under [repo.remotes] (${lib.concatStringsSep ", " (attrNames repo.remotes)})";
+        }
+      ];
+
+      options.axon.home = mkOption {
+        type = types.str;
+        readOnly = true;
+        default = config.users.users.${config.axon.user.name}.home;
+        defaultText = "the home folder of user.name";
+        description = "The user's home folder.";
+      };
+
       options.axon.repo = mkOption {
         type = types.str;
         readOnly = true;
-        default = "/home/${config.axon.user.name}/axon";
-        defaultText = "/home/<user.name>/axon";
+        default = "${config.axon.home}/axon";
+        defaultText = "<home>/axon";
         description = "Where the checkout lives on the machine. Convention, not configuration.";
       };
     };

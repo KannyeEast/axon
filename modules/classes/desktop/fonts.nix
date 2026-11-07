@@ -1,3 +1,4 @@
+# The fonts, and which one fills each default family.
 {
   flake.modules.nixos.desktop =
     { pkgs, ... }:

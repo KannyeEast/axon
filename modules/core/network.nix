@@ -6,6 +6,7 @@
     {
       networking.hostName = config.axon.host.name;
       networking.networkmanager.enable = true;
+      networking.modemmanager.enable = false;
 
       axon.persist.directories = [
         "/var/lib/NetworkManager"
