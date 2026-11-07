@@ -48,3 +48,13 @@ tunnel = "27709698-c197-4b97-80f1-85b1309e8c72"
 [gateway.links."FRITZ!Box"]
 url = "http://192.168.178.1"
 icon = "fritzbox.svg"
+
+[gateway.links.NewsDemon]
+url = "https://members.newsdemon.com/members/index.php"
+icon = "mdi-server-network"
+group = "Usenet"
+
+[gateway.links.NZBFinder]
+url = "https://nzbfinder.ws/profile"
+icon = "mdi-database-search"
+group = "Usenet"
