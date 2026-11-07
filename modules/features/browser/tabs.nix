@@ -3,21 +3,31 @@
 let
   inherit (lib)
     any
+    attrNames
     attrValues
     elem
     escapeRegex
+    findFirst
+    head
+    match
     optionalAttrs
     optionalString
+    substring
+    toUpper
     ;
 in
 {
   flake.modules.homeManager.browser =
     { osConfig, ... }:
     let
-      inherit (osConfig.axon) cluster;
+      inherit (osConfig.axon) cluster remotes;
       inherit (cluster) domain;
-      hasFeature = feature: any (data: elem feature data.host.features) (attrValues cluster.hosts);
-      hasGateway = hasFeature "gateway";
+      hasGateway = any (data: elem "gateway" data.host.features) (attrValues cluster.hosts);
+
+      origin = findFirst (name: remotes.${name}.origin && remotes.${name}.web != null) null (
+        attrNames remotes
+      );
+      capitalise = name: toUpper (substring 0 1 name) + substring 1 (-1) name;
 
       # one black for every space; spacesForce reapplies it on every switch, so change it here
       tint = {
@@ -73,35 +83,16 @@ in
           workspace = spaces."Development".id;
         };
       }
-      // optionalAttrs (hasGateway && hasFeature "forge") {
-        # Forges
-        "Forgejo" = {
+      // optionalAttrs (origin != null) {
+        # the forge origin pushes to; the mirrors are links on the start page
+        ${capitalise origin} = {
           id = "e4b71c09-8a3d-4f62-9c15-7d20b6e9f3a8";
-          url = "https://git.${domain}";
+          url = head (match "(https://[^/]+)/.*" remotes.${origin}.web);
           position = 150;
           workspace = spaces."Development".id;
         };
       }
       // {
-        "Codeberg" = {
-          id = "c81d4a6f-2e39-4b57-a0d8-1f6e93b7c052";
-          url = "https://codeberg.org/";
-          position = 151;
-          workspace = spaces."Development".id;
-        };
-        "GitHub" = {
-          id = "fcc811cc-1389-4b0f-8384-949da46ad442";
-          url = "https://github.com/";
-          position = 152;
-          workspace = spaces."Development".id;
-        };
-        "GitLab" = {
-          id = "5a3e9f2b-7c14-4d8e-b6a1-9f0c2e8d4a37";
-          url = "https://gitlab.com/";
-          position = 153;
-          workspace = spaces."Development".id;
-        };
-
         # ── entertainment ────────
         "F1 Stream" = {
           id = "7f3c9a21-6d84-4e59-b1a7-2c8e5f0d3b46";

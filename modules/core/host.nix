@@ -209,18 +209,7 @@ in
 
   flake.modules.nixos.core =
     { config, ... }:
-    let
-      inherit (config.axon.cluster) repo;
-    in
     {
-      # nothing in the system reads [repo], so it is checked here rather than by its type
-      config.assertions = [
-        {
-          assertion = repo.origin == null || repo.remotes ? ${repo.origin};
-          message = "cluster.toml: [repo] origin '${toString repo.origin}' is not under [repo.remotes] (${lib.concatStringsSep ", " (attrNames repo.remotes)})";
-        }
-      ];
-
       options.axon.home = mkOption {
         type = types.str;
         readOnly = true;
