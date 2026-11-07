@@ -50,6 +50,12 @@ in
         ];
       };
 
+      # it registers with Forgejo on start, so Forgejo has to be up first
+      systemd.services.forgejo-runner-native = {
+        after = [ "forgejo.service" ];
+        wants = [ "forgejo.service" ];
+      };
+
       axon.persist.state.directories = [
         {
           directory = "/var/lib/private/forgejo-runner";
