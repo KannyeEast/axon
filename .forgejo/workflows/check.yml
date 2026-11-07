@@ -1,0 +1,18 @@
+# Every push and pull request: the flake evaluates, and every host's system builds.
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: native
+    steps:
+      - uses: actions/checkout@v4
+      - run: nix flake check
+      - name: build every host
+        run: |
+          for host in $(nix eval --raw .#nixosConfigurations --apply 'c: toString (builtins.attrNames c)'); do
+            echo "::group::$host"
+            nix build --no-link ".#nixosConfigurations.$host.config.system.build.toplevel"
+            echo "::endgroup::"
+          done

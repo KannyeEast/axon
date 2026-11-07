@@ -42,6 +42,9 @@ forgejo = "100G"
 [sync]
 id = "7B5WETD-2BBTFMG-OKJBRDP-A5NJ3UC-3A7HECI-IEB6UP4-KZLTLWF-7RVIPQD"
 
+[forge]
+runner = "58da1312-e547-400f-810e-519cb3cb67d6"
+
 [gateway]
 tunnel = "27709698-c197-4b97-80f1-85b1309e8c72"
 
