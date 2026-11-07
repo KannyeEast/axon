@@ -1,4 +1,4 @@
-"""Turns a Stream Deck + into a control surface.
+"""Turns a Stream Deck into a control surface.
 
 ~/.config/control-surface/layout.toml says what each dial and key runs. The strip
 shows each dial's state and a key can show live state of its own, both polled so
@@ -31,7 +31,6 @@ KEY_INTERVAL = 5
 
 ZONE_WIDTH = 200
 ZONE_HEIGHT = 100
-KEY_SIZE = 120
 BACKGROUND = "#14161b"
 FOREGROUND = "#f2f4f8"
 MUTED = "#9aa3b2"
@@ -67,6 +66,8 @@ def load_slots(data, name, count):
     entries = data.get(name, [])
     if not isinstance(entries, list):
         raise ValueError(f"{LAYOUT}: {name}s are written [[{name}]], not [{name}]")
+    if entries and not count:
+        raise ValueError(f"{LAYOUT}: this deck has no {name}s")
     slots = {}
     for entry in entries:
         slot = entry.get("slot")
@@ -78,7 +79,7 @@ def load_slots(data, name, count):
     return slots
 
 
-def load_layout():
+def load_layout(deck):
     """Returns (brightness, dials, keys); raises ValueError on a bad layout."""
     try:
         with LAYOUT.open("rb") as file:
@@ -91,7 +92,7 @@ def load_layout():
     brightness = data.get("brightness", 60)
     if not isinstance(brightness, int):
         raise ValueError(f"{LAYOUT}: brightness must be a number from 0 to 100")
-    return brightness, load_slots(data, "dial", 4), load_slots(data, "key", 8)
+    return brightness, load_slots(data, "dial", deck.dial_count()), load_slots(data, "key", deck.key_count())
 
 
 def run_command(command, timeout=COMMAND_TIMEOUT):
@@ -201,11 +202,11 @@ def draw_key(deck, slot, key, state, held):
     level, text = state
     image = PILHelper.create_key_image(deck, KEY_HELD if held else LEVELS.get(level, KEY_IDLE))
     draw = ImageDraw.Draw(image)
-    middle = KEY_SIZE // 2
+    middle = image.width // 2
     label = key.get("label", "")
     if text:
-        draw.text((middle, 34), label, font=label_font, fill=FOREGROUND, anchor="mm")
-        draw.text((middle, 74), text, font=value_font, fill=FOREGROUND, anchor="mm")
+        draw.text((middle, image.height * 0.28), label, font=label_font, fill=FOREGROUND, anchor="mm")
+        draw.text((middle, image.height * 0.62), text, font=value_font, fill=FOREGROUND, anchor="mm")
     else:
         draw.text((middle, middle), label, font=key_font, fill=FOREGROUND, anchor="mm")
     native = PILHelper.to_native_key_format(deck, image)
@@ -252,7 +253,7 @@ class Surface:
             return False
         self.seen = mtime
         try:
-            brightness, self.dials, self.keys = load_layout()
+            brightness, self.dials, self.keys = load_layout(self.deck)
         except ValueError as error:
             log(error)
             return False
@@ -333,7 +334,7 @@ def run(deck):
 
 def find_deck():
     for deck in DeviceManager().enumerate():
-        if deck.deck_type() == "Stream Deck +":
+        if deck.is_visual():
             return deck
     return None
 
@@ -345,7 +346,7 @@ def main():
         deck = find_deck()
         if deck is None:
             if not waiting:
-                log("waiting for a Stream Deck +")
+                log("waiting for a Stream Deck")
             waiting = True
         else:
             waiting = False

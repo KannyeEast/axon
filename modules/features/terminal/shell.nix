@@ -1,6 +1,6 @@
 # The terminal: zsh with its plugins, tmux with its plugins, and the everyday CLI tools.
 # Nix installs them and loads the plugins (they need store paths); every setting is a
-# dotfile (.zshrc, .config/tmux/tmux.conf, .config/starship.toml).
+# dotfile (.zshrc, .config/tmux/tmux.conf, .config/starship.toml, .config/nvim/init.lua).
 { inputs, ... }:
 {
   flake.modules.nixos.terminal =
@@ -48,12 +48,27 @@
         ];
       };
 
-      # nvim as $EDITOR, with its default config
+      # nvim as $EDITOR. With plugins the wrapper skips ~/.config/nvim/init.lua, so it loads it here.
       programs.neovim = {
         enable = true;
         defaultEditor = true;
         viAlias = true;
         vimAlias = true;
+        configure = {
+          packages.axon.start = [
+            pkgs.vimPlugins.nvim-treesitter.withAllGrammars
+            pkgs.vimPlugins.telescope-nvim
+            pkgs.vimPlugins.telescope-fzf-native-nvim
+            pkgs.vimPlugins.gitsigns-nvim
+            pkgs.vimPlugins.nvim-lspconfig
+          ];
+          customLuaRC = ''
+            local init = vim.fn.stdpath("config") .. "/init.lua"
+            if vim.uv.fs_stat(init) then
+              dofile(init)
+            end
+          '';
+        };
       };
 
       environment.sessionVariables = {
@@ -72,6 +87,7 @@
         pkgs.fd
         pkgs.fzf
         pkgs.jq
+        pkgs.nil
         pkgs.ripgrep
         pkgs.starship
         pkgs.zoxide

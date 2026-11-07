@@ -1,6 +1,6 @@
 {
   axon.features.deck = {
-    description = "Stream Deck + as a control surface: dials and keys run commands and show live status";
+    description = "A Stream Deck as a control surface: dials and keys run commands and show live status";
     classes = [ "desktop" ];
   };
 }
