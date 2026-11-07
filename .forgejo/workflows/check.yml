@@ -13,6 +13,7 @@ jobs:
         run: |
           for host in $(nix eval --raw .#nixosConfigurations --apply 'c: toString (builtins.attrNames c)'); do
             echo "::group::$host"
-            nix build --no-link ".#nixosConfigurations.$host.config.system.build.toplevel"
+            # kept as a link, so cleanup on this host doesn't take it out of its binary cache
+            nix build --out-link "$HOME/latest/$host" ".#nixosConfigurations.$host.config.system.build.toplevel"
             echo "::endgroup::"
           done
