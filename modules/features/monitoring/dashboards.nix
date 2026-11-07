@@ -4,8 +4,8 @@
 # Without a gateway on this host it stays on localhost, with only its own login.
 # Its secret key is made on first start and kept in its persisted state folder.
 # The "Start page" dashboard is written here: two tables on top, each embedded on the gateway's
-# start page (every host's CPU, memory and temperature; every disk's use), graphs over the last
-# day below them.
+# start page (every host's CPU, GPU, memory and temperature; every disk's use), graphs over the
+# last day below them.
 { lib, ... }:
 let
   inherit (lib)
@@ -87,6 +87,7 @@ in
         };
       gauge = orange: red: [
         (property "unit" "percent")
+        (property "decimals" 2)
         (property "min" 0)
         (property "max" 100)
         (property "custom.cellOptions" {
@@ -137,6 +138,9 @@ in
           options.cellHeight = "sm";
         };
 
+      # a percentage rounded up to two places: a nearly empty disk shows 0.01%, not 0.00412%
+      percentOf = expr: "ceil(100 * 100 * (${expr})) / 100";
+
       # tunnels and bridges carry the same traffic a second time
       physical = ''device=~"en.*|eth.*|wl.*"'';
 
@@ -179,11 +183,15 @@ in
           table "System"
             [ "host" ]
             [
-              { CPU = ''100 * (1 - avg by (host) (rate(node_cpu_seconds_total{mode="idle"}[5m])))''; }
+              { CPU = percentOf ''1 - avg by (host) (rate(node_cpu_seconds_total{mode="idle"}[5m]))''; }
+              { GPU = percentOf "max by (host) (nvidia_gpu_utilization_percent) / 100"; }
               {
-                Memory = "100 * (1 - sum by (host) (node_memory_MemAvailable_bytes) / sum by (host) (node_memory_MemTotal_bytes))";
+                Memory = percentOf "1 - sum by (host) (node_memory_MemAvailable_bytes) / sum by (host) (node_memory_MemTotal_bytes)";
               }
-              { Temperature = "max by (host) (node_hwmon_temp_celsius)"; }
+              # the hottest sensor, the GPU's included
+              {
+                Temperature = ''max by (host) ({__name__=~"node_hwmon_temp_celsius|nvidia_gpu_temperature_celsius"})'';
+              }
             ]
           // {
             fieldConfig = {
@@ -191,9 +199,11 @@ in
               overrides = [
                 (column "host" [ (property "displayName" "Host") ])
                 (column "CPU" (gauge 70 90))
+                (column "GPU" (gauge 70 90))
                 (column "Memory" (gauge 80 90))
                 (column "Temperature" [
                   (property "unit" "celsius")
+                  (property "decimals" 0)
                   (property "custom.cellOptions" { type = "color-text"; })
                   (thresholds 70 85)
                 ])
@@ -208,7 +218,7 @@ in
               { Size = byDisk "node_filesystem_size_bytes"; }
               { Used = "${byDisk "node_filesystem_size_bytes"} - ${byDisk "node_filesystem_avail_bytes"}"; }
               {
-                Use = "100 * (1 - ${byDisk "node_filesystem_avail_bytes"} / ${byDisk "node_filesystem_size_bytes"})";
+                Use = percentOf "1 - ${byDisk "node_filesystem_avail_bytes"} / ${byDisk "node_filesystem_size_bytes"}";
               }
             ]
           // {

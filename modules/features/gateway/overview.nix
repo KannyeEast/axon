@@ -162,7 +162,8 @@ in
         allowedHosts = routes.home.route.host;
         environmentFiles = [ config.sops.templates."homepage.env".path ];
 
-        # the reload button, which Homepage puts in the footer, stays in the top right corner
+        # the reload button, which Homepage puts in the footer, stays in the top right corner, with
+        # "up/all" next to it: services whose status dot is green, out of all with a dot
         customCSS = ''
           #revalidate {
             position: fixed;
@@ -170,6 +171,27 @@ in
             right: 1.5rem;
             z-index: 20;
           }
+          #services-up {
+            margin-right: 0.75rem;
+            font-size: 0.875rem;
+            font-variant-numeric: tabular-nums;
+          }
+        '';
+        customJS = ''
+          setInterval(() => {
+            const button = document.getElementById("revalidate");
+            if (!button) return;
+            const all = document.querySelectorAll(".site-monitor-status").length;
+            const up = document.querySelectorAll(".site-monitor-status .bg-emerald-500").length;
+            let count = document.getElementById("services-up");
+            if (!count) {
+              count = document.createElement("span");
+              count.id = "services-up";
+              button.prepend(count);
+            }
+            count.textContent = `''${up}/''${all}`;
+            count.style.color = up === all ? "#10b981" : "#f43f5e";
+          }, 2000);
         '';
 
         settings = {
