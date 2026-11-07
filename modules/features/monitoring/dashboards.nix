@@ -85,17 +85,19 @@ in
             }
           ];
         };
-      gauge = orange: red: [
-        (property "unit" "percent")
-        (property "decimals" 2)
-        (property "min" 0)
-        (property "max" 100)
-        (property "custom.cellOptions" {
-          type = "gauge";
-          mode = "basic";
-        })
+      # a value coloured by how close it is to its limit; "–" where a host has none
+      level = orange: red: [
+        (property "noValue" "–")
+        (property "custom.cellOptions" { type = "color-text"; })
         (thresholds orange red)
       ];
+      percentLevel =
+        orange: red:
+        [
+          (property "unit" "percent")
+          (property "decimals" 2)
+        ]
+        ++ level orange red;
 
       # instant values side by side, one row per label set: columns are { name = expr; } in order,
       # and every query aggregates down to the labels in keys
@@ -198,22 +200,16 @@ in
               defaults = { };
               overrides = [
                 (column "host" [ (property "displayName" "Host") ])
-                (column "CPU" (gauge 70 90))
-                # text, not a gauge: a gauge draws its empty bar on hosts without a GPU too
-                (column "GPU" [
-                  (property "unit" "percent")
-                  (property "decimals" 2)
-                  (property "noValue" "–")
-                  (property "custom.cellOptions" { type = "color-text"; })
-                  (thresholds 70 90)
-                ])
-                (column "Memory" (gauge 80 90))
-                (column "Temperature" [
-                  (property "unit" "celsius")
-                  (property "decimals" 0)
-                  (property "custom.cellOptions" { type = "color-text"; })
-                  (thresholds 70 85)
-                ])
+                (column "CPU" (percentLevel 70 90))
+                (column "GPU" (percentLevel 70 90))
+                (column "Memory" (percentLevel 80 90))
+                (column "Temperature" (
+                  [
+                    (property "unit" "celsius")
+                    (property "decimals" 0)
+                  ]
+                  ++ level 70 85
+                ))
               ];
             };
           }
@@ -237,7 +233,7 @@ in
                 (column "disk" [ (property "displayName" "Disk") ])
                 (column "Size" [ (property "unit" "decbytes") ])
                 (column "Used" [ (property "unit" "decbytes") ])
-                (column "Used %" (gauge 70 85 ++ [ (property "custom.align" "right") ]))
+                (column "Used %" (percentLevel 70 85))
               ];
             };
           }
