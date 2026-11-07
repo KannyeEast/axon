@@ -3,7 +3,8 @@
 # shared Postgres, machine learning on the CPU.
 # Every account is its own library; sharing is through shared albums or partner sharing.
 # The first account made in the web UI is the admin.
-# Uploads through the tunnel are capped at 100 MB per file; larger ones go over the tailnet.
+# Uploads through the tunnel are capped at 100 MB per file; tailnet devices skip the tunnel (the
+# gateway's DNS sends them straight to it), so the cap only applies from outside.
 { lib, ... }:
 {
   flake.modules.nixos.files =
