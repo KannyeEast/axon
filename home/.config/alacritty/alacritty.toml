@@ -3,8 +3,9 @@ live_config_reload = true
 working_directory = "None"
 
 [terminal]
-# tmux where it's installed, the login shell otherwise
-shell = { program = "sh", args = ["-lc", "if command -v tmux >/dev/null; then tmux attach || tmux; else exec \"${SHELL:-sh}\" -l; fi"] }
+# every window its own tmux session in the folder it opens in, gone when the window closes
+# (`work` sessions are made elsewhere and stay); the login shell where tmux isn't installed
+shell = { program = "sh", args = ["-lc", "if command -v tmux >/dev/null; then exec tmux new-session \\; set-option destroy-unattached on; else exec \"${SHELL:-sh}\" -l; fi"] }
 
 [window]
 title = "Alacritty"
