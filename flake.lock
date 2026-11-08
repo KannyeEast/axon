@@ -184,7 +184,6 @@
         "nixos-hardware": "nixos-hardware",
         "nixpkgs": "nixpkgs",
         "sops-nix": "sops-nix",
-        "undo": "undo",
         "vpn-confinement": "vpn-confinement",
         "zen-browser": "zen-browser"
       }
@@ -221,26 +220,6 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
-        "type": "github"
-      }
-    },
-    "undo": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1786355935,
-        "narHash": "sha256-I/lR05R1sx+VyQ6uVyx6BIRcF8K6T1WPOBI1Zo1dCNs=",
-        "owner": "edaywalid",
-        "repo": "undo",
-        "rev": "513536e2a4218b9f7ad22f16ceb88ab6c2e89292",
-        "type": "github"
-      },
-      "original": {
-        "owner": "edaywalid",
-        "repo": "undo",
         "type": "github"
       }
     },
