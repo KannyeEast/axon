@@ -1,5 +1,6 @@
-# Contract: axon.links. Admin pages of what this host relies on outside the cluster, listed by
-# whatever relies on it. A gateway shows them on its start page; elsewhere nobody reads them.
+# Contract: axon.links. Pages of what this host relies on outside the cluster, listed by
+# whatever relies on it, in groups by purpose. A gateway shows them on its start page; elsewhere
+# nobody reads them.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -16,6 +17,11 @@ in
             icon = mkOption {
               type = types.str;
               description = "A name from homarr-labs/dashboard-icons, e.g. mullvad.svg.";
+            };
+            group = mkOption {
+              type = types.str;
+              default = "Infrastructure";
+              description = "The heading it is listed under; services' group names are taken.";
             };
           };
         }

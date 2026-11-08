@@ -15,7 +15,7 @@
       inherit (services.cloud) route;
       hostName = if routed then route.host else route.address;
       url = if routed then route.url else "http://${route.endpoint}";
-      data = "${config.axon.volumes.data or "/var/lib"}/nextcloud";
+      data = config.axon.spaces.nextcloud.path;
       port = 8090;
     in
     lib.mkMerge [
@@ -59,20 +59,18 @@
           }
         ];
 
-        # the files live on a data disk that may be missing at boot (nofail): never write to root instead
-        systemd.services =
-          lib.genAttrs
-            [
-              "nextcloud-cron"
-              "nextcloud-setup"
-              "nextcloud-update-db"
-              "phpfpm-nextcloud"
-            ]
-            (_: {
-              unitConfig.RequiresMountsFor = [ data ];
-            });
+        axon.spaces.nextcloud = {
+          user = "nextcloud";
+          group = "nextcloud";
+          units = [
+            "nextcloud-cron"
+            "nextcloud-setup"
+            "nextcloud-update-db"
+            "phpfpm-nextcloud"
+          ];
+        };
 
-        axon.persist.directories = [
+        axon.persist.state.directories = [
           {
             directory = "/var/lib/nextcloud";
             user = "nextcloud";
@@ -131,7 +129,6 @@
 
         services.nextcloud = {
           settings = {
-            mail_smtpmode = "smtp";
             mail_smtphost = mail.host;
             mail_smtpport = mail.port;
             mail_smtpauth = true;

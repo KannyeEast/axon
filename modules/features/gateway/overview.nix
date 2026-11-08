@@ -49,7 +49,7 @@ in
           icon = "router.svg";
         };
       };
-      description = "More links on the start page, name to url and icon: what runs outside the cluster and no feature knows about.";
+      description = "More links on the start page, name to url, icon and optionally group (Infrastructure by default): what runs outside the cluster and no feature knows about.";
     };
   };
 
@@ -69,6 +69,7 @@ in
 
       tiles = filterAttrs (_: service: service.dashboard != null) routes;
       groups = unique (sort (a: b: a < b) (mapAttrsToList (_: service: service.dashboard.group) tiles));
+      linkGroups = unique (sort (a: b: a < b) (mapAttrsToList (_: link: link.group) links));
 
       internal = route: "http://${route.endpoint}";
       # "dashboard/radarr/key" -> HOMEPAGE_VAR_DASHBOARD_RADARR_KEY
@@ -85,7 +86,7 @@ in
         ${name} = {
           href = or' (instance.link or null) service.route.url;
           description = or' (instance.description or null) service.dashboard.description;
-          icon = or' (instance.icon or null) service.dashboard.icon;
+          inherit (service.dashboard) icon;
           siteMonitor = internal service.route + service.dashboard.monitor;
         }
         //
@@ -106,10 +107,16 @@ in
           [ (tile service service.dashboard.name { }) ]
         else
           mapAttrsToList (tile service) service.dashboard.instances;
+      before =
+        a: b:
+        if a.dashboard.order != b.dashboard.order then
+          a.dashboard.order < b.dashboard.order
+        else
+          a.dashboard.name < b.dashboard.name;
       inGroup =
         group:
-        sort (a: b: head (attrNames a) < head (attrNames b)) (
-          concatMap tilesOf (attrValues (filterAttrs (_: service: service.dashboard.group == group) tiles))
+        concatMap tilesOf (
+          sort before (attrValues (filterAttrs (_: service: service.dashboard.group == group) tiles))
         );
 
       # top to bottom on a grid of four; groups in one row share it, each with an equal part.
@@ -120,6 +127,7 @@ in
           "Files"
           "Network"
         ]
+        [ "Code" ]
         [ "System" ]
       ];
       columns = 4;
@@ -161,6 +169,38 @@ in
         allowedHosts = routes.home.route.host;
         environmentFiles = [ config.sops.templates."homepage.env".path ];
 
+        # the reload button, which Homepage puts in the footer, stays in the top right corner, with
+        # "up/all" next to it: services whose status dot is green, out of all with a dot
+        customCSS = ''
+          #revalidate {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 20;
+          }
+          #services-up {
+            margin-right: 0.75rem;
+            font-size: 0.875rem;
+            font-variant-numeric: tabular-nums;
+          }
+        '';
+        customJS = ''
+          setInterval(() => {
+            const button = document.getElementById("revalidate");
+            if (!button) return;
+            const all = document.querySelectorAll(".site-monitor-status").length;
+            const up = document.querySelectorAll(".site-monitor-status .bg-emerald-500").length;
+            let count = document.getElementById("services-up");
+            if (!count) {
+              count = document.createElement("span");
+              count.id = "services-up";
+              button.prepend(count);
+            }
+            count.textContent = `''${up}/''${all}`;
+            count.style.color = up === all ? "#10b981" : "#f43f5e";
+          }, 2000);
+        '';
+
         settings = {
           title = domain;
           theme = "dark";
@@ -169,11 +209,6 @@ in
           statusStyle = "dot";
           hideVersion = true;
           useEqualHeights = true;
-          target = "_blank";
-          quicklaunch = {
-            searchDescriptions = true;
-            hideInternetSearch = true;
-          };
         };
 
         services = map (
@@ -184,8 +219,9 @@ in
             { ${rowName row} = map (group: { ${group} = inGroup group; }) row; }
         ) rows;
 
-        bookmarks = optional (links != { }) {
-          Admin = mapAttrsToList (name: link: {
+        # one list per link group, the groups and the links in each alphabetical
+        bookmarks = map (group: {
+          ${group} = mapAttrsToList (name: link: {
             ${name} = [
               {
                 inherit (link) icon;
@@ -193,8 +229,8 @@ in
                 description = "${head (match "[a-z]+://([^/]+).*" link.url)} ↗";
               }
             ];
-          }) links;
-        };
+          }) (filterAttrs (_: link: link.group == group) links);
+        }) linkGroups;
       };
 
       axon.links = gateway.links;

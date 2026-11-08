@@ -72,7 +72,7 @@ in
         name: data: nameValuePair "restic-${name}.env" { content = mkEnv name (envOf data); }
       ) (filterAttrs (_: data: envOf data != { }) targets);
 
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         "/root/.cache/restic"
       ];
 

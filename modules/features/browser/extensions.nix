@@ -37,8 +37,6 @@ in
         "{b8326f03-322f-4112-96bd-e7996548d99f}" = "theater-mode-for-youtube"; # until a custom extension replaces it
         "deArrow@ajay.app" = "dearrow";
         "sponsorBlocker@ajay.app" = "sponsorblock";
-        "firefox@tampermonkey.net" = "tampermonkey";
-        "{b86e4813-687a-43e6-ab65-0bde4ab75758}" = "localcdn-fork-of-decentraleyes";
         "harper@writewithharper.com" = "private-grammar-checker-harper";
         "gdpr@cavi.au.dk" = {
           id = "consent-o-matic";

@@ -1,9 +1,18 @@
 # Nix itself: flakes, binary caches, cleanup through nh, and what a host needs to rebuild itself.
+# Besides the public caches, the cache of any other host that runs one (the forge feature's
+# host.toml [forge] cache), at cache.<domain>.
+{ lib, ... }:
 {
   flake.modules.nixos.core =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) host repo;
+      inherit (config.axon) cluster host repo;
+      caches = lib.filter (key: key != null) (
+        lib.mapAttrsToList (name: data: if name == host.name then null else data.forge.cache or null) (
+          cluster.hosts
+        )
+      );
+      own = lib.optionals (cluster.domain != null && caches != [ ]) [ "https://cache.${cluster.domain}" ];
     in
     {
       nix.settings = {
@@ -11,23 +20,20 @@
           "nix-command"
           "flakes"
         ];
-        trusted-users = [
-          "root"
-          "@wheel"
-        ];
+        trusted-users = [ "@wheel" ];
         auto-optimise-store = true;
         # large closures overflow the default buffer
         download-buffer-size = 500000000;
         warn-dirty = false;
 
-        substituters = [
-          "https://cache.nixos.org"
-          "https://nix-community.cachix.org"
-        ];
+        # cache.nixos.org and its key are added by NixOS
+        substituters = [ "https://nix-community.cachix.org" ] ++ own;
         trusted-public-keys = [
-          "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
           "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
-        ];
+        ]
+        ++ caches;
+        # an unreachable cache (off the tailnet) costs seconds, not minutes
+        connect-timeout = 5;
       };
 
       programs.nh = {

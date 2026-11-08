@@ -1,4 +1,4 @@
-# Consumer of axon.services: every routed service gets <subdomain>.<domain> on the tailnet,
+# Consumer of axon.services: every routed service gets <service>.<domain> on the tailnet,
 # behind the gateway login unless it has its own. Public ones are on the tunnel as well.
 # One wildcard certificate from Let's Encrypt via a Cloudflare DNS challenge covers them all.
 { lib, ... }:
@@ -78,7 +78,7 @@ in
               ${optionalString (service.route.access != "open") ''
                 forward_auth ${routes.auth.route.endpoint} {
                   uri /api/authz/forward-auth
-                  copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+                  copy_headers Remote-User
                 }
               ''}
               reverse_proxy ${service.route.endpoint}
@@ -97,7 +97,7 @@ in
         icon = "cloudflare.svg";
       };
 
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = "/var/lib/caddy";
           user = "caddy";

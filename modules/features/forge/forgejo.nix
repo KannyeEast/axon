@@ -10,16 +10,26 @@
   flake.modules.nixos.forge =
     { config, ... }:
     let
-      inherit (config.axon) routed services volumes;
+      inherit (config.axon)
+        remotes
+        routed
+        services
+        spaces
+        ;
       cfg = config.services.forgejo;
       route = services.git.route;
       port = 3030;
+      # the forges the repository is mirrored to, from cluster.toml [repo]
+      mirrors = lib.unique (
+        lib.mapAttrsToList (_: remote: lib.head (lib.match "https://([^/]+)/.*" remote.web)) (
+          lib.filterAttrs (_: remote: !remote.origin && remote.web != null) remotes
+        )
+      );
     in
     {
       services.forgejo = {
         enable = true;
-        stateDir = "${volumes.data or "/var/lib"}/forgejo";
-        database.type = "sqlite3";
+        stateDir = spaces.forgejo.path;
         dump.enable = true;
         settings = {
           server = {
@@ -36,11 +46,22 @@
       # the admin command line
       environment.systemPackages = [ cfg.package ];
 
-      # the data disk may be missing at boot (nofail): never write to root instead
-      systemd.services.forgejo.unitConfig.RequiresMountsFor = [ cfg.stateDir ];
-      systemd.services.forgejo-dump.unitConfig.RequiresMountsFor = [ cfg.stateDir ];
+      # push mirrors connect over SSH as forgejo unless their address names a user, and forges
+      # only take git; this way a mirror works however its address was entered
+      programs.ssh.extraConfig = lib.concatMapStrings (host: ''
+        Host ${host}
+          User git
+      '') mirrors;
 
-      axon.persist.directories = lib.optional (!(volumes ? data)) {
+      axon.spaces.forgejo = {
+        inherit (cfg) user group;
+        units = [
+          "forgejo"
+          "forgejo-dump"
+        ];
+      };
+
+      axon.persist.state.directories = lib.optional (!spaces.forgejo.onVolume) {
         directory = cfg.stateDir;
         user = cfg.user;
         group = cfg.group;

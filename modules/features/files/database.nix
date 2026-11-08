@@ -19,7 +19,7 @@
       # the dump lives on a data disk that may be missing at boot (nofail): never write to root instead
       systemd.services.postgresqlBackup-nextcloud.unitConfig.RequiresMountsFor = [ dumps ];
 
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = "/var/lib/postgresql";
           user = "postgres";

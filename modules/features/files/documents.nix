@@ -11,7 +11,7 @@
     { config, ... }:
     let
       inherit (config.axon) routed services;
-      data = "${config.axon.volumes.data or "/var/lib"}/paperless";
+      data = config.axon.spaces.paperless.path;
       port = 28981;
     in
     lib.mkIf (config.axon.host.class == "server") {
@@ -34,20 +34,18 @@
         };
       };
 
-      # the files live on a data disk that may be missing at boot (nofail): never write to root instead
-      systemd.services =
-        lib.genAttrs
-          [
-            "paperless-consumer"
-            "paperless-task-queue"
-            "paperless-web"
-            "paperless-exporter"
-          ]
-          (_: {
-            unitConfig.RequiresMountsFor = [ data ];
-          });
+      axon.spaces.paperless = {
+        user = "paperless";
+        group = "paperless";
+        units = [
+          "paperless-consumer"
+          "paperless-task-queue"
+          "paperless-web"
+          "paperless-exporter"
+        ];
+      };
 
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = "/var/lib/paperless";
           user = "paperless";

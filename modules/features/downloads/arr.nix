@@ -8,22 +8,28 @@
     let
       inherit (config.axon) vpn;
       inherit (config.axon.volumes) media;
+      # order: the Media tiles fill rows of four; Seerr and Jellyfin take the first column, the
+      # downloaders the second, these four the rest
       apps = {
         radarr = {
           port = 7878;
+          order = 3;
           description = "Movies";
         };
         sonarr = {
           port = 8989;
+          order = 4;
           description = "Shows";
         };
         bazarr = {
           port = 6767;
+          order = 8;
           description = "Subtitles";
         };
       };
       prowlarr = {
         port = 9696;
+        order = 7;
         description = "Indexers";
         # four values make labels like "FAIL QUERIES" wrap, and the whole row grows with them
         fields = [
@@ -36,7 +42,7 @@
       dashboard = name: app: {
         name = lib.toSentenceCase name;
         group = "Media";
-        inherit (app) description;
+        inherit (app) description order;
         icon = "${name}.svg";
         widget = {
           type = name;
@@ -92,7 +98,7 @@
         mode = "0750";
       };
 
-      axon.persist.directories =
+      axon.persist.state.directories =
         map (app: {
           directory = "/var/lib/${app}";
           user = app;

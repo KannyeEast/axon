@@ -66,8 +66,6 @@ in
         user = user.name;
         dataDir = home;
         configDir = "/var/lib/syncthing";
-        overrideDevices = true;
-        overrideFolders = true;
         settings = {
           options = {
             globalAnnounceEnabled = false; # the tailnet carries everything
@@ -105,7 +103,7 @@ in
 
       axon.overlay.tcpPorts = [ peerPort ];
 
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = "/var/lib/syncthing";
           user = user.name;

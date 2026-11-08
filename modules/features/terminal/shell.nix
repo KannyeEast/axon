@@ -1,12 +1,10 @@
 # The terminal: zsh with its plugins, tmux with its plugins, and the everyday CLI tools.
 # Nix installs them and loads the plugins (they need store paths); every setting is a
 # dotfile (.zshrc, .config/tmux/tmux.conf, .config/starship.toml, .config/nvim/init.lua).
-{ inputs, ... }:
 {
   flake.modules.nixos.terminal =
     { config, pkgs, ... }:
     let
-      undo = inputs.undo.packages.${pkgs.stdenv.hostPlatform.system}.default;
       omz = "${pkgs.oh-my-zsh}/share/oh-my-zsh";
     in
     {
@@ -27,7 +25,6 @@
           source ${omz}/plugins/copypath/copypath.plugin.zsh
           source ${omz}/plugins/extract/extract.plugin.zsh
           source ${omz}/plugins/sudo/sudo.plugin.zsh
-          source ${undo}/share/undo/undo.zsh
           source ${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh
           source ${pkgs.zsh-history-substring-search}/share/zsh-history-substring-search/zsh-history-substring-search.zsh
           source ${pkgs.zsh-you-should-use}/share/zsh/plugins/you-should-use/you-should-use.plugin.zsh
@@ -61,6 +58,7 @@
             pkgs.vimPlugins.telescope-fzf-native-nvim
             pkgs.vimPlugins.gitsigns-nvim
             pkgs.vimPlugins.nvim-lspconfig
+            pkgs.vimPlugins.vimtex
           ];
           customLuaRC = ''
             local init = vim.fn.stdpath("config") .. "/init.lua"
@@ -72,7 +70,6 @@
       };
 
       environment.sessionVariables = {
-        UNDO_CAPTURE_SHELL = "1";
         MANPAGER = "sh -c 'col -bx | bat -l man -p'";
         MANROFFOPT = "-c";
         FZF_DEFAULT_COMMAND = "fd --type f --hidden --exclude .git";
@@ -81,7 +78,6 @@
       };
 
       environment.systemPackages = [
-        undo
         pkgs.bat
         pkgs.eza
         pkgs.fd

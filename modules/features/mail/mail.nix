@@ -76,10 +76,7 @@
         '';
       };
 
-      programs.msmtp = {
-        enable = true;
-        setSendmail = true;
-      };
+      programs.msmtp.enable = true;
       # the rendered config with the secrets in it replaces the one Nix would write
       environment.etc."msmtprc" = lib.mkForce { source = config.sops.templates.msmtprc.path; };
 

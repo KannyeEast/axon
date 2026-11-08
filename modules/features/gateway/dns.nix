@@ -1,15 +1,19 @@
 # DNS filtering for the tailnet (AdGuard Home). Settings are owned by Nix; the web UI is for
 # looking, not changing. Point the tailnet's DNS at this host in the Tailscale admin console.
+# Public routes resolve to the tunnel everywhere else; here they answer like the tailnet-only
+# start page, so tailnet devices reach them directly, without the tunnel's upload cap.
 { lib, ... }:
 {
   flake.modules.nixos.gateway =
     { config, ... }:
     let
       inherit (config.axon.overlay) network;
+      inherit (config.axon) routes;
       port = 3000;
+      public = lib.filterAttrs (_: service: service.route.public) routes;
     in
     {
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = "/var/lib/private/AdGuardHome";
           mode = "0700";
@@ -28,13 +32,7 @@
         settings = {
           http.address = "127.0.0.1:${toString port}";
 
-          # empty users disable adguards authenticator
-          users = [ ];
-
           dns = {
-            bind_hosts = [ "0.0.0.0" ];
-            port = 53;
-
             upstream_dns = [
               "https://security.cloudflare-dns.com/dns-query"
               "https://dns.quad9.net/dns-query"
@@ -50,11 +48,14 @@
           };
 
           filtering = {
-            protection_enabled = true;
-            filtering_enabled = true;
+            # a name as the answer makes it a CNAME, which AdGuard then resolves upstream
+            rewrites = lib.mapAttrsToList (_: service: {
+              domain = service.route.host;
+              answer = routes.home.route.host;
+              enabled = true;
+            }) public;
           };
 
-          filters_update_interval = 24;
           filters = [
             {
               enabled = true;
@@ -67,12 +68,6 @@
               id = 2;
               name = "HaGeZi Threat Intelligence Feeds (medium)";
               url = "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/tif.medium.txt";
-            }
-            {
-              enabled = true;
-              id = 3;
-              name = "HaGeZi Microsoft (Windows, Office, MSN)";
-              url = "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/native.winoffice.txt";
             }
             {
               enabled = true;

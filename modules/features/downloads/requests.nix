@@ -7,7 +7,7 @@
     lib.mkIf (config.axon.volumes ? media) {
       services.seerr.enable = true;
 
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = "/var/lib/private/seerr";
           mode = "0700";
@@ -22,6 +22,7 @@
         };
         dashboard = {
           name = "Seerr";
+          order = 1;
           group = "Media";
           description = "Requests";
           icon = "jellyseerr.svg";

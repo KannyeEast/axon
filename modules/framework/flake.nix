@@ -1,4 +1,4 @@
-# The flake's own outputs: systems, the formatter, the host.toml reference and the devshell.
+# The flake's own outputs: systems, the formatter and the host.toml reference.
 {
   inputs,
   config,
@@ -31,15 +31,5 @@
             }).options;
           warningsAreErrors = false;
         }).optionsCommonMark;
-
-      devShells.default = pkgs.mkShell {
-        packages = [
-          pkgs.just
-          pkgs.nixfmt
-          pkgs.deadnix
-          pkgs.sops
-          pkgs.ssh-to-age
-        ];
-      };
     };
 }

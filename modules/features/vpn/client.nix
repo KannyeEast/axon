@@ -47,7 +47,7 @@
 
       # the login and this machine's device key: without them every boot registers a new
       # device, and an account has five
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = "/etc/mullvad-vpn";
           mode = "0700";

@@ -160,7 +160,7 @@ in
       domain = mkOption {
         type = types.nullOr types.str;
         default = null;
-        description = "Services are published as <subdomain>.<domain>.";
+        description = "Services are published as <service>.<domain>.";
       };
       ssh = mkOption {
         type = types.attrsOf (types.listOf types.str);
@@ -201,7 +201,7 @@ in
         origin = mkOption {
           type = types.nullOr types.str;
           default = null;
-          description = "The remote that is origin: pulled from, and pushing to every remote.";
+          description = "The remote that is origin: pulled from and pushed to. The others are mirrors that origin pushes the reviewed branches to.";
         };
       };
     };
@@ -209,18 +209,7 @@ in
 
   flake.modules.nixos.core =
     { config, ... }:
-    let
-      inherit (config.axon.cluster) repo;
-    in
     {
-      # nothing in the system reads [repo], so it is checked here rather than by its type
-      config.assertions = [
-        {
-          assertion = repo.origin == null || repo.remotes ? ${repo.origin};
-          message = "cluster.toml: [repo] origin '${toString repo.origin}' is not under [repo.remotes] (${lib.concatStringsSep ", " (attrNames repo.remotes)})";
-        }
-      ];
-
       options.axon.home = mkOption {
         type = types.str;
         readOnly = true;

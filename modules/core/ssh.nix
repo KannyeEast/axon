@@ -17,12 +17,8 @@ in
     {
       services.openssh = {
         enable = true;
-        openFirewall = true;
-        settings = {
-          # deliberate: a lost key must not lock you out of a machine you can't walk to
-          PasswordAuthentication = true;
-          KbdInteractiveAuthentication = true;
-        };
+        # deliberate: a lost key must not lock you out of a machine you can't walk to
+        settings.PasswordAuthentication = true;
         # the host key is the machine's identity: it decrypts secrets.json, so it lives in /persist
         hostKeys = [
           {

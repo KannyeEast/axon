@@ -1,5 +1,5 @@
 # Prometheus: scrapes the exporters on every host listing the metrics feature every 30 s and
-# keeps 90 days. Its own UI at prometheus.<domain>, behind the gateway login.
+# keeps 90 days. Grafana reads it; it has no route of its own.
 # The blackbox exporter checks every route: "service" asks the service directly (any answer
 # below 500 means it runs). Where this host runs the gateway, https://<name>.<domain> is also
 # called the way clients do (DNS, Caddy, certificate, the tunnel for public ones): "route" for
@@ -27,7 +27,6 @@ in
         routes
         ;
       exporters = config.services.prometheus.exporters;
-      port = 9090;
       scraped = filterAttrs (_: data: elem "metrics" data.host.features) cluster.hosts;
       open = filterAttrs (_: service: service.route.access == "open") routes;
       guarded = filterAttrs (_: service: service.route.access != "open") routes;
@@ -119,7 +118,6 @@ in
       services.prometheus = {
         enable = true;
         listenAddress = "127.0.0.1";
-        inherit port;
         retentionTime = "90d";
         globalConfig.scrape_interval = "30s";
         scrapeConfigs = [
@@ -133,7 +131,7 @@ in
         ];
       };
 
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = "/var/lib/prometheus2";
           user = "prometheus";
@@ -141,7 +139,5 @@ in
           mode = "0700";
         }
       ];
-
-      axon.services.prometheus.route.port = port;
     };
 }

@@ -26,7 +26,7 @@
       # the library is on a data disk that may be missing at boot (nofail)
       systemd.services.jellyfin.unitConfig.RequiresMountsFor = [ media ];
 
-      axon.persist.directories = [
+      axon.persist.state.directories = [
         {
           directory = "/var/lib/jellyfin";
           user = "jellyfin";
@@ -43,6 +43,7 @@
         };
         dashboard = {
           name = "Jellyfin";
+          order = 5;
           group = "Media";
           description = "Movies and shows";
           icon = "jellyfin.svg";
