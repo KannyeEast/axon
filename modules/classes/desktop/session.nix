@@ -8,8 +8,6 @@
       programs.niri.enable = true;
       services.displayManager.gdm.enable = true;
 
-      security.polkit.enable = true;
-      programs.dconf.enable = true;
       services.speechd.enable = false;
 
       # the account picture on the login screen
@@ -32,13 +30,11 @@
         pkgs.kanshi
         pkgs.xwayland-satellite # niri starts it on demand when it's on PATH
         pkgs.wl-clipboard
-        pkgs.libnotify
         pkgs.mako # makoctl
         pkgs.playerctl
         pkgs.pavucontrol
         pkgs.bibata-cursors
       ];
-      security.pam.services.swaylock = { };
 
       # mako starts on the first notification through D-Bus; nothing has to spawn it
       services.dbus.packages = [ pkgs.mako ];
