@@ -105,7 +105,7 @@ commit MESSAGE="":
   fi
   git commit -m "$msg"
 
-# Commit, then push to every forge
+# Commit, then push to origin; the mirrors only get stable and main, from origin
 [group("git")]
 push MESSAGE="": (commit MESSAGE)
   git -C {{flake}} push
@@ -115,27 +115,29 @@ push MESSAGE="": (commit MESSAGE)
 pull:
   git -C {{flake}} pull --rebase --autostash
 
-# Publish main from dev: only the framework, never hosts/ or home/
+# Publish main from stable, the reviewed branch: only the framework, never hosts/ or home/
 [group("git")]
 sync:
   #!/usr/bin/env bash
   set -euo pipefail
   cd {{flake}}
+  git fetch origin
+  src=origin/stable
   git switch main 2>/dev/null || git switch -c main origin/main
   prev=$(git log -1 --format=%B --grep='^sync: (' | sed -n 's/^sync: (\([0-9a-f]\{7,40\}\))$/\1/p')
   git rm -rq --ignore-unmatch .
-  git checkout dev -- modules/ flake.nix README.md AGENTS.md justfile install.sh 2>/dev/null || true
-  if [ -n "$prev" ] && git cat-file -e "$prev^{commit}" 2>/dev/null; then range="$prev..dev"; else range="dev"; fi
+  git checkout "$src" -- modules/ flake.nix README.md AGENTS.md DECISIONS.md justfile install.sh 2>/dev/null || true
+  if [ -n "$prev" ] && git cat-file -e "$prev^{commit}" 2>/dev/null; then range="$prev..$src"; else range="$src"; fi
   body=$(git log --no-merges --reverse --format='- %s' "$range")
   if git diff --cached --quiet; then
     echo "Nothing to sync."
   else
-    git commit -m "sync: ($(git rev-parse dev))" -m "${body:-No individual commits.}"
+    git commit -m "sync: ($(git rev-parse "$src"))" -m "${body:-No individual commits.}"
     git push -u origin main --force
   fi
   git switch dev
 
-# (Re)create the remotes under [repo] in cluster.toml; origin pushes to all of them
+# (Re)create the remotes under [repo] in cluster.toml; origin is the one pulled from and pushed to
 [group("git")]
 remotes:
   #!/usr/bin/env bash
@@ -163,10 +165,8 @@ remotes:
   for r in "${remotes[@]}" "origin x" "all x"; do git remote remove "${r%% *}" 2>/dev/null || true; done
   for r in "${remotes[@]}"; do git remote add "${r%% *}" "${r#* }"; done
   git remote add origin "$(git remote get-url "$origin")"
-  git remote set-url --delete --push origin '.*' 2>/dev/null || true
-  for r in "${remotes[@]}"; do git remote set-url --add --push origin "${r#* }"; done
   git fetch --all --prune
-  for b in main dev; do
+  for b in main stable dev; do
     git show-ref --verify -q "refs/heads/$b" && git branch --set-upstream-to="origin/$b" "$b" 2>/dev/null || true
   done
   git remote -v

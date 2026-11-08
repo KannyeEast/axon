@@ -92,3 +92,9 @@ if ! post "$inline"; then
       if .line > 0 then "`\(.path):\(.line)`\n\n\(.body)" else .body end)) | join("\n\n---\n\n"))
   }' <<<"$review")"
 fi
+
+# a failed job is what blocks the merge into stable (a required check there)
+if [ "$event" = REQUEST_CHANGES ]; then
+  echo "The review requests changes." >&2
+  exit 1
+fi

@@ -201,7 +201,7 @@ in
         origin = mkOption {
           type = types.nullOr types.str;
           default = null;
-          description = "The remote that is origin: pulled from, and pushing to every remote.";
+          description = "The remote that is origin: pulled from and pushed to. The others are mirrors that origin pushes the reviewed branches to.";
         };
       };
     };
