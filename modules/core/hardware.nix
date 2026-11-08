@@ -47,7 +47,6 @@ in
       config = mkMerge [
         {
           hardware.facter.reportPath = host.dir + "/facter.json";
-          services.fstrim.enable = true;
 
           assertions = [
             {
@@ -68,10 +67,7 @@ in
 
         (mkIf nvidia {
           services.xserver.videoDrivers = [ "nvidia" ];
-          hardware.nvidia = {
-            open = true;
-            modesetting.enable = true;
-          };
+          hardware.nvidia.open = true;
         })
 
         (mkIf hybrid {
