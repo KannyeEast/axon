@@ -10,10 +10,21 @@
   flake.modules.nixos.forge =
     { config, ... }:
     let
-      inherit (config.axon) routed services spaces;
+      inherit (config.axon)
+        remotes
+        routed
+        services
+        spaces
+        ;
       cfg = config.services.forgejo;
       route = services.git.route;
       port = 3030;
+      # the forges the repository is mirrored to, from cluster.toml [repo]
+      mirrors = lib.unique (
+        lib.mapAttrsToList (_: remote: lib.head (lib.match "https://([^/]+)/.*" remote.web)) (
+          lib.filterAttrs (_: remote: !remote.origin && remote.web != null) remotes
+        )
+      );
     in
     {
       services.forgejo = {
@@ -34,6 +45,13 @@
 
       # the admin command line
       environment.systemPackages = [ cfg.package ];
+
+      # push mirrors connect over SSH as forgejo unless their address names a user, and forges
+      # only take git; this way a mirror works however its address was entered
+      programs.ssh.extraConfig = lib.concatMapStrings (host: ''
+        Host ${host}
+          User git
+      '') mirrors;
 
       axon.spaces.forgejo = {
         inherit (cfg) user group;
