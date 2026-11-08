@@ -2,17 +2,28 @@
 
 Instructions for an assistant working in this repository.
 
-## Role
+## Roles
 
-You maintain a NixOS configuration built on a small framework (axon) that lives in this repo.
-**Explain, then act.** Say what you found and what you intend to change before editing. Stop
-for confirmation on anything beyond a single obvious fix, and don't bundle unrequested changes.
+This repository is a NixOS configuration built on a small framework (axon) that lives in it. Two
+assistants work on it with the same knowledge (this file and [DECISIONS.md](DECISIONS.md)) and
+different jobs. Started by CI on a pull request, you are the reviewer; otherwise the author.
+
+**Author.** You change the configuration with its owner, in a conversation. Explain, then act:
+say what you found and what you intend to change before editing. Stop for confirmation on
+anything beyond a single obvious fix, and don't bundle unrequested changes. Say what you verified
+and what you didn't.
+
+**Reviewer.** You check a pull request and change nothing. Follow
+[.forgejo/review.md](.forgejo/review.md). Every finding names the rule it breaks, why that
+matters here, and the concrete fix. A choice recorded in DECISIONS.md is not a finding.
 
 ## Layout
 
 ```
 flake.nix            inputs; outputs = every .nix under modules/ (import-tree)
 cluster.toml         relations between machines: [ssh], [sync], [external]; the repo's remotes: [repo]
+DECISIONS.md         deliberate choices that look like mistakes; never "fixed" or flagged
+.forgejo/            CI: the check workflow, the review workflow and the reviewer's guide
 hosts/<name>/        host.toml, facter.json, secrets.json (sops), optional home/
 hosts/_old/          previous hosts, kept for reference, never built
 home/                dotfiles every host shares; hosts/<name>/home wins per file
@@ -38,6 +49,10 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
 - **Setting, derived value, or host data?** Same on every host: just set it. Differs and can be
   detected: derive it (facter). Differs and is a choice: a field in `host.toml`. A different
   behaviour: a feature, never an option.
+- **Use what exists before building it.** Before a custom script, wrapper or option, look for
+  what already does it: a setting of the NixOS module or the program itself, a package or plugin
+  in nixpkgs, a common add-on (the program's docs, its issue tracker, the web). Write your own only
+  when nothing fits, and say in your reply what you looked at.
 - **Core, class or feature?** Core: a machine can't boot, log in or be managed from this repo
   without it. Class: the barest machine of that class needs it. Feature: you can name a host of
   that class that wouldn't want it.
@@ -55,6 +70,9 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   `axon.vpn`, `axon.overlay`, `axon.browser`. Add one for two or more consumers or a realistic swap. Producers set them unconditionally; consumers handle an empty set or null.
 - **One way per thing.** Modules that produce the same result do it the same way. A shared helper
   only when many modules use it.
+- **Only what changes something.** Don't restate an upstream default (read the module's source),
+  and don't add an option nothing sets, a helper with one caller or a package nothing runs. A
+  port stays written out even when it is the default: the route needs the number.
 - **State lives next to the module that creates it**, in the same file: a feature adds its path to
   `axon.persist.state.directories` (on the host's state volume when it has one), core and classes
   to `axon.persist.directories` (the boot disk). `DynamicUser` services keep state in
@@ -62,9 +80,16 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
 - **Name files for what they do** (`passwords.nix`, not `keepassxc.nix`).
 - **Formatting**: `nix fmt`. Never align `=` or values with extra spaces, in any file type.
 - **Errors** read `<file or option>: <what is wrong>`, and say what to do where possible.
+- **Decisions are written down.** A deliberate choice that the comment on its lines explains
+  stays in that comment. One that spans files or is about something deliberately missing goes
+  into DECISIONS.md with its reason, in the same commit.
 - **Comments describe the code as it is, not how it got there.** A module's header says what
   that module does. Inline comments only where the code isn't obvious on its own. No history,
   rejected alternatives or reasoning from a conversation: that belongs in the commit message.
+- **Quirks are explained where they're handled.** A workaround for a tool, driver or service gets
+  a comment on the lines that do it, saying what breaks without them.
+- **Dotfiles with several sections** separate them with a ruler: `# ── name ────────`
+  (`--` in Lua, `//` in KDL and JavaScript).
 
 ## Commands
 
@@ -73,6 +98,8 @@ git add --intent-to-add .      # flakes ignore untracked files; new files need t
 nix flake check                # evaluates every host: the bar for "done"
 nix eval .#nixosConfigurations.<host>.config.system.build.toplevel.drvPath
 nix fmt
+# a change that shouldn't alter any system: same derivation as the last commit
+nix eval --raw "git+file://$PWD?ref=HEAD#nixosConfigurations.<host>.config.system.build.toplevel.drvPath"
 ```
 
 `nix flake check` catches types, missing options and bad references, not a package that fails
@@ -80,20 +107,13 @@ to build or a service that fails to start. Say when a change is unverified and w
 
 ## Boundaries
 
-**Never:** use git beyond `git add --intent-to-add`; run disko against an existing machine.
+**Never:** change the repository with git (`git add --intent-to-add` is the one exception; reading
+it with `status`, `log`, `diff`, `show`, `blame` or `rev-parse` is fine); run disko against an
+existing machine.
 
 **Ask first:** anything in `hosts/` (host.toml, facter.json, dotfiles), secrets and `.sops.yaml`,
 new flake inputs, new features or classes.
 
 Moves and deletes outside `hosts/` need no asking; say what moved.
 
-**Deliberate, don't "fix":**
-
-| Setting | Why |
-|---|---|
-| `PasswordAuthentication = true` | a lost key must not lock you out of a machine you can't walk to |
-| `defaultSopsFormat = "yaml"` on `.json` files, `validateSopsFiles = false` | sops-nix's JSON reader rejects the nested keys these files use |
-| `onShutdown = "shutdown"` for libvirt | a saved state with virtiofs attached can't be restored |
-| no LUKS | chosen; hibernation into a plain swap partition |
-| podman only, `docker` as an alias | rootless by design; a docker group is root-equivalent |
-| the `local`/`proton` names of restic targets | renaming a target loses its history |
+**Deliberate, don't "fix":** everything in [DECISIONS.md](DECISIONS.md).

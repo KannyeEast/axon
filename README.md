@@ -10,7 +10,7 @@ NixOS for my machines, as data plus a small framework.
 - Dotfiles live in `home/`, with `hosts/<name>/home` winning per file, and are linked live into
   `$HOME`; Nix never reads them.
 
-Working on it with an assistant: [AGENTS.md](AGENTS.md).
+Working on it with an assistant: [AGENTS.md](AGENTS.md); choices that are deliberate: [DECISIONS.md](DECISIONS.md).
 
 ## Everyday
 
