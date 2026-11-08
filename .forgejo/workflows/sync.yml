@@ -1,0 +1,18 @@
+# After every merge into stable: main becomes its framework part (.forgejo/sync.sh).
+on:
+  push:
+    branches: [stable]
+
+jobs:
+  sync:
+    runs-on: native
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # main's history, to build on it
+      - run: bash .forgejo/sync.sh
+        env:
+          GIT_AUTHOR_NAME: forgejo-actions
+          GIT_AUTHOR_EMAIL: actions@noreply.invalid
+          GIT_COMMITTER_NAME: forgejo-actions
+          GIT_COMMITTER_EMAIL: actions@noreply.invalid

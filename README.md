@@ -6,8 +6,9 @@ NixOS for my machines, as data plus a small framework.
   has, `secrets.json` (sops) what it must keep secret.
 - `cluster.toml` says how machines relate: who may log in where, which folders sync between whom, and where this repository is pushed (`just remotes`).
 - Branches: `dev` for daily work, pushed to Forgejo only; `stable` takes it through a reviewed
-  pull request; `main` is the framework alone, published from `stable` with `just sync`. Only
-  `stable` and `main` go to the mirrors.
+  pull request (`just pr`); `main` is the framework alone (`modules/`, `flake.nix` and its lock,
+  the installer, this README), built from `stable` after every merge. Only `stable` and `main` go
+  to the mirrors.
 - `modules/` is found, not wired: core for every host, one class (`desktop` or `server`), and the
   features a host subscribes to, one folder each under `modules/features/`.
 - Dotfiles live in `home/`, with `hosts/<name>/home` winning per file, and are linked live into

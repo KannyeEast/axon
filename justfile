@@ -115,27 +115,19 @@ push MESSAGE="": (commit MESSAGE)
 pull:
   git -C {{flake}} pull --rebase --autostash
 
-# Publish main from stable, the reviewed branch: only the framework, never hosts/ or home/
+# Open the pull request from dev into stable: the reviewed way to the mirrors
 [group("git")]
-sync:
+pr:
   #!/usr/bin/env bash
   set -euo pipefail
-  cd {{flake}}
-  git fetch origin
-  src=origin/stable
-  git switch main 2>/dev/null || git switch -c main origin/main
-  prev=$(git log -1 --format=%B --grep='^sync: (' | sed -n 's/^sync: (\([0-9a-f]\{7,40\}\))$/\1/p')
-  git rm -rq --ignore-unmatch .
-  git checkout "$src" -- modules/ flake.nix README.md AGENTS.md DECISIONS.md justfile install.sh 2>/dev/null || true
-  if [ -n "$prev" ] && git cat-file -e "$prev^{commit}" 2>/dev/null; then range="$prev..$src"; else range="$src"; fi
-  body=$(git log --no-merges --reverse --format='- %s' "$range")
-  if git diff --cached --quiet; then
-    echo "Nothing to sync."
-  else
-    git commit -m "sync: ($(git rev-parse "$src"))" -m "${body:-No individual commits.}"
-    git push -u origin main --force
-  fi
-  git switch dev
+  # user@host:owner/repo.git, ssh://user@host/owner/repo.git or https://host/owner/repo.git
+  web=$(git -C {{flake}} remote get-url origin | sed -E 's#^(ssh://)?[^@/]+@([^:/]+)[:/]#https://\2/#; s#\.git$##')
+  xdg-open "$web/compare/stable...dev"
+
+# Publish main from stable by hand; CI does it after every merge into stable
+[group("git")]
+sync:
+  cd {{flake}} && bash .forgejo/sync.sh
 
 # (Re)create the remotes under [repo] in cluster.toml; origin is the one pulled from and pushed to
 [group("git")]
