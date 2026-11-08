@@ -78,7 +78,7 @@ in
               ${optionalString (service.route.access != "open") ''
                 forward_auth ${routes.auth.route.endpoint} {
                   uri /api/authz/forward-auth
-                  copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+                  copy_headers Remote-User
                 }
               ''}
               reverse_proxy ${service.route.endpoint}

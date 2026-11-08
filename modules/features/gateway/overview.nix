@@ -209,11 +209,6 @@ in
           statusStyle = "dot";
           hideVersion = true;
           useEqualHeights = true;
-          target = "_blank";
-          quicklaunch = {
-            searchDescriptions = true;
-            hideInternetSearch = true;
-          };
         };
 
         services = map (
