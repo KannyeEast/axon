@@ -14,7 +14,6 @@
         for = wait;
         annotations.summary = summary;
       };
-      days = 86400;
 
       # the same page as the other mails; whether the alert is over is only known when it's sent
       status =
@@ -106,7 +105,7 @@
                     "{{ $labels.instance }} is not reachable as it should be"
                   )
                   (rule "CertificateExpiring"
-                    ''probe_ssl_earliest_cert_expiry{job=~"route|guarded"} - time() < 14 * ${toString days}''
+                    ''probe_ssl_earliest_cert_expiry{job=~"route|guarded"} - time() < 14 * 86400''
                     "0m"
                     "the certificate of {{ $labels.instance }} expires in {{ $value | humanizeDuration }}"
                   )
@@ -139,8 +138,6 @@
                 "host"
                 "service"
               ];
-              group_wait = "30s";
-              group_interval = "5m";
               repeat_interval = "12h";
             };
             receivers = [ receiver ];

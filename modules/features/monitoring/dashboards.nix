@@ -285,41 +285,13 @@ in
         ) panels;
       };
 
-      dashboards = pkgs.linkFarm "grafana-dashboards" [
-        {
-          name = "start.json";
-          path = pkgs.writeText "start.json" start;
-        }
-        {
-          name = "node-exporter-full.json";
-          path = pkgs.fetchurl {
-            name = "node-exporter-full.json";
-            url = "https://grafana.com/api/dashboards/1860/revisions/45/download";
-            sha256 = "11hrll7fm626ikbva5md4gm0rca537vp4xsxa9sxl1pk15s6nk0q";
-          };
-        }
-        {
-          name = "blackbox-http.json";
-          # written for import, which asks for the data source; provisioning doesn't
-          path = pkgs.runCommand "blackbox-http.json" { } ''
-            sed 's/''${DS_PROMETHEUS}/Prometheus/g' ${
-              pkgs.fetchurl {
-                name = "blackbox-http.json";
-                url = "https://grafana.com/api/dashboards/13659/revisions/1/download";
-                sha256 = "0m4gskf936jam2mrwhd8i1mnam9y26wklcg69hmaba60a1c4aw4y";
-              }
-            } >$out
-          '';
-        }
-      ];
+      dashboards = pkgs.writeTextDir "start.json" start;
     in
     {
       services.grafana = {
         enable = true;
-        dataDir = state;
         settings = {
           server = {
-            http_addr = "127.0.0.1";
             http_port = port;
             domain = address;
             root_url = "${url}/";
@@ -339,13 +311,8 @@ in
             auto_sign_up = true;
             whitelist = "127.0.0.1";
           };
-          analytics = {
-            reporting_enabled = false;
-            check_for_updates = false;
-          };
         };
         provision = {
-          enable = true;
           datasources.settings.datasources = [
             {
               name = "Prometheus";
