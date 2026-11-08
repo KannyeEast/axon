@@ -39,6 +39,7 @@ in
         secrets.server.connections.forgejo.token_url = config.sops.secrets."forge/runner".path;
         hostPackages = [
           pkgs.bash
+          pkgs.claude-code # the pull request reviewer (.forgejo/review.sh)
           pkgs.coreutils
           pkgs.curl
           pkgs.findutils
@@ -46,6 +47,7 @@ in
           pkgs.git
           pkgs.gnugrep
           pkgs.gnused
+          pkgs.jq
           pkgs.nodejs
           config.nix.package
         ];

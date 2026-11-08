@@ -1,4 +1,5 @@
-# Every push and pull request: the flake evaluates, and every host's system builds.
+# Every push and pull request: the flake evaluates, and every host's system builds. On a pull
+# request the reviewer then posts its review.
 on:
   push:
   pull_request:
@@ -17,3 +18,26 @@ jobs:
             nix build --out-link "$HOME/latest/$host" ".#nixosConfigurations.$host.config.system.build.toplevel"
             echo "::endgroup::"
           done
+
+  # the reviewer (AGENTS.md, Roles), after the check so it can explain a failure
+  review:
+    needs: check
+    if: always() && github.event_name == 'pull_request'
+    runs-on: native
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0 # the base branch, for the diff
+      - run: bash .forgejo/review.sh
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          FORGEJO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API: ${{ github.api_url }}/repos/${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          DESCRIPTION: ${{ github.event.pull_request.body }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CHECK: ${{ needs.check.result }}
