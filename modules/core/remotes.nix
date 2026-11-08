@@ -47,16 +47,14 @@ in
       options.axon.remotes = mkOption {
         readOnly = true;
         default = mapAttrs (name: url: {
-          inherit url;
           web = webOf url;
           origin = name == repo.origin;
         }) repo.remotes;
         defaultText = "cluster.toml [repo.remotes], with web addresses";
-        description = "Remote name to its git url, the repository's web address (null when the url is neither ssh nor https) and whether it is origin.";
+        description = "Remote name to the repository's web address (null when the url is neither ssh nor https) and whether it is origin.";
         type = types.attrsOf (
           types.submodule {
             options = {
-              url = mkOption { type = types.str; };
               web = mkOption { type = types.nullOr types.str; };
               origin = mkOption { type = types.bool; };
             };
