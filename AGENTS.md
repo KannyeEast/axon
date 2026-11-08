@@ -23,7 +23,7 @@ matters here, and the concrete fix. A choice recorded in DECISIONS.md is not a f
 flake.nix            inputs; outputs = every .nix under modules/ (import-tree)
 cluster.toml         relations between machines: [ssh], [sync], [external]; the repo's remotes: [repo]
 DECISIONS.md         deliberate choices that look like mistakes; never "fixed" or flagged
-.forgejo/            CI: the check workflow, the review workflow and the reviewer's guide
+.forgejo/            CI: check and review on pull requests, main published from stable; the reviewer's guide
 hosts/<name>/        host.toml, facter.json, secrets.json (sops), optional home/
 hosts/_old/          previous hosts, kept for reference, never built
 home/                dotfiles every host shares; hosts/<name>/home wins per file

@@ -22,7 +22,7 @@ To change one, change it here in the same commit, with the new reason.
 | Decision | Why |
 |---|---|
 | `dev` is pushed to Forgejo without review | daily work; the review sits at the merge into `stable` |
-| Only `stable` (merged, reviewed pull requests from `dev`) and `main` (`just sync`, from `stable`) reach the mirrors | the mirrors are the fallback when node1 is down, so they hold only reviewed code; Forgejo's push mirrors (filter `stable,main`) are set in its UI, not here |
+| Only `stable` (merged, reviewed pull requests from `dev`) and `main` (its framework part, built by CI after every merge) reach the mirrors | the mirrors are the fallback when node1 is down, so they hold only reviewed code; Forgejo's push mirrors (filter `stable,main`) are set in its UI, not here |
 
 ## Secrets
 
