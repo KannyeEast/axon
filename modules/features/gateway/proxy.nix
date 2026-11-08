@@ -1,4 +1,4 @@
-# Consumer of axon.services: every routed service gets <subdomain>.<domain> on the tailnet,
+# Consumer of axon.services: every routed service gets <service>.<domain> on the tailnet,
 # behind the gateway login unless it has its own. Public ones are on the tunnel as well.
 # One wildcard certificate from Let's Encrypt via a Cloudflare DNS challenge covers them all.
 { lib, ... }:

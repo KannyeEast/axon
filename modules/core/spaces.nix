@@ -1,5 +1,5 @@
-# Contract: axon.spaces. A service's own space on a volume: on a host with that volume it is the
-# btrfs subvolume <volume>/<name>, which host.toml [limits] can cap; without it, /var/lib/<name>.
+# Contract: axon.spaces. A service's own space on the data volume: on a host with one it is the
+# btrfs subvolume <data>/<name>, which host.toml [limits] can cap; without it, /var/lib/<name>.
 # One unit per space creates it before the service's units start (they also wait for its disk);
 # storage-limits applies [limits] to spaces and whole volumes, so a changed limit takes effect on
 # the next switch, without moving data.
@@ -74,18 +74,18 @@ in
               fi
               [ -e "$path" ] || ${btrfs} subvolume create "$path"
               chown ${space.user}:${space.group} "$path"
-              chmod ${space.mode} "$path"
+              chmod 0750 "$path"
             ''
           else
             ''
-              install -d -m ${space.mode} -o ${space.user} -g ${space.group} ${space.path}
+              install -d -m 0750 -o ${space.user} -g ${space.group} ${space.path}
             ''
         );
 
       # quotas are switched on, per filesystem, only where something is limited: through the volume
       # it lives on, which is mounted even while a space doesn't exist yet
       limited = filterAttrs (name: _: paths ? ${name}) limits;
-      volumeOf = name: volumes.${name} or volumes.${spaces.${name}.volume};
+      volumeOf = name: volumes.${name} or volumes.data;
       applyLimits = pkgs.writeShellScript "storage-limits" ''
         set -u
         ${concatMapStrings (path: ''
@@ -109,20 +109,11 @@ in
         description = "Service name to its own space on a volume.";
         type = types.attrsOf (
           types.submodule (
-            { name, config, ... }:
+            { name, ... }:
             {
               options = {
-                volume = mkOption {
-                  type = types.str;
-                  default = "data";
-                  description = "The volume it lives on when the host has it.";
-                };
                 user = mkOption { type = types.str; };
                 group = mkOption { type = types.str; };
-                mode = mkOption {
-                  type = types.str;
-                  default = "0750";
-                };
                 units = mkOption {
                   type = types.listOf types.str;
                   default = [ ];
@@ -131,12 +122,12 @@ in
                 onVolume = mkOption {
                   type = types.bool;
                   readOnly = true;
-                  default = volumes ? ${config.volume};
+                  default = volumes ? data;
                 };
                 path = mkOption {
                   type = types.str;
                   readOnly = true;
-                  default = "${volumes.${config.volume} or "/var/lib"}/${name}";
+                  default = "${volumes.data or "/var/lib"}/${name}";
                 };
               };
             }

@@ -16,7 +16,6 @@ keyboard = "us"
 [disk.boot]
 devices = ["/dev/disk/by-id/nvme-nvme.1987-4134343930373935304238393030393238323839-5669706572204d2e322056504e313030-00000001"]
 swap = 17
-reserve = 0
 
 [disk.bulk]
 devices = ["/dev/disk/by-id/ata-WDC_WD80EFPX-68C4ZN0_WD-RD31AHZH", "/dev/disk/by-id/ata-WDC_WD80EFPX-68C4ZN0_WD-RD31HTJG"]

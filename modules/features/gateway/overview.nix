@@ -86,7 +86,7 @@ in
         ${name} = {
           href = or' (instance.link or null) service.route.url;
           description = or' (instance.description or null) service.dashboard.description;
-          icon = or' (instance.icon or null) service.dashboard.icon;
+          inherit (service.dashboard) icon;
           siteMonitor = internal service.route + service.dashboard.monitor;
         }
         //

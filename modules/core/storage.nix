@@ -118,7 +118,6 @@ in
         # one mountpoint per filesystem; the boot disk's subvolumes are one filesystem, reached at /
         services.btrfs.autoScrub = {
           enable = true;
-          interval = "monthly";
           fileSystems = [ "/" ] ++ map (fs: head (attrValues fs.mounts)) (attrValues storage);
         };
       };

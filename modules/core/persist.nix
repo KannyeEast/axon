@@ -50,11 +50,6 @@ in
           default = [ ];
           description = "Directories that survive a reboot.";
         };
-        files = mkOption {
-          type = types.listOf types.str;
-          default = [ ];
-          description = "Files that survive a reboot.";
-        };
         state.directories = mkOption {
           type = types.listOf entry;
           default = [ ];
@@ -63,20 +58,17 @@ in
       };
 
       config = {
-        axon.persist = {
-          directories = [
-            "/var/lib/nixos"
-            "/var/lib/systemd"
-            "/var/log"
-          ];
-          files = [ "/etc/machine-id" ];
-        };
+        axon.persist.directories = [
+          "/var/lib/nixos"
+          "/var/lib/systemd"
+          "/var/log"
+        ];
 
         # the backend; swapping it for another one changes nothing else
         environment.persistence = {
           "/persist" = {
             hideMounts = true;
-            inherit (cfg) files;
+            files = [ "/etc/machine-id" ];
             directories = cfg.directories ++ optionals (state == null) cfg.state.directories;
           };
         }

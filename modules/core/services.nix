@@ -63,7 +63,7 @@ in
               options = {
                 route = mkOption {
                   default = null;
-                  description = "Publish through the gateway as <subdomain>.<cluster domain>.";
+                  description = "Publish through the gateway as <name>.<cluster domain>.";
                   type = types.nullOr (
                     types.submodule (route: {
                       options = {
@@ -72,15 +72,11 @@ in
                           type = types.str;
                           default = "127.0.0.1";
                         };
-                        subdomain = mkOption {
-                          type = types.str;
-                          default = name;
-                        };
                         host = mkOption {
                           type = types.str;
                           readOnly = true;
-                          default = "${route.config.subdomain}.${domain}";
-                          defaultText = "<subdomain>.<domain>";
+                          default = "${name}.${domain}";
+                          defaultText = "<name>.<domain>";
                           description = "The name it's published under.";
                         };
                         url = mkOption {
@@ -169,10 +165,6 @@ in
                                   type = types.nullOr types.str;
                                   default = null;
                                   description = "Where the tile leads instead of the route.";
-                                };
-                                icon = mkOption {
-                                  type = types.nullOr types.str;
-                                  default = null;
                                 };
                                 description = mkOption {
                                   type = types.nullOr types.str;

@@ -16,7 +16,6 @@ keyboard = "us"
 [disk.boot]
 devices = ["/dev/disk/by-id/nvme-eui.00000000000000000026b768703e1015"]
 swap = 0
-reserve = 0
 
 [sync]
 id = "J2GKKBZ-FFSH7ZQ-PQDFCQQ-4ODQ6HP-O2Y6NVU-SJDKVHM-TXJMPBQ-WMRFBAZ"

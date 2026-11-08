@@ -160,7 +160,7 @@ in
       domain = mkOption {
         type = types.nullOr types.str;
         default = null;
-        description = "Services are published as <subdomain>.<domain>.";
+        description = "Services are published as <service>.<domain>.";
       };
       ssh = mkOption {
         type = types.attrsOf (types.listOf types.str);
