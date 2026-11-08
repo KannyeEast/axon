@@ -19,7 +19,6 @@
       services.forgejo = {
         enable = true;
         stateDir = spaces.forgejo.path;
-        database.type = "sqlite3";
         dump.enable = true;
         settings = {
           server = {

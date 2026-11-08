@@ -129,7 +129,6 @@
 
         services.nextcloud = {
           settings = {
-            mail_smtpmode = "smtp";
             mail_smtphost = mail.host;
             mail_smtpport = mail.port;
             mail_smtpauth = true;

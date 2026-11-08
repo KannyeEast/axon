@@ -5,7 +5,6 @@
     services.avahi = {
       enable = true;
       nssmdns4 = true;
-      openFirewall = true;
     };
 
     axon.persist.state.directories = [ "/var/lib/cups" ];

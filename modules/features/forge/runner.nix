@@ -43,6 +43,7 @@ in
           pkgs.curl
           pkgs.findutils
           pkgs.gawk
+          pkgs.git
           pkgs.gnugrep
           pkgs.gnused
           pkgs.nodejs

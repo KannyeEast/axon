@@ -15,15 +15,12 @@
       port = 8080;
     in
     {
-      users.groups.media = { };
-
       services.sabnzbd = {
         enable = true;
         group = "media";
         allowConfigWrite = true;
         settings = {
           misc = {
-            host = "127.0.0.1";
             inherit port;
             # the gateway login guards the UI; SABnzbd itself only checks the name it's reached by.
             # It listens on loopback only, so the forwarded address (a tailnet one, which it

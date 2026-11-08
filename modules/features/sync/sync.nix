@@ -66,8 +66,6 @@ in
         user = user.name;
         dataDir = home;
         configDir = "/var/lib/syncthing";
-        overrideDevices = true;
-        overrideFolders = true;
         settings = {
           options = {
             globalAnnounceEnabled = false; # the tailnet carries everything
