@@ -1,0 +1,3 @@
+" IdeaVim in the JetBrains IDEs: hybrid line numbers, like nvim
+set number
+set relativenumber

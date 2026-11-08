@@ -46,4 +46,15 @@ recent-windows {
         padding 8
         corner-radius 16
     }
+
+    // Alt+Tab stays on the focused workspace (A, O and S in the switcher widen it); Alt+grave
+    // cycles tabs instead (bindings.kdl)
+    binds {
+        Alt+Tab { next-window scope="workspace"; }
+        Alt+Shift+Tab { previous-window scope="workspace"; }
+        Mod+Tab { next-window; }
+        Mod+Shift+Tab { previous-window; }
+        Mod+grave { next-window filter="app-id"; }
+        Mod+Shift+grave { previous-window filter="app-id"; }
+    }
 }

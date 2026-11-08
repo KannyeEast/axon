@@ -28,6 +28,7 @@ text/csv=org.gnome.TextEditor.desktop
 application/xml=org.gnome.TextEditor.desktop
 
 text/x-nix=nvim.desktop
+text/x-tex=nvim.desktop
 text/x-shellscript=nvim.desktop
 text/x-python=nvim.desktop
 text/x-python3=nvim.desktop

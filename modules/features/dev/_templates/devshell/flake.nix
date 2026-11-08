@@ -13,7 +13,7 @@
     {
       devShells = forAll (pkgs: {
         default = pkgs.mkShell {
-          # the project's toolchain goes here, e.g. pkgs.nodejs or pkgs.dotnet-sdk
+          # the project's toolchain goes here, e.g. pkgs.nodejs or pkgs.cmake
           packages = [ ];
         };
       });

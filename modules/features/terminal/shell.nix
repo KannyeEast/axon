@@ -61,6 +61,7 @@
             pkgs.vimPlugins.telescope-fzf-native-nvim
             pkgs.vimPlugins.gitsigns-nvim
             pkgs.vimPlugins.nvim-lspconfig
+            pkgs.vimPlugins.vimtex
           ];
           customLuaRC = ''
             local init = vim.fn.stdpath("config") .. "/init.lua"

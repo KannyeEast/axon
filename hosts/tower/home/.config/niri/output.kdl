@@ -15,12 +15,11 @@ output "GIGA-BYTE TECHNOLOGY CO., LTD. Gigabyte M32U 24081B002226" {
 
     layout {
         preset-column-widths {
-            proportion 0.33333
             proportion 0.5
             proportion 0.66667
         }
 
-        default-column-width { proportion 0.33333; }
+        default-column-width { proportion 0.5; }
     }
 }
 

@@ -101,6 +101,25 @@ alias c='clear'
 alias debug_zsh='time ZSH_DEBUGRC=1 zsh -i -c exit'
 
 # ── functions ────────
+# `work` in a project folder: one tmux session named after it, Claude on the left and a shell on
+# the right (lazygit is prefix g). Run again, from anywhere in tmux, it switches back to it.
+work() {
+    local name=${${PWD:t}//[.:]/_}
+    if ! tmux has-session -t "=$name" 2>/dev/null; then
+        tmux new-session -d -s "$name" -n work -c "$PWD"
+        if (( $+commands[sandbox] )); then
+            tmux send-keys -t "=$name:work" 'sandbox claude -r' Enter
+        fi
+        tmux split-window -h -l 35% -t "=$name:work" -c "$PWD"
+        tmux select-pane -L -t "=$name:work"
+    fi
+    if [[ -n $TMUX ]]; then
+        tmux switch-client -t "=$name"
+    else
+        tmux attach-session -t "=$name"
+    fi
+}
+
 # ls after any directory change - covers cd, zoxide jumps and pushd
 chpwd() { ls }
 

@@ -31,7 +31,6 @@ window-rule {
     match app-id=r#"^org\.gnome\.NautilusPreviewer$"#
     match app-id=r#"^org\.gnome\.Calculator$"#
     match app-id=r#"^org\.pulseaudio\.pavucontrol$"#
-    match title=r#"^Picture-in-Picture$"#
     match app-id=r#"^jetbrains-"# title=r#"^Welcome to "#
     match app-id=r#"^org\.gnome\.Nautilus$"# title=r#"Properties$"#
     open-floating true

@@ -36,6 +36,8 @@ binds {
     Mod+Shift+Equal { set-window-height "+10%"; }
 
     // ── focus ────────
+    Alt+grave hotkey-overlay-title="Next Tab" { focus-window-down-or-top; }
+    Alt+Shift+grave { focus-window-up-or-bottom; }
     Mod+H { focus-column-left; }
     Mod+J { focus-window-down; }
     Mod+K { focus-window-up; }

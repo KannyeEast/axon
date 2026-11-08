@@ -52,10 +52,11 @@ map("n", "<leader>fd", find.diagnostics, { desc = "diagnostics" })
 map("n", "<leader>fh", find.help_tags, { desc = "help" })
 
 -- ── syntax ────────
--- every parser is installed; a buffer gets tree highlighting and indent when its language has one
+-- every parser is installed; a buffer gets tree highlighting and indent when its language has one,
+-- except TeX, where vimtex's own syntax drives its motions and text objects
 vim.api.nvim_create_autocmd("FileType", {
   callback = function(args)
-    if pcall(vim.treesitter.start, args.buf) then
+    if args.match ~= "tex" and pcall(vim.treesitter.start, args.buf) then
       vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
     end
   end,
@@ -82,6 +83,10 @@ vim.lsp.config("nil_ls", {
   settings = { ["nil"] = { formatting = { command = { "nixfmt" } } } },
 })
 vim.lsp.enable("nil_ls")
+-- texlab only where LaTeX is installed
+if vim.fn.executable("texlab") == 1 then
+  vim.lsp.enable("texlab")
+end
 
 vim.diagnostic.config({ virtual_text = true, severity_sort = true })
 
@@ -94,6 +99,11 @@ vim.api.nvim_create_autocmd("LspAttach", {
     map("n", "<leader>cf", vim.lsp.buf.format, { buffer = args.buf, desc = "format" })
   end,
 })
+
+-- ── LaTeX ────────
+-- <localleader>ll compiles continuously with latexmk, <localleader>lv shows the PDF in zathura
+-- (the simple viewer: the full one needs X11 to find the window)
+vim.g.vimtex_view_method = "zathura_simple"
 
 -- ── small things ────────
 vim.api.nvim_create_autocmd("TextYankPost", {
