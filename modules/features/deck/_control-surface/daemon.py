@@ -87,6 +87,11 @@ def load_slots(data, name, count):
         raise ValueError(f"{LAYOUT}: this deck has no {name}s")
     slots = {}
     for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError(f"{LAYOUT}: each [[{name}]] must be a table")
+        for field in ("step", "every", "timeout"):
+            if field in entry and not isinstance(entry[field], (int, float)):
+                raise ValueError(f"{LAYOUT}: {name} {field} must be a number, got {entry[field]!r}")
         slot = entry.get("slot")
         if slot not in range(count):
             raise ValueError(f"{LAYOUT}: {name} slot must be 0 to {count - 1}, got {slot!r}")
@@ -104,6 +109,8 @@ def load_groups(data, keys, count):
         group = data.get(name)
         if group is None:
             continue
+        if not isinstance(group, dict):
+            raise ValueError(f"{LAYOUT}: [{name}] must be a table")
         slots = group.get("slots")
         if not isinstance(slots, list) or not slots:
             raise ValueError(f"{LAYOUT}: [{name}] needs slots, a list of key slots")
@@ -114,7 +121,7 @@ def load_groups(data, keys, count):
                 raise ValueError(f"{LAYOUT}: key slot {slot} is used twice")
             taken.add(slot)
         groups[name] = group
-    if groups and "signal" not in data:
+    if groups and not isinstance(data.get("signal"), str):
         raise ValueError(f"{LAYOUT}: [sessions] and [agents] need signal, the folder Claude's hooks write")
     return groups
 
@@ -135,7 +142,7 @@ def load_layout(deck):
     dials = load_slots(data, "dial", deck.dial_count())
     keys = load_slots(data, "key", deck.key_count())
     groups = load_groups(data, keys, deck.key_count())
-    folder = Path(data["signal"]).expanduser() if "signal" in data else None
+    folder = Path(data["signal"]).expanduser() if isinstance(data.get("signal"), str) else None
     return brightness, dials, keys, groups, folder
 
 
@@ -205,6 +212,8 @@ def read_signals(folder, kind):
         except (OSError, ValueError):
             continue  # removed or replaced while reading; the next poll sees it whole
         if not isinstance(entry, dict) or not isinstance(entry.get("since"), (int, float)):
+            continue
+        if not isinstance(entry.get("started", 0), (int, float)):
             continue
         if time.time() - entry["since"] > FORGET_SECONDS[kind]:
             continue

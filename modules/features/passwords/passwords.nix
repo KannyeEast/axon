@@ -23,8 +23,8 @@
         };
       };
 
-      # two secret stores fight over the same D-Bus name; GDM would bring gnome-keyring along
-      services.gnome.gnome-keyring.enable = lib.mkForce false;
+      # two secret stores fight over the same D-Bus name; niri turns gnome-keyring on
+      services.gnome.gnome-keyring.enable = false;
 
       systemd.user.services.keepassxc = {
         description = "KeePassXC";

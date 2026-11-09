@@ -10,12 +10,9 @@
       documentation.enable = false;
       boot.loader.timeout = 1;
 
-      services.smartd = {
-        enable = true;
-        autodetect = true;
-      };
+      services.smartd.enable = true;
 
-      # come back by itself after a power cut
+      # a hung machine reboots by itself after 30 s
       systemd.settings.Manager.RuntimeWatchdogSec = "30s";
 
       assertions = [

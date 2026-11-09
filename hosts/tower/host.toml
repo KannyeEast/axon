@@ -11,7 +11,7 @@ key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDWtrZlzIeOQcvhJaSsMebSSXKFzTPEHWFGlW
 
 [locale]
 timezone = "Europe/Berlin"
-keyboard = "us"
+keyboard = "eu"
 
 [disk.boot]
 devices = ["/dev/disk/by-id/nvme-eui.00000000000000000026b768703e1015"]

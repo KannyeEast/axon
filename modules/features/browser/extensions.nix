@@ -33,8 +33,8 @@ in
           pinned = true;
           private = true;
         };
-        "{d867162c-4c38-4c5f-aca4-db6a6592d7da}" = "youtube-tweaks"; # until a custom extension replaces it
-        "{b8326f03-322f-4112-96bd-e7996548d99f}" = "theater-mode-for-youtube"; # until a custom extension replaces it
+        "{d867162c-4c38-4c5f-aca4-db6a6592d7da}" = "youtube-tweaks";
+        "{b8326f03-322f-4112-96bd-e7996548d99f}" = "theater-mode-for-youtube";
         "deArrow@ajay.app" = "dearrow";
         "sponsorBlocker@ajay.app" = "sponsorblock";
         "harper@writewithharper.com" = "private-grammar-checker-harper";

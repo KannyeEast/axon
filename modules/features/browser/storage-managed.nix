@@ -51,12 +51,12 @@
             www.youtube.com##.ytdChipsShelfWithVideoShelfRendererHost > div
             www.youtube.com###top-level-buttons-computed
 
-            ! Reddit 
+            ! Reddit
             www.reddit.com##faceplate-expandable-section-helper
             www.reddit.com##faceplate-tracker[noun*="explore"]
             www.reddit.com##faceplate-tracker[noun*="all"]
             www.reddit.com##li.left-nav-create-community-button[slot="sr-creation-entrypoint-experiment"]
-            www.reddit.com##hr.my-sm 
+            www.reddit.com##hr.my-sm
             www.reddit.com##.mb-md.mx-md.flex.justify-self-end.legal-links
             www.reddit.com##.mb-md.mx-md.flex.\!mx-0.legal-links
             reddit.com##reddit-search-large[show-ask-button]:remove-attr(show-ask-button)

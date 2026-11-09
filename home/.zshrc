@@ -76,6 +76,13 @@ zstyle ':fzf-tab:complete:*:*' fzf-preview \
 zstyle ':fzf-tab:*' switch-group ',' '.'
 
 # ── fzf ────────
+# files come from fd: hidden ones included, .git left out
+export FZF_DEFAULT_COMMAND="fd --type f --hidden --exclude .git"
+export FZF_CTRL_T_COMMAND="fd --hidden --exclude .git"
+export FZF_ALT_C_COMMAND="fd --type d --hidden --exclude .git"
+# man pages through bat, coloured as man
+export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+export MANROFFOPT="-c"
 # -1 means "terminal default", so the palette follows the terminal theme
 export FZF_DEFAULT_OPTS="
   --height 40%

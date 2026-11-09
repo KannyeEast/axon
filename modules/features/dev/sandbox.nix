@@ -1,5 +1,6 @@
-# `sandbox` opens a rootless podman container that can see the current folder and nothing
-# else of yours: no ~, no SSH keys, no secrets. `sandbox claude` runs Claude Code in it;
+# `sandbox` opens a rootless podman container that sees the current folder, read-only copies of
+# its tools' dotfiles and the keys in ~/.config/sandbox/secrets.env; not ~, not the SSH keys.
+# `sandbox claude` runs Claude Code in it;
 # without arguments it's a shell for trying untrusted code.
 # The container's home (Claude's login, shell history) persists in ~/.local/share/sandbox.
 { lib, ... }:
