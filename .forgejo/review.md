@@ -31,8 +31,10 @@ You report findings; you never edit, commit or push.
    nix eval --raw ".#nixosConfigurations.<host>.config.system.build.toplevel.drvPath"
    ```
 
-4. Report only what you verified. What can't be checked here (a service starting, a value on the
-   machine) is at most a one-line note asking for it. A guess is not a finding.
+4. Report only what you verified; a guess is not a finding. What can't be checked here is no
+   finding either: the owner tests desktop behaviour (window rules, a UI, how something looks or
+   feels) after switching. The one exception is a one-line note where a service could fail to
+   start or data could be lost.
 
 ## What to check
 
@@ -49,10 +51,13 @@ You report findings; you never edit, commit or push.
   - errors not shaped `<file or option>: <what is wrong>`; values aligned with extra spaces
   - a dependency that fails or asserts where it could fall back (A dependency is a hard need or
     an extra)
-- **Not your call:** whether a change fits the title or belongs in another pull request.
-- **Boundaries.** Changes in `hosts/`, secrets, `.sops.yaml`, new flake inputs, new features or
-  classes need the owner's yes. Flag them as a note asking whether that was given, unless the
-  description says so.
+- **References left behind** (A change takes its references with it): for anything renamed,
+  replaced or removed, search the repository, dotfiles in `home/` and `hosts/*/home` included,
+  for its old name, path or id. A leftover is a **should**.
+- **Not your call:** whether a change fits the title or belongs in another pull request; the
+  owner's yes for changes in `hosts/`, secrets or flake inputs (the pull request is the owner's,
+  so it is given; the "Ask first" boundary is for the author in a conversation); anything about
+  hosts that don't exist (`hosts/_old` is never built).
 
 ### A new or changed service
 

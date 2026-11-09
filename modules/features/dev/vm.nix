@@ -21,6 +21,7 @@
 
       axon.persist.state.directories = [ "/var/lib/libvirt" ];
 
+      # guests on libvirt's NAT bridge get DHCP and DNS from the host; the firewall drops them otherwise
       networking.firewall.trustedInterfaces = [ "virbr0" ];
     };
 }

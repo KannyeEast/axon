@@ -1,5 +1,4 @@
-# git identity and signing come from host.toml; everything else about git is taste and
-# lives in dotfiles (.config/git/config).
+# git's identity and commit signing, from host.toml; home-manager writes them into git's config.
 {
   flake.modules.homeManager.dev =
     {

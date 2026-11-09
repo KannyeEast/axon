@@ -108,7 +108,7 @@ in
 
           ${concatMapStringsSep "" (id: apply id settings.${id}) (lib.attrNames settings)}
 
-          # --- Share one userID across SponsorBlock and DeArrow ---
+          # share one userID across SponsorBlock and DeArrow
           src=$(${sqlite} "$db" \
             "select data from storage_sync_data where ext_id = 'sponsorBlocker@ajay.app';") || true
 

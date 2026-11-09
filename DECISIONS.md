@@ -21,6 +21,7 @@ To change one, change it here in the same commit, with the new reason.
 
 | Decision | Why |
 |---|---|
+| Dotfiles are linked by our own `dotfiles-sync` (core/home.nix), not home-manager's file management | Nix never reads `home/`; files are live links into the checkout, edited in place, no rebuild |
 | `dev` is pushed to Forgejo without review | daily work; the review sits at the merge into `stable` |
 | Only `stable` (merged, reviewed pull requests from `dev`) and `main` (its framework part, built by CI after every merge) reach the mirrors | the mirrors are the fallback when node1 is down, so they hold only reviewed code; Forgejo's push mirrors (filter `stable,main`) are set in its UI, not here |
 
@@ -57,4 +58,5 @@ To change one, change it here in the same commit, with the new reason.
 | Decision | Why |
 |---|---|
 | waybar, fuzzel and mako only get colours, nothing more | a shell of its own (separate repo) will replace them |
+| tower has no swap (`swap = 0`), so it can't hibernate, though the desktop class would resume from swap | chosen; it stays on or shuts down |
 | Plain numbered niri workspaces, none bound to a purpose | the owner finds fixed workspaces restrictive |

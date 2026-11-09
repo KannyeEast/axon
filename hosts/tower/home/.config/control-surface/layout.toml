@@ -3,14 +3,32 @@
 # so it belongs to the session and not to this service.
 #
 # Dials: {amount} in up and down is step times the ticks turned. read prints a level from
-# 0 to 1; MUTED anywhere in its output shows the dial as muted.
+# 0 to 1, drawn as a bar (MUTED in its output shows it muted), or a level word (on, off, ready,
+# warn, alert) and text, shown in that level's colour. every is in seconds (default 1).
 #
 # Keys: slots 0 to 3 are the top row, 4 to 7 the bottom. press runs on press. read runs every
-# `every` seconds (default 5) and prints a level, on, off, warn or alert, which colours the
-# key, then optional short text to show on it. timeout is in seconds (default 2).
+# `every` seconds (default 5) and prints a level word, which colours the key, then optional
+# short text to show on it. timeout is in seconds (default 2).
+#
+# [sessions] and [agents] fill their slots with one key per running Claude session and
+# subagent, from the files the sandbox's hooks write under signal. {project} in press is the
+# session's project folder name.
 
 brightness = 60
+signal = "~/.local/share/sandbox/.claude/signal"
 
+# ── Claude ────────
+# a session's colour: blue working, red needs you, green your turn, orange error; pressing
+# it focuses the terminal titled after its project (tmux names the window after the session)
+[sessions]
+slots = [0, 1, 2, 3]
+press = "niri msg -j windows | jq -r --arg t {project} 'first(.[] | select(.title == $t) | .id) // empty' | xargs -r -I{} niri msg action focus-window --id {}"
+
+[agents]
+slots = [4, 5, 6, 7]
+press = "niri msg -j windows | jq -r --arg t {project} 'first(.[] | select(.title == $t) | .id) // empty' | xargs -r -I{} niri msg action focus-window --id {}"
+
+# ── strip ────────
 [[dial]]
 slot = 0
 label = "Volume"
@@ -20,53 +38,28 @@ down = "wpctl set-volume @DEFAULT_AUDIO_SINK@ {amount}%-"
 push = "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
 read = "wpctl get-volume @DEFAULT_AUDIO_SINK@"
 
-[[key]]
-slot = 0
-label = "Lock"
-press = "niri msg action spawn -- swaylock"
-
-[[key]]
+# turning steps through Mullvad's countries, pushing connects or disconnects; Mullvad keeps both
+[[dial]]
 slot = 1
-label = "Shot"
-press = "niri msg action screenshot"
-
-[[key]]
-slot = 2
 label = "VPN"
-press = "if mullvad status | grep -q '^Connected'; then mullvad disconnect; else mullvad connect; fi"
-read = "if mullvad status | grep -q '^Connected'; then echo on; else echo off; fi"
+up = "mullvad-country next {amount}"
+down = "mullvad-country prev {amount}"
+push = "mullvad-country toggle"
+read = "mullvad-country show"
 every = 3
+timeout = 5
 
-[[key]]
-slot = 4
-label = "Grafana"
-press = "niri msg action spawn -- xdg-open https://grafana.vexelvault.com"
+# Claude's own 5-hour limit and the time to its reset, as the status line last saw them
+[[dial]]
+slot = 2
+label = "Claude 5h"
+read = '''jq -r '.rate_limits.five_hour // empty | (.used_percentage | floor) as $p | ((.resets_at - now) / 60 | floor) as $m | "\(if $p >= 90 then "alert" elif $p >= 70 then "warn" else "on" end) \($p)% · \(if $m < 0 then "reset" elif $m >= 60 then "\($m / 60 | floor)h\($m % 60)m" else "\($m)m" end)"' ~/.local/share/sandbox/.claude/signal/statusline.json'''
+every = 10
 
-[[key]]
-slot = 5
-label = "Photos"
-press = "niri msg action spawn -- xdg-open https://photos.vexelvault.com"
-
-[[key]]
-slot = 6
-label = "Docs"
-press = "niri msg action spawn -- xdg-open https://docs.vexelvault.com"
-
-# Status from node1 goes over ssh, because these services only listen on localhost there.
-# Empty output or a failed ssh shows the key as `?`, so a quiet key means node1 answered.
-
-[[key]]
+# node1's node exporter over the tailnet: load against its cores, memory used, hottest sensor
+[[dial]]
 slot = 3
-label = "Alerts"
-press = "niri msg action spawn -- xdg-open https://alerts.vexelvault.com"
-read = '''ssh -o BatchMode=yes -o ConnectTimeout=5 node1 'curl -sf "127.0.0.1:9093/api/v2/alerts?active=true&silenced=false&inhibited=false"' | jq -r 'if length > 0 then "alert \(length)" else "off 0" end' '''
+label = "node1"
+read = '''curl -sf --max-time 4 http://node1:9100/metrics | awk '/^node_load1 / { load = $2 } /^node_memory_MemAvailable_bytes / { avail = $2 } /^node_memory_MemTotal_bytes / { total = $2 } /^node_hwmon_temp_celsius/ { if ($2 > temp) temp = $2 } /^node_cpu_seconds_total.*mode="idle"/ { cpus++ } END { cpu = 100 * load / cpus; mem = 100 * (1 - avail / total); level = (cpu > 90 || mem > 90 || temp > 80) ? "alert" : (cpu > 70 || mem > 80 || temp > 70) ? "warn" : "on"; printf "%s %d%% · %d%% · %d°\n", level, cpu, mem, temp }' '''
 every = 30
-timeout = 10
-
-[[key]]
-slot = 7
-label = "Down"
-press = "niri msg action spawn -- xdg-open https://downloads.vexelvault.com"
-read = '''ssh -o BatchMode=yes -o ConnectTimeout=5 node1 'curl -sf "192.168.15.1:8081/api/v2/torrents/info?filter=downloading"' | jq -r 'if length > 0 then "on \(map(.progress) | add / length * 100 | floor)%" else "off" end' '''
-every = 30
-timeout = 10
+timeout = 6

@@ -15,7 +15,7 @@
       options.axon.secrets = lib.mkOption {
         type = lib.types.raw;
         readOnly = true;
-        default = removeAttrs (lib.fromJSON (lib.readFile file)) [ "sops" ];
+        default = removeAttrs (lib.importJSON file) [ "sops" ];
         defaultText = "the key structure of secrets.json";
         description = ''
           The shape of secrets.json. sops encrypts values, not keys, so evaluation can see

@@ -74,7 +74,12 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   only when many modules use it.
 - **Only what changes something.** Don't restate an upstream default (read the module's source),
   and don't add an option nothing sets, a helper with one caller or a package nothing runs. A
-  port stays written out even when it is the default: the route needs the number.
+  port stays written out even when it is the default: the route needs the number. The framework
+  (`modules/`, published on `main`) serves any machine, not only these hosts: what another
+  host could plausibly need (another architecture, disk layout or class) is not dead weight.
+- **A change takes its references with it.** Renaming, replacing or removing something (a
+  program, a unit, a script, an option, an app id, a path) means searching the whole repository
+  for it, `home/` and `hosts/*/home` included, and updating every place in the same change.
 - **State lives next to the module that creates it**, in the same file: a feature adds its path to
   `axon.persist.state.directories` (on the host's state volume when it has one), core and classes
   to `axon.persist.directories` (the boot disk). `DynamicUser` services keep state in
@@ -90,6 +95,11 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   rejected alternatives or reasoning from a conversation: that belongs in the commit message.
 - **Quirks are explained where they're handled.** A workaround for a tool, driver or service gets
   a comment on the lines that do it, saying what breaks without them.
+- **A GUI app comes with its window rules.** Adding one, find its Wayland app id (the
+  `.desktop` file's name or `StartupWMClass`, or the application id in its source) and decide per
+  window: main windows tile; dialogs with a parent window and fixed-height windows float by
+  themselves in niri; small tool windows, pickers and popups without a parent get an
+  `open-floating` rule in the host's `windows.kdl`, in the same change.
 - **Dotfiles with several sections** separate them with a ruler: `# ── name ────────`
   (`--` in Lua, `//` in KDL and JavaScript).
 

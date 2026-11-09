@@ -30,13 +30,17 @@
           source ${pkgs.zsh-you-should-use}/share/zsh/plugins/you-should-use/you-should-use.plugin.zsh
 
           eval "$(fzf --zsh)"
-          eval "$(zoxide init --cmd cd zsh)"
         '';
+      };
+
+      # cd jumps to frecent folders; the module hooks it in after the block above
+      programs.zoxide = {
+        enable = true;
+        flags = [ "--cmd cd" ];
       };
 
       programs.tmux = {
         enable = true;
-        terminal = "tmux-256color";
         plugins = [
           pkgs.tmuxPlugins.sensible
           pkgs.tmuxPlugins.yank
@@ -69,14 +73,6 @@
         };
       };
 
-      environment.sessionVariables = {
-        MANPAGER = "sh -c 'col -bx | bat -l man -p'";
-        MANROFFOPT = "-c";
-        FZF_DEFAULT_COMMAND = "fd --type f --hidden --exclude .git";
-        FZF_CTRL_T_COMMAND = "fd --hidden --exclude .git";
-        FZF_ALT_C_COMMAND = "fd --type d --hidden --exclude .git";
-      };
-
       environment.systemPackages = [
         pkgs.bat
         pkgs.eza
@@ -87,7 +83,6 @@
         pkgs.nil
         pkgs.ripgrep
         pkgs.starship
-        pkgs.zoxide
         pkgs.zsh-completions
       ];
     };

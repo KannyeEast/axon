@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "opus",
+  "effortLevel": "high",
+  "theme": "dark",
+  "editorMode": "vim",
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "permissions": {
+    "defaultMode": "auto",
+    "allow": [
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git blame *)",
+      "Bash(git rev-parse *)",
+      "Bash(ls *)",
+      "Bash(rg *)",
+      "Bash(fd *)",
+      "Bash(jq *)",
+      "Bash(shellcheck *)",
+      "Bash(nix eval *)",
+      "Bash(nix flake check *)",
+      "Bash(nix flake show *)",
+      "Bash(nix fmt *)",
+      "Bash(ccusage *)"
+    ],
+    "ask": [
+      "Bash(git commit *)",
+      "Bash(git push *)"
+    ],
+    "deny": [
+      "Agent(cavecrew-builder)",
+      "Agent(cavecrew-reviewer)"
+    ]
+  },
+  "extraKnownMarketplaces": {
+    "claude-code-workflows": {
+      "source": {
+        "source": "github",
+        "repo": "wshobson/agents"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "claude-md-management@claude-plugins-official": true,
+    "hookify@claude-plugins-official": true
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "mkdir -p ~/.claude/signal && tee ~/.claude/signal/.statusline.tmp | npx -y ccstatusline@2.2.34; mv -f ~/.claude/signal/.statusline.tmp ~/.claude/signal/statusline.json",
+    "padding": 0,
+    "refreshInterval": 10
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r .transcript_path); node ~/.claude/plugins/synced/*/caveman/src/hooks/caveman-stats.js --session-file \"$f\" >/dev/null 2>&1 || true",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/signal.sh waiting",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/signal.sh waiting",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/signal.sh working",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/signal.sh working",
+            "timeout": 5
+          }
+        ],
+        "matcher": ""
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/signal.sh working",
+            "timeout": 5
+          }
+        ],
+        "matcher": ""
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/signal.sh needs",
+            "timeout": 5
+          }
+        ],
+        "matcher": "permission_prompt|elicitation_dialog"
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/signal.sh error",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/signal.sh end",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/signal.sh agent-start",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/signal.sh agent-stop",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

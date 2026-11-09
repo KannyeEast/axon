@@ -1,8 +1,7 @@
 # Things plugged in: USB drives and firmware.
 {
   flake.modules.nixos.desktop = {
-    # USB drives show up and mount in the file manager
-    services.udisks2.enable = true;
+    # USB drives show up and mount in the file manager (gvfs brings udisks2)
     services.gvfs.enable = true;
 
     # firmware updates from the vendor (fwupdmgr refresh && fwupdmgr update)

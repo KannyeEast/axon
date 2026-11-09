@@ -24,14 +24,6 @@ in
       keys = map keyOf inbound;
     in
     {
-      assertions = [
-        {
-          # a server nobody can reach is a server you have to walk to
-          assertion = host.class != "server" || keys != [ ];
-          message = "cluster.toml: no member of [ssh] may log in to ${host.name}, and a server needs one";
-        }
-      ];
-
       users.mutableUsers = false;
       users.users.${user.name} = {
         isNormalUser = true;

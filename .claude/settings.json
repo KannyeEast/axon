@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git fetch *)",
+      "Bash(git mv *)",
+      "Bash(git rm *)",
+      "Bash(git reset *)",
+      "Bash(git checkout *)",
+      "Bash(git switch *)",
+      "Bash(git restore *)",
+      "Bash(git stash *)",
+      "Bash(git rebase *)",
+      "Bash(git merge *)",
+      "Bash(git cherry-pick *)",
+      "Bash(git tag *)",
+      "Bash(disko *)",
+      "Bash(nix run *disko*)",
+      "Bash(git clean *)",
+      "Bash(git apply *)",
+      "Bash(git revert *)",
+      "Bash(git worktree *)",
+      "Bash(git update-index *)",
+      "Bash(git config *)",
+      "Bash(git -C *)",
+      "Bash(disko-install *)",
+      "Agent(bash-pro)",
+      "Agent(posix-shell-pro)",
+      "Agent(shell-scripting:bash-pro)",
+      "Agent(shell-scripting:posix-shell-pro)"
+    ],
+    "ask": [
+      "Edit(/hosts/**)",
+      "Write(/hosts/**)",
+      "Edit(/.sops.yaml)",
+      "Write(/.sops.yaml)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *.nix) nix fmt -- \"$f\" >/dev/null 2>&1 ;; esac; exit 0",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "shell-scripting@claude-code-workflows": true
+  }
+}
