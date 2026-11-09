@@ -51,7 +51,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "mkdir -p ~/.claude/signal && tee ~/.claude/signal/statusline.json | npx -y ccstatusline@2.2.34",
+    "command": "mkdir -p ~/.claude/signal && tee ~/.claude/signal/.statusline.tmp | npx -y ccstatusline@2.2.34; mv -f ~/.claude/signal/.statusline.tmp ~/.claude/signal/statusline.json",
     "padding": 0,
     "refreshInterval": 10
   },

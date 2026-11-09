@@ -12,6 +12,10 @@ input=$(cat)
 field() { jq -r --arg f "$1" '.[$f] // empty' <<<"$input"; }
 session=$(field session_id)
 [ -n "$session" ] || exit 0
+# named like the tmux session `work` makes for the folder, which the deck finds the window by;
+# the project's folder, not cwd, which follows a cd
+project=$(basename "${CLAUDE_PROJECT_DIR:-$(field cwd)}")
+project=${project//[.:]/_}
 
 write() {
   local tmp
@@ -23,7 +27,7 @@ write() {
 case "$1" in
   end)
     rm -f "$dir/sessions/$session.json"
-    grep -l "\"session\": *\"$session\"" "$dir"/agents/*.json 2>/dev/null | xargs -r rm -f
+    grep -l "\"session\": *\"$session\"" "$dir"/agents/*.json 2>/dev/null | xargs -r rm -f || true
     ;;
   agent-start | agent-stop)
     agent=$(field agent_id)
@@ -31,12 +35,16 @@ case "$1" in
     if [ "$1" = agent-stop ]; then
       rm -f "$dir/agents/$agent.json"
     else
-      jq -n --arg session "$session" --arg type "$(field agent_type)" --arg project "$(basename "$(field cwd)")" \
+      jq -n --arg session "$session" --arg type "$(field agent_type)" --arg project "$project" \
         '{session: $session, type: $type, project: $project, since: now | floor}' | write "$dir/agents/$agent.json"
     fi
     ;;
   *)
-    jq -n --arg state "$1" --arg project "$(basename "$(field cwd)")" --arg cwd "$(field cwd)" \
-      '{state: $state, project: $project, cwd: $cwd, since: now | floor}' | write "$dir/sessions/$session.json"
+    # started stays from the session's first state, so its key keeps its place on the deck
+    file="$dir/sessions/$session.json"
+    started=$(jq -r '.started // empty' "$file" 2>/dev/null || true)
+    jq -n --arg state "$1" --arg project "$project" --arg started "$started" \
+      '{state: $state, project: $project, since: now | floor, started: ($started | tonumber? // (now | floor))}' \
+      | write "$file"
     ;;
 esac

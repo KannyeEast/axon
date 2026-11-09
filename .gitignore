@@ -7,3 +7,4 @@ _inputs/
 .claude/*
 !.claude/settings.json
 !.claude/hookify.*.local.md
+__pycache__/
