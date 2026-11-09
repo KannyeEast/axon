@@ -32,7 +32,7 @@
       {
         "id": "caveman",
         "type": "custom-command",
-        "commandPath": "bash ~/.claude/plugins/synced/*/caveman/src/hooks/caveman-statusline.sh",
+        "commandPath": "bash ~/.claude/plugins/synced/*/caveman/src/hooks/caveman-statusline.sh || true",
         "preserveColors": true,
         "timeout": 1000
       }

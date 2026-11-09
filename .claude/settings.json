@@ -26,7 +26,11 @@
       "Bash(git update-index *)",
       "Bash(git config *)",
       "Bash(git -C *)",
-      "Bash(disko-install *)"
+      "Bash(disko-install *)",
+      "Agent(bash-pro)",
+      "Agent(posix-shell-pro)",
+      "Agent(shell-scripting:bash-pro)",
+      "Agent(shell-scripting:posix-shell-pro)"
     ],
     "ask": [
       "Edit(/hosts/**)",
