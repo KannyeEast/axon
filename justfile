@@ -1,6 +1,10 @@
 # Day-to-day commands. `just` lists them.
 flake := justfile_directory()
 host := shell("hostname -s")
+# where origin lives, as https://host/owner/repo (from user@host:owner/repo.git and the like), and
+# its API; empty before `just remotes`
+forge := shell('git -C "$1" remote get-url origin 2>/dev/null | sed -E "s#^(ssh://)?[^@/]+@([^:/]+)[:/]#https://\\2/#; s#\\.git\$##" || true', flake)
+api := replace_regex(forge, '^(https?://[^/]+)/(.*)$', '${1}/api/v1/repos/${2}')
 
 alias s := switch
 alias b := boot
@@ -115,14 +119,43 @@ push MESSAGE="": (commit MESSAGE)
 pull:
   git -C {{flake}} pull --rebase --autostash
 
-# Open the pull request from dev into stable: the reviewed way to the mirrors
+# Push dev, open its pull request into stable (or take the open one) and have Forgejo merge it
+# once check and review pass; the merge publishes stable and main to the mirrors
 [group("git")]
 pr:
   #!/usr/bin/env bash
   set -euo pipefail
-  # user@host:owner/repo.git, ssh://user@host/owner/repo.git or https://host/owner/repo.git
-  web=$(git -C {{flake}} remote get-url origin | sed -E 's#^(ssh://)?[^@/]+@([^:/]+)[:/]#https://\2/#; s#\.git$##')
-  xdg-open "$web/compare/stable...dev"
+  cd {{flake}}
+  token=${FORGEJO_TOKEN:-$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/forgejo/token" 2>/dev/null || true)}
+  if [ -z "$token" ]; then
+    echo "just pr: needs a Forgejo token (repository: read and write) in \$FORGEJO_TOKEN or ~/.config/forgejo/token" >&2
+    exit 1
+  fi
+  git push origin dev
+  git fetch --quiet origin
+  if [ "$(git rev-list --count origin/stable..origin/dev)" -eq 0 ]; then
+    echo "stable already has everything on dev."
+    exit 0
+  fi
+  web="{{forge}}" api="{{api}}"
+  call() { curl --silent --show-error -H "Authorization: token $token" -H "Content-Type: application/json" "$@"; }
+  number=$(call --fail-with-body "$api/pulls?state=open&limit=50" \
+    | jq '[.[] | select(.base.ref == "stable" and .head.ref == "dev")][0].number // empty')
+  if [ -z "$number" ]; then
+    number=$(call --fail-with-body -X POST "$api/pulls" --data '{"base": "stable", "head": "dev", "title": "dev → stable"}' | jq .number)
+  fi
+  # merges right away when the checks are already green; 409: a merge is already scheduled
+  status=$(call -o /dev/null -w '%{http_code}' -X POST "$api/pulls/$number/merge" \
+    --data '{"Do": "fast-forward-only", "merge_when_checks_succeed": true}')
+  case "$status" in
+    2*|409) echo "$web/pulls/$number merges into stable once check and review pass" ;;
+    *) echo "just pr: scheduling the merge of $web/pulls/$number failed (HTTP $status)" >&2; exit 1 ;;
+  esac
+
+# The open findings of the latest review on the pull request into stable: summary, file:line, text
+[group("git")]
+findings:
+  cd {{flake}} && FORGE="{{forge}}" API="{{api}}" bash .forgejo/findings.sh
 
 # Publish main from stable by hand; CI does it after every merge into stable
 [group("git")]
