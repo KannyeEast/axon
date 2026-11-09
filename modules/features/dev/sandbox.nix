@@ -12,6 +12,7 @@
         contents = [
           pkgs.bashInteractive
           pkgs.cacert
+          pkgs.ccusage
           pkgs.claude-code
           pkgs.coreutils
           pkgs.diffutils
@@ -25,6 +26,7 @@
           pkgs.gzip
           pkgs.jq
           pkgs.less
+          pkgs.neovim
           pkgs.nix
           pkgs.nodejs
           pkgs.python3
@@ -38,6 +40,8 @@
             "SSL_CERT_FILE=/etc/ssl/certs/ca-bundle.crt"
             "HOME=/home/sandbox"
             "TERM=xterm-256color"
+            # Ctrl+G in Claude Code opens the prompt in it
+            "EDITOR=nvim"
             # nix talks to the host's daemon (see the mounts below); its nix.conf isn't visible here
             "NIX_REMOTE=daemon"
             "NIX_CONFIG=experimental-features = nix-command flakes"
@@ -54,7 +58,11 @@
 
       sandbox = pkgs.writeShellApplication {
         name = "sandbox";
-        runtimeInputs = [ pkgs.podman ];
+        runtimeInputs = [
+          pkgs.coreutils
+          pkgs.findutils
+          pkgs.podman
+        ];
         text = ''
           name="sandbox:${image.imageTag}"
 
@@ -66,14 +74,41 @@
           state="''${XDG_DATA_HOME:-$HOME/.local/share}/sandbox"
           mkdir -p "$state"
 
-          # personal settings stay in the dotfiles, read-only in here: edit them there.
-          # The links point into the checkout, so the files are mounted, not the folders.
+          # personal settings stay in the dotfiles, read-only in here: edit them there. Dotfiles
+          # are links into the checkout, so every file is mounted by its real path, never a folder.
+          # ~/.config/claude/<path> is ~/.claude/<path> in here (CLAUDE.md, agents/, …), except
+          # settings.json: claude gets that through --settings, so it wins over ~/.claude's own
+          # settings.json, which stays writable for what a session changes
           config="''${XDG_CONFIG_HOME:-$HOME/.config}"
-          settings=()
-          [ -e "$config/claude/CLAUDE.md" ] \
-            && settings+=(--volume "$config/claude/CLAUDE.md:/home/sandbox/.claude/CLAUDE.md:ro")
-          [ -e "$config/caveman/config.json" ] \
-            && settings+=(--volume "$config/caveman/config.json:/home/sandbox/.config/caveman/config.json:ro")
+          opts=()
+          mirror() {
+            local from=$1 to=$2 rel target
+            [ -d "$from" ] || return 0
+            while IFS= read -r rel; do
+              target="$to/$rel"
+              [ "$from/$rel" = "$config/claude/settings.json" ] && target=/home/sandbox/.config/claude/settings.json
+              opts+=(--volume "$(readlink -f "$from/$rel"):$target:ro")
+            done < <(find -L "$from" -type f -printf '%P\n')
+          }
+          mirror "$config/claude" /home/sandbox/.claude
+          # other tools Claude Code runs keep their own place
+          for tool in caveman ccstatusline; do
+            mirror "$config/$tool" "/home/sandbox/.config/$tool"
+          done
+
+          # keys tools in here need (CONTEXT7_API_KEY=…), kept outside the dotfiles: they go public
+          secrets="$config/sandbox/secrets.env"
+          [ -f "$secrets" ] && opts+=(--env-file "$secrets")
+
+          args=("$@")
+          if [ "''${1:-}" = claude ]; then
+            args=(claude)
+            [ -e "$config/claude/settings.json" ] \
+              && args+=(--settings /home/sandbox/.config/claude/settings.json)
+            # MCP servers of our own; the file is mirrored like the rest of ~/.config/claude
+            [ -e "$config/claude/mcp.json" ] && args+=(--mcp-config /home/sandbox/.claude/mcp.json)
+            args+=("''${@:2}")
+          fi
 
           # the host's store, read-only, and its daemon: evals and builds use the host's cache
           # instead of a second store. The store is world-readable on the host anyway; secrets
@@ -84,9 +119,9 @@
             --volume /nix/var/nix/daemon-socket:/nix/var/nix/daemon-socket \
             --volume "$PWD:/work" \
             --volume "$state:/home/sandbox" \
-            "''${settings[@]}" \
+            "''${opts[@]}" \
             --workdir /work \
-            "$name" "''${@:-bash}"
+            "$name" "''${args[@]:-bash}"
         '';
       };
     in
