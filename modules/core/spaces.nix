@@ -9,11 +9,11 @@
 let
   inherit (lib)
     attrNames
+    attrValues
     concatMap
     concatMapStrings
     concatStringsSep
     filterAttrs
-    genAttrs
     getExe'
     mapAttrs'
     mapAttrsToList
@@ -52,9 +52,7 @@ in
       onVolume = filterAttrs (_: space: space.onVolume) spaces;
       # what [limits] may name: whole volumes and the spaces on them
       limitable = attrNames volumes ++ attrNames onVolume;
-      paths =
-        genAttrs (attrNames volumes) (name: volumes.${name})
-        // mapAttrs' (name: space: nameValuePair name space.path) onVolume;
+      paths = volumes // mapAttrs' (name: space: nameValuePair name space.path) onVolume;
 
       unitOf = name: "storage-${name}";
 
@@ -91,7 +89,7 @@ in
         ${concatMapStrings (path: ''
           ${btrfs} quota enable ${path}
         '') (unique (map volumeOf (attrNames limited)))}
-        for path in ${concatStringsSep " " (mapAttrsToList (_: path: path) paths)}; do
+        for path in ${concatStringsSep " " (attrValues paths)}; do
           [ "$(stat -c %i "$path" 2>/dev/null)" = 256 ] || continue
           ${btrfs} qgroup show "$path" >/dev/null 2>&1 || continue
           case "$path" in
@@ -136,6 +134,15 @@ in
       };
 
       config = {
+        # a space on a volume persists with it; the fallback in /var/lib is persisted here
+        axon.persist.state.directories = lib.mkAfter (
+          mapAttrsToList (_: space: {
+            directory = space.path;
+            inherit (space) user group;
+            mode = "0750";
+          }) (filterAttrs (_: space: !space.onVolume) spaces)
+        );
+
         assertions = mapAttrsToList (name: _: {
           assertion = paths ? ${name};
           message = "hosts/${host.name}/host.toml: [limits] names ${name}, which is neither a volume nor a service's space on one (${concatStringsSep ", " limitable})";
@@ -147,6 +154,8 @@ in
               name: space:
               nameValuePair (unitOf name) {
                 description = "Space for ${name}";
+                # also for a space no unit lists, which then still exists after boot
+                wantedBy = [ "multi-user.target" ];
                 # the data disk may be missing at boot (nofail): never write to root instead
                 unitConfig.RequiresMountsFor = [ space.path ];
                 serviceConfig = {
@@ -161,7 +170,7 @@ in
                 description = "Apply [limits] to volumes and spaces";
                 wantedBy = [ "multi-user.target" ];
                 after = map (name: "${unitOf name}.service") (attrNames onVolume);
-                unitConfig.RequiresMountsFor = mapAttrsToList (_: path: path) paths;
+                unitConfig.RequiresMountsFor = attrValues paths;
                 serviceConfig = {
                   Type = "oneshot";
                   RemainAfterExit = true;

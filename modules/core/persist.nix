@@ -40,6 +40,15 @@ in
       cfg = config.axon.persist;
       device = config.fileSystems."/".device;
       state = config.axon.volumes.state or null;
+      # a space without its volume falls back to /var/lib/<name>, which its service may list as
+      # its own state too; impermanence refuses a path twice, so the first entry for a path wins
+      # (spaces add theirs last)
+      pathOf = entry: if lib.isString entry then entry else entry.directory;
+      stateDirectories = lib.attrValues (
+        lib.foldl' (
+          seen: entry: if seen ? ${pathOf entry} then seen else seen // { ${pathOf entry} = entry; }
+        ) { } cfg.state.directories
+      );
     in
     {
       imports = [ inputs.impermanence.nixosModules.impermanence ];
@@ -69,13 +78,13 @@ in
           "/persist" = {
             hideMounts = true;
             files = [ "/etc/machine-id" ];
-            directories = cfg.directories ++ optionals (state == null) cfg.state.directories;
+            directories = cfg.directories ++ optionals (state == null) stateDirectories;
           };
         }
         // optionalAttrs (state != null) {
           ${state} = {
             hideMounts = true;
-            inherit (cfg.state) directories;
+            directories = stateDirectories;
           };
         };
 
@@ -96,13 +105,9 @@ in
         ]
         ++ optionals (state != null) [ "d ${state}/var/lib/private 0700 root root -" ];
 
-        # the rollback below runs in the initrd, which has only the tools listed here
-        boot.initrd.systemd.initrdBin = [
-          pkgs.btrfs-progs
-          pkgs.coreutils
-          pkgs.findutils
-          pkgs.util-linux
-        ];
+        # the rollback below runs in the initrd: btrfs, coreutils and mount are there already,
+        # find (to prune old roots) only when something else happens to need it
+        boot.initrd.systemd.initrdBin = [ pkgs.findutils ];
 
         boot.initrd.systemd.services.rollback = {
           description = "Replace the root subvolume with an empty one";

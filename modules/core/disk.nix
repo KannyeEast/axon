@@ -70,8 +70,6 @@ in
               content = {
                 type = "swap";
                 discardPolicy = "both";
-                # desktops hibernate into it
-                resumeDevice = host.class == "desktop";
               };
             };
           };

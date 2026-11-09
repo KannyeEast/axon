@@ -24,12 +24,18 @@
       packages.options =
         (pkgs.nixosOptionsDoc {
           options =
-            (lib.evalModules {
-              modules = lib.attrValues config.axon.schema ++ [
-                { options.cluster = lib.mkOption { type = lib.types.submodule config.axon.clusterSchema; }; }
-              ];
-            }).options;
-          warningsAreErrors = false;
+            removeAttrs
+              (lib.evalModules {
+                modules = lib.attrValues config.axon.schema ++ [
+                  {
+                    options.cluster = lib.mkOption {
+                      type = lib.types.submodule config.axon.clusterSchema;
+                      description = "cluster.toml: how the machines relate, and where this repository is pushed.";
+                    };
+                  }
+                ];
+              }).options
+              [ "_module" ];
         }).optionsCommonMark;
     };
 }

@@ -74,7 +74,9 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   only when many modules use it.
 - **Only what changes something.** Don't restate an upstream default (read the module's source),
   and don't add an option nothing sets, a helper with one caller or a package nothing runs. A
-  port stays written out even when it is the default: the route needs the number.
+  port stays written out even when it is the default: the route needs the number. The framework
+  (`modules/`, published on `main`) serves any machine, not only these hosts: what another
+  host could plausibly need (another architecture, disk layout or class) is not dead weight.
 - **State lives next to the module that creates it**, in the same file: a feature adds its path to
   `axon.persist.state.directories` (on the host's state volume when it has one), core and classes
   to `axon.persist.directories` (the boot disk). `DynamicUser` services keep state in

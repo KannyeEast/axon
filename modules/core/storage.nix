@@ -4,7 +4,6 @@
 { lib, ... }:
 let
   inherit (lib)
-    attrValues
     concatMapAttrs
     head
     imap0
@@ -15,10 +14,12 @@ let
     mkForce
     mkOption
     nameValuePair
+    optionals
     tail
     types
     ;
 
+  # the fewest devices that make the profile worth having; mkfs.btrfs accepts fewer
   minimum = {
     single = 1;
     raid0 = 2;
@@ -30,10 +31,20 @@ let
     raid6 = 4;
   };
 
-  # parity profiles can lose metadata on a crash; mirror it instead
-  metadataFor = profile: if profile == "raid5" || profile == "raid6" then "raid1c3" else profile;
+  # metadata as safe as the data: mkfs.btrfs defaults to DUP on one device and raid1 on several,
+  # which covers single and raid0; parity profiles can lose metadata on a crash, so mirror it
+  metadataFor =
+    profile:
+    if profile == "raid5" || profile == "raid6" then
+      "raid1c3"
+    else if profile == "single" || profile == "raid0" then
+      null
+    else
+      profile;
 
   mountOptions = [
+    # light compression: bulk data (media) barely shrinks, and level 1 keeps writes fast; the
+    # boot disk uses zstd's default level
     "compress=zstd:1"
     "noatime"
     "nofail" # a missing data disk must not stop the boot
@@ -58,6 +69,8 @@ let
             label
             "-d"
             fs.profile
+          ]
+          ++ optionals (metadataFor fs.profile != null) [
             "-m"
             (metadataFor fs.profile)
           ]
@@ -107,7 +120,8 @@ in
 
         disko.devices.disk = concatMapAttrs disks storage;
 
-        # disko mounts by the first device's path; mounting by label survives losing that disk
+        # disko mounts by the first device's path; by label the mount still finds the filesystem
+        # after that disk is replaced
         fileSystems = concatMapAttrs (
           label: fs:
           mapAttrs' (
@@ -115,11 +129,7 @@ in
           ) fs.mounts
         ) storage;
 
-        # one mountpoint per filesystem; the boot disk's subvolumes are one filesystem, reached at /
-        services.btrfs.autoScrub = {
-          enable = true;
-          fileSystems = [ "/" ] ++ map (fs: head (attrValues fs.mounts)) (attrValues storage);
-        };
+        services.btrfs.autoScrub.enable = true;
       };
     };
 }

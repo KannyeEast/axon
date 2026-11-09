@@ -5,11 +5,8 @@
 { lib, ... }:
 let
   inherit (lib)
-    attrNames
-    concatStringsSep
     filterAttrs
     mkOption
-    optional
     types
     ;
 in
@@ -21,8 +18,6 @@ in
         cluster
         domain
         host
-        routed
-        routes
         services
         ;
     in
@@ -195,9 +190,5 @@ in
           )
         );
       };
-
-      config.warnings =
-        optional (host.class == "server" && !routed && routes != { })
-          "hosts/${host.name}/host.toml: ${concatStringsSep ", " (attrNames routes)} have routes but this host runs no gateway, so other machines can't reach them; list the gateway feature here or use ssh -L";
     };
 }
