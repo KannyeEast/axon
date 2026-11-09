@@ -95,6 +95,11 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   rejected alternatives or reasoning from a conversation: that belongs in the commit message.
 - **Quirks are explained where they're handled.** A workaround for a tool, driver or service gets
   a comment on the lines that do it, saying what breaks without them.
+- **A GUI app comes with its window rules.** Adding one, find its Wayland app id (the
+  `.desktop` file's name or `StartupWMClass`, or the application id in its source) and decide per
+  window: main windows tile; dialogs with a parent window and fixed-height windows float by
+  themselves in niri; small tool windows, pickers and popups without a parent get an
+  `open-floating` rule in the host's `windows.kdl`, in the same change.
 - **Dotfiles with several sections** separate them with a ruler: `# ── name ────────`
   (`--` in Lua, `//` in KDL and JavaScript).
 

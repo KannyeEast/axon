@@ -31,8 +31,10 @@ You report findings; you never edit, commit or push.
    nix eval --raw ".#nixosConfigurations.<host>.config.system.build.toplevel.drvPath"
    ```
 
-4. Report only what you verified. What can't be checked here (a service starting, a value on the
-   machine) is at most a one-line note asking for it. A guess is not a finding.
+4. Report only what you verified; a guess is not a finding. What can't be checked here is no
+   finding either: the owner tests desktop behaviour (window rules, a UI, how something looks or
+   feels) after switching. The one exception is a one-line note where a service could fail to
+   start or data could be lost.
 
 ## What to check
 
