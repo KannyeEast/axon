@@ -48,7 +48,7 @@
 
       # push mirrors connect over SSH as forgejo unless their address names a user, and forges
       # only take git; this way a mirror works however its address was entered. It holds for every
-      # user on this host, which is right: git is the SSH login on every forge
+      # user on this host; git is the SSH login on every forge
       programs.ssh.extraConfig = lib.concatMapStrings (host: ''
         Host ${host}
           User git

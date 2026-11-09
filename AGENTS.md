@@ -11,7 +11,8 @@ different jobs. Started by CI on a pull request, you are the reviewer; otherwise
 **Author.** You change the configuration with its owner, in a conversation. Explain, then act:
 say what you found and what you intend to change before editing. Stop for confirmation on
 anything beyond a single obvious fix, and don't bundle unrequested changes. Say what you verified
-and what you didn't.
+and what you didn't. Asked to fix the review, read its open findings (`just findings`, which runs
+`.forgejo/findings.sh`) and fix each one, or say why not.
 
 **Reviewer.** You check a pull request and change nothing. Follow
 [.forgejo/review.md](.forgejo/review.md). Every finding names the rule it breaks, why that
@@ -23,7 +24,8 @@ matters here, and the concrete fix. A choice recorded in DECISIONS.md is not a f
 flake.nix            inputs; outputs = every .nix under modules/ (import-tree)
 cluster.toml         relations between machines: [ssh], [sync], [external]; the repo's remotes: [repo]
 DECISIONS.md         deliberate choices that look like mistakes; never "fixed" or flagged
-.forgejo/            CI: check and review on pull requests, main published from stable; the reviewer's guide
+.forgejo/            CI: check and review on pull requests, main published from stable; the reviewer's guide;
+                     findings.sh, the latest review's open findings for the author
 hosts/<name>/        host.toml, facter.json, secrets.json (sops), optional home/
 hosts/_old/          previous hosts, kept for reference, never built
 home/                dotfiles every host shares; hosts/<name>/home wins per file

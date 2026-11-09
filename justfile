@@ -1,6 +1,10 @@
 # Day-to-day commands. `just` lists them.
 flake := justfile_directory()
 host := shell("hostname -s")
+# where origin lives, as https://host/owner/repo (from user@host:owner/repo.git and the like), and
+# its API; empty before `just remotes`
+forge := shell('git -C "$1" remote get-url origin 2>/dev/null | sed -E "s#^(ssh://)?[^@/]+@([^:/]+)[:/]#https://\\2/#; s#\\.git\$##" || true', flake)
+api := replace_regex(forge, '^(https?://[^/]+)/(.*)$', '${1}/api/v1/repos/${2}')
 
 alias s := switch
 alias b := boot
@@ -133,9 +137,7 @@ pr:
     echo "stable already has everything on dev."
     exit 0
   fi
-  # user@host:owner/repo.git, ssh://user@host/owner/repo.git or https://host/owner/repo.git
-  web=$(git remote get-url origin | sed -E 's#^(ssh://)?[^@/]+@([^:/]+)[:/]#https://\2/#; s#\.git$##')
-  api=$(sed -E 's#^(https?://[^/]+)/(.*)$#\1/api/v1/repos/\2#' <<<"$web")
+  web="{{forge}}" api="{{api}}"
   call() { curl --silent --show-error -H "Authorization: token $token" -H "Content-Type: application/json" "$@"; }
   number=$(call --fail-with-body "$api/pulls?state=open&limit=50" \
     | jq '[.[] | select(.base.ref == "stable" and .head.ref == "dev")][0].number // empty')
@@ -149,6 +151,11 @@ pr:
     2*|409) echo "$web/pulls/$number merges into stable once check and review pass" ;;
     *) echo "just pr: scheduling the merge of $web/pulls/$number failed (HTTP $status)" >&2; exit 1 ;;
   esac
+
+# The open findings of the latest review on the pull request into stable: summary, file:line, text
+[group("git")]
+findings:
+  cd {{flake}} && FORGE="{{forge}}" API="{{api}}" bash .forgejo/findings.sh
 
 # Publish main from stable by hand; CI does it after every merge into stable
 [group("git")]

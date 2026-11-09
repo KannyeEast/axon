@@ -141,6 +141,8 @@ Fix: delete the line.
 - No "Why:" paragraphs, no hedging ("consider", "might want to"), no restating the diff, no
   advice beyond the fix.
 
-The review's summary is one line: the verdict, the count per severity, the CI result
-(`Requests changes · 1 blocking, 2 should · CI passed`), or `No findings · CI passed`. On a later
+The review's summary is one line: the verdict, the count per severity, the CI result. The verdict
+is `Requests changes` only with a blocking finding, `Comments` otherwise:
+`Requests changes · 1 blocking, 2 should · CI passed`, `Comments · 1 should · CI passed`, or
+`No findings · CI passed`. On a later
 push, review the current diff; don't repeat a finding the new commits fixed.
