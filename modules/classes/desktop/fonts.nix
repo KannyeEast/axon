@@ -4,7 +4,6 @@
     { pkgs, ... }:
     {
       fonts = {
-        enableDefaultPackages = true;
         packages = [
           pkgs.barlow
           pkgs.inter

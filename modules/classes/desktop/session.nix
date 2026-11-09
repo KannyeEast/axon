@@ -1,6 +1,6 @@
 # The desktop class: niri behind GDM, plus the plumbing apps expect.
 # Which bar, launcher and keybinds run is taste: hosts/<name>/home/.config/niri.
-{ lib, ... }:
+{ ... }:
 {
   flake.modules.nixos.desktop =
     { pkgs, ... }:
@@ -40,15 +40,6 @@
       services.dbus.packages = [ pkgs.mako ];
 
       # the password prompt for anything that asks polkit (mounting, virt-manager, …)
-      systemd.user.services.polkit-agent = {
-        description = "polkit authentication agent";
-        wantedBy = [ "graphical-session.target" ];
-        partOf = [ "graphical-session.target" ];
-        after = [ "graphical-session.target" ];
-        serviceConfig = {
-          ExecStart = lib.getExe' pkgs.lxqt.lxqt-policykit "lxqt-policykit-agent";
-          Restart = "on-failure";
-        };
-      };
+      security.soteria.enable = true;
     };
 }

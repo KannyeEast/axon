@@ -12,8 +12,6 @@ let
     match
     optionalAttrs
     optionalString
-    substring
-    toUpper
     ;
 in
 {
@@ -27,7 +25,6 @@ in
       origin = findFirst (name: remotes.${name}.origin && remotes.${name}.web != null) null (
         attrNames remotes
       );
-      capitalise = name: toUpper (substring 0 1 name) + substring 1 (-1) name;
 
       # one black for every space; spacesForce reapplies it on every switch, so change it here
       tint = {
@@ -85,7 +82,7 @@ in
       }
       // optionalAttrs (origin != null) {
         # the forge origin pushes to; the mirrors are links on the start page
-        ${capitalise origin} = {
+        ${lib.toSentenceCase origin} = {
           id = "e4b71c09-8a3d-4f62-9c15-7d20b6e9f3a8";
           url = head (match "(https://[^/]+)/.*" remotes.${origin}.web);
           position = 150;

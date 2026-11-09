@@ -71,31 +71,11 @@ in
         OverrideFirstRunPage = "";
         OverridePostUpdatePage = "";
         Permissions = {
-          Location = {
-            Allow = [ ];
-            Block = [ ];
-            BlockNewRequests = true;
-          };
-          Notifications = {
-            Allow = [ ];
-            Block = [ ];
-            BlockNewRequests = true;
-          };
-          Autoplay = {
-            Allow = [ ];
-            Block = [ ];
-            BlockNewRequests = true;
-          };
-          VirtualReality = {
-            Allow = [ ];
-            Block = [ ];
-            BlockNewRequests = true;
-          };
-          ScreenShare = {
-            Allow = [ ];
-            Block = [ ];
-            BlockNewRequests = true;
-          };
+          Location.BlockNewRequests = true;
+          Notifications.BlockNewRequests = true;
+          Autoplay.BlockNewRequests = true;
+          VirtualReality.BlockNewRequests = true;
+          ScreenShare.BlockNewRequests = true;
         };
         PictureInPicture.Enabled = false;
         PromptForDownloadLocation = true;

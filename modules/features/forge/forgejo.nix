@@ -62,13 +62,6 @@
         ];
       };
 
-      axon.persist.state.directories = lib.optional (!spaces.forgejo.onVolume) {
-        directory = cfg.stateDir;
-        user = cfg.user;
-        group = cfg.group;
-        mode = "0750";
-      };
-
       axon.services.git = {
         route = {
           inherit port;

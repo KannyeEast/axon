@@ -20,6 +20,7 @@
         "org.toml.lang"
         "com.chrisrm.idea.MaterialThemeUI"
         "IdeaVIM"
+        "org.mvnsearch.plugins.justPlugin"
       ];
     in
     lib.mkIf (config.axon.host.class == "desktop") {

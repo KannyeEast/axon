@@ -120,10 +120,12 @@ in
           timezone = mkOption {
             type = types.str;
             default = "UTC";
+            description = "Time zone, e.g. Europe/Berlin.";
           };
           language = mkOption {
             type = types.str;
             default = "en_US.UTF-8";
+            description = "Locale for messages and the system language.";
           };
           formats = mkOption {
             type = types.str;
@@ -139,6 +141,7 @@ in
           variant = mkOption {
             type = types.str;
             default = "";
+            description = "xkb variant of the layout, e.g. nodeadkeys; empty for the plain layout.";
           };
         };
 

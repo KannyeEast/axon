@@ -36,3 +36,10 @@ nix flake init -t ~/axon#devshell && direnv allow
 ## A new machine
 
 From the NixOS installer, see `install.sh`.
+
+On a desktop, once after the first login: Claude Code installs by itself only the plugins the user
+settings name, not those a project enables, so in `~/axon`:
+
+```sh
+sandbox claude plugin install shell-scripting@claude-code-workflows --scope project
+```
