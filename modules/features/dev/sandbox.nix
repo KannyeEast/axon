@@ -53,7 +53,6 @@
             "GIT_COMMITTER_NAME=${config.axon.user.name}"
             "GIT_COMMITTER_EMAIL=${config.axon.user.email}"
           ];
-          WorkingDir = "/work";
           Cmd = [ "bash" ];
         };
       };
@@ -119,10 +118,10 @@
             --userns=keep-id \
             --volume /nix/store:/nix/store:ro \
             --volume /nix/var/nix/daemon-socket:/nix/var/nix/daemon-socket \
-            --volume "$PWD:/work" \
+            --volume "$PWD:$PWD" \
             --volume "$state:/home/sandbox" \
             "''${opts[@]}" \
-            --workdir /work \
+            --workdir "$PWD" \
             "$name" "''${args[@]:-bash}"
         '';
       };
