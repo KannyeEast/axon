@@ -16,6 +16,8 @@
           pkgs.claude-code
           pkgs.coreutils
           pkgs.diffutils
+          # scripts start with #!/usr/bin/env (npx tools, just recipes); the image has only /bin
+          pkgs.dockerTools.usrBinEnv
           pkgs.fd
           pkgs.findutils
           pkgs.gawk

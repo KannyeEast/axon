@@ -48,5 +48,24 @@
   "enabledPlugins": {
     "claude-md-management@claude-plugins-official": true,
     "hookify@claude-plugins-official": true
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y ccstatusline@2.2.34",
+    "padding": 0,
+    "refreshInterval": 10
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r .transcript_path); node ~/.claude/plugins/synced/*/caveman/src/hooks/caveman-stats.js --session-file \"$f\" >/dev/null 2>&1 || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
   }
 }

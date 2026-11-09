@@ -1,0 +1,50 @@
+{
+  "version": 4,
+  "lines": [
+    [
+      {
+        "id": "model",
+        "type": "model",
+        "color": "cyan",
+        "rawValue": true
+      },
+      {
+        "id": "context",
+        "type": "context-percentage",
+        "color": "brightBlack"
+      },
+      {
+        "id": "branch",
+        "type": "git-branch",
+        "color": "magenta",
+        "merge": true
+      },
+      {
+        "id": "changes",
+        "type": "git-changes",
+        "color": "yellow"
+      },
+      {
+        "id": "block",
+        "type": "session-usage",
+        "color": "green"
+      },
+      {
+        "id": "caveman",
+        "type": "custom-command",
+        "commandPath": "bash ~/.claude/plugins/synced/*/caveman/src/hooks/caveman-statusline.sh",
+        "preserveColors": true,
+        "timeout": 1000
+      }
+    ]
+  ],
+  "colorLevel": 2,
+  "defaultSeparator": "·",
+  "defaultPaddingSide": "both",
+  "numberFormat": {
+    "percent": {
+      "decimals": 0
+    }
+  },
+  "defaultPadding": " "
+}

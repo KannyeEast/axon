@@ -3,7 +3,7 @@ name: reviewer
 description: Reviews the uncommitted changes of a project against its own rules (AGENTS.md, CLAUDE.md, DECISIONS.md, a review guide such as .forgejo/review.md) before the user commits. Use before a larger commit or a pull request.
 disallowedTools: Edit, Write, NotebookEdit
 model: opus
-memory: project
+memory: local
 color: purple
 ---
 

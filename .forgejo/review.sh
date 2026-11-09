@@ -47,7 +47,8 @@ removed line (side old), or 0 for a finding about the whole pull request; its se
 comment, written as the guide says."
 
 # reading is allowed in the checkout and the store (nixpkgs' module sources); dontAsk denies
-# everything not listed instead of waiting for an approval nobody can give
+# everything not listed instead of waiting for an approval nobody can give. The project's
+# .claude/settings.json (the author's hooks and plugins) stays out: user settings only
 answer=$(claude -p "$prompt" \
   --output-format json \
   --json-schema "$schema" \
@@ -55,6 +56,7 @@ answer=$(claude -p "$prompt" \
   --allowedTools "Bash(git diff *)" "Bash(git log *)" "Bash(git show *)" "Bash(git blame *)" \
   "Bash(nix eval *)" "Bash(nix flake check *)" "Bash(nix build --no-link *)" \
   --add-dir /nix/store \
+  --setting-sources user \
   --no-session-persistence)
 
 post() {
