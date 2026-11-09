@@ -56,5 +56,6 @@ To change one, change it here in the same commit, with the new reason.
 
 | Decision | Why |
 |---|---|
+| Dotfiles are linked by our own `dotfiles-sync` (core/home.nix), not home-manager's file management | Nix never reads `home/`; files are live links into the checkout, edited in place, no rebuild |
 | waybar, fuzzel and mako only get colours, nothing more | a shell of its own (separate repo) will replace them |
 | Plain numbered niri workspaces, none bound to a purpose | the owner finds fixed workspaces restrictive |
