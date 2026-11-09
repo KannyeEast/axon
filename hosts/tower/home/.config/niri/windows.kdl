@@ -36,11 +36,9 @@ window-rule {
     open-floating true
 }
 
-// Password prompts should land in front and stay put: the agent by any app id containing its name,
-// or by the dialog's title
+// Password prompts (soteria, the polkit agent) land in front and stay put
 window-rule {
-    match app-id=r#"lxqt-policykit"#
-    match title=r#"^Authentication Required$"#
+    match app-id=r#"^gay\.vaskel\.soteria$"#
     open-floating true
     open-focused true
 }

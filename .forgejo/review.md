@@ -49,10 +49,13 @@ You report findings; you never edit, commit or push.
   - errors not shaped `<file or option>: <what is wrong>`; values aligned with extra spaces
   - a dependency that fails or asserts where it could fall back (A dependency is a hard need or
     an extra)
-- **Not your call:** whether a change fits the title or belongs in another pull request.
-- **Boundaries.** Changes in `hosts/`, secrets, `.sops.yaml`, new flake inputs, new features or
-  classes need the owner's yes. Flag them as a note asking whether that was given, unless the
-  description says so.
+- **References left behind** (A change takes its references with it): for anything renamed,
+  replaced or removed, search the repository, dotfiles in `home/` and `hosts/*/home` included,
+  for its old name, path or id. A leftover is a **should**.
+- **Not your call:** whether a change fits the title or belongs in another pull request; the
+  owner's yes for changes in `hosts/`, secrets or flake inputs (the pull request is the owner's,
+  so it is given; the "Ask first" boundary is for the author in a conversation); anything about
+  hosts that don't exist (`hosts/_old` is never built).
 
 ### A new or changed service
 

@@ -77,6 +77,9 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   port stays written out even when it is the default: the route needs the number. The framework
   (`modules/`, published on `main`) serves any machine, not only these hosts: what another
   host could plausibly need (another architecture, disk layout or class) is not dead weight.
+- **A change takes its references with it.** Renaming, replacing or removing something (a
+  program, a unit, a script, an option, an app id, a path) means searching the whole repository
+  for it, `home/` and `hosts/*/home` included, and updating every place in the same change.
 - **State lives next to the module that creates it**, in the same file: a feature adds its path to
   `axon.persist.state.directories` (on the host's state volume when it has one), core and classes
   to `axon.persist.directories` (the boot disk). `DynamicUser` services keep state in
