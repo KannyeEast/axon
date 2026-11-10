@@ -58,12 +58,15 @@
         configure = {
           packages.axon.start = [
             pkgs.vimPlugins.nvim-treesitter.withAllGrammars
-            pkgs.vimPlugins.telescope-nvim
-            pkgs.vimPlugins.telescope-fzf-native-nvim
+            pkgs.vimPlugins.blink-cmp
+            pkgs.vimPlugins.conform-nvim
+            pkgs.vimPlugins.friendly-snippets
             pkgs.vimPlugins.gitsigns-nvim
+            pkgs.vimPlugins.lazydev-nvim
             pkgs.vimPlugins.mini-nvim
             pkgs.vimPlugins.nvim-lspconfig
             pkgs.vimPlugins.snacks-nvim
+            pkgs.vimPlugins.trouble-nvim
             pkgs.vimPlugins.vimtex
             pkgs.vimPlugins.which-key-nvim
           ];
@@ -83,7 +86,6 @@
         pkgs.fzf
         pkgs.jq
         pkgs.lazygit
-        pkgs.nil
         pkgs.ripgrep
         pkgs.starship
         pkgs.zsh-completions

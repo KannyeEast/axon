@@ -1,4 +1,4 @@
--- Editor behaviour: options, the basic keys and small automatic things.
+-- Editor behaviour: options, basic keys, pairs, surround, text objects, small automatic things.
 
 -- ── options ────────
 local o = vim.opt
@@ -23,12 +23,19 @@ o.updatetime = 250
 o.confirm = true
 o.list = true
 o.listchars = { tab = "» ", trail = "·", nbsp = "␣" }
-o.completeopt = { "menuone", "noselect", "popup" }
 
 -- ── keys ────────
 local map = vim.keymap.set
 map("n", "<Esc>", "<cmd>nohlsearch<cr>")
 map("n", "<leader>w", "<cmd>write<cr>", { desc = "save" })
+
+-- ── editing ────────
+-- brackets and quotes close themselves
+require("mini.pairs").setup()
+-- sa adds brackets/quotes around a motion or selection, sd deletes, sr replaces: saiw" quotes a word
+require("mini.surround").setup()
+-- more text objects: a argument, f function call, q any quote, b any bracket (cia, daf, vi")
+require("mini.ai").setup()
 
 -- ── small things ────────
 vim.api.nvim_create_autocmd("TextYankPost", {
