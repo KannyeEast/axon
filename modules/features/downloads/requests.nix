@@ -27,7 +27,7 @@
           description = "Requests";
           icon = "jellyseerr.svg";
           widget.type = "seerr";
-          secrets.key = "dashboard/requests/key";
+          key = true;
         };
         backup.paths = [ "/var/lib/private/seerr" ];
       };

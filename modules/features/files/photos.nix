@@ -85,7 +85,7 @@
             type = "immich";
             version = 2;
           };
-          secrets.key = "dashboard/photos/key";
+          key = true;
         };
         # thumbs/ and encoded-video/ are rebuilt from the originals; backups/ holds Immich's own database dumps
         backup.paths = map (dir: "${data}/${dir}") [

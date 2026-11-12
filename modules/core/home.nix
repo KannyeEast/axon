@@ -22,7 +22,7 @@
   flake.modules.homeManager.core =
     {
       config,
-      lib, # the home-manager lib: only it has lib.hm.dag
+      lib,
       osConfig,
       pkgs,
       ...
@@ -98,7 +98,7 @@
       home.packages = [ sync ];
 
       # first pass at activation, so a fresh install has its dotfiles before the first login
-      home.activation.dotfiles = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      home.activation.dotfiles = config.lib.dag.entryAfter [ "writeBoundary" ] ''
         ${lib.getExe sync} || true
       '';
 

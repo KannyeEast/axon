@@ -7,25 +7,6 @@
 # start page (every host's CPU, GPU, memory and temperature; every disk's use), graphs over the
 # last day below them.
 { lib, ... }:
-let
-  inherit (lib)
-    attrNames
-    attrValues
-    concatMap
-    concatStringsSep
-    elem
-    elemAt
-    filterAttrs
-    head
-    imap0
-    imap1
-    length
-    listToAttrs
-    mapAttrsToList
-    nameValuePair
-    take
-    ;
-in
 {
   flake.modules.nixos.monitoring =
     { config, pkgs, ... }:
@@ -38,8 +19,7 @@ in
         ;
       port = 3001;
       state = "/var/lib/grafana";
-      address = if routed then services.grafana.route.host else "127.0.0.1";
-      url = if routed then services.grafana.route.url else "http://${services.grafana.route.endpoint}";
+      inherit (services.grafana.route) name origin;
 
       percent = {
         unit = "percent";
@@ -104,8 +84,8 @@ in
       table =
         title: keys: columns:
         let
-          names = map (column: head (attrNames column)) columns;
-          refs = take (length columns) [
+          names = map (column: lib.head (lib.attrNames column)) columns;
+          refs = lib.take (lib.length columns) [
             "A"
             "B"
             "C"
@@ -115,9 +95,9 @@ in
         {
           type = "table";
           inherit title;
-          targets = imap0 (i: column: {
-            expr = head (attrValues column);
-            refId = elemAt refs i;
+          targets = lib.imap0 (i: column: {
+            expr = lib.head (lib.attrValues column);
+            refId = lib.elemAt refs i;
             format = "table";
             instant = true;
           }) columns;
@@ -130,10 +110,12 @@ in
               id = "organize";
               options = {
                 excludeByName.Time = true;
-                indexByName = listToAttrs (
-                  imap0 (i: key: nameValuePair key i) (keys ++ map (ref: "Value #${ref}") refs)
+                indexByName = lib.listToAttrs (
+                  lib.imap0 (i: key: lib.nameValuePair key i) (keys ++ map (ref: "Value #${ref}") refs)
                 );
-                renameByName = listToAttrs (imap0 (i: ref: nameValuePair "Value #${ref}" (elemAt names i)) refs);
+                renameByName = lib.listToAttrs (
+                  lib.imap0 (i: ref: lib.nameValuePair "Value #${ref}" (lib.elemAt names i)) refs
+                );
               };
             }
           ];
@@ -148,12 +130,12 @@ in
 
       # every disk of every scraped host, by its host.toml label: the boot disk as "system" through
       # /, any other through its first mount
-      scraped = filterAttrs (_: data: elem "metrics" data.host.features) cluster.hosts;
-      disks = concatMap (
+      scraped = lib.filterAttrs (_: data: lib.elem "metrics" data.host.features) cluster.hosts;
+      disks = lib.concatMap (
         name:
         let
           data = scraped.${name};
-          mounted = filterAttrs (label: disk: label != "boot" && (disk.mounts or { }) != { }) data.disk;
+          mounted = lib.filterAttrs (label: disk: label != "boot" && (disk.mounts or { }) != { }) data.disk;
         in
         [
           {
@@ -162,16 +144,16 @@ in
             mountpoint = "/";
           }
         ]
-        ++ mapAttrsToList (label: disk: {
+        ++ lib.mapAttrsToList (label: disk: {
           host = name;
           inherit label;
-          mountpoint = head (attrValues disk.mounts);
+          mountpoint = lib.head (lib.attrValues disk.mounts);
         }) mounted
-      ) (attrNames scraped);
+      ) (lib.attrNames scraped);
       byDisk =
         metric:
         "max by (host, disk) (${
-          concatStringsSep " or " (
+          lib.concatStringsSep " or " (
             map (
               disk:
               ''label_replace(${metric}{host="${disk.host}",mountpoint="${disk.mountpoint}"}, "disk", "${disk.label}", "", "")''
@@ -269,7 +251,7 @@ in
           to = "now";
         };
         refresh = "1m";
-        panels = imap1 (
+        panels = lib.imap1 (
           id: panel:
           panel
           // {
@@ -293,8 +275,8 @@ in
         settings = {
           server = {
             http_port = port;
-            domain = address;
-            root_url = "${url}/";
+            domain = name;
+            root_url = "${origin}/";
           };
           security = {
             # the start page shows panels of the Start page dashboard in frames
@@ -352,16 +334,16 @@ in
           group = "System";
           icon = "grafana.svg";
           # the overview tables come first in the dashboard, so their panel ids are 1 and 2
-          instances = listToAttrs (
-            imap1 (
+          instances = lib.listToAttrs (
+            lib.imap1 (
               id: panel:
-              nameValuePair panel.title {
+              lib.nameValuePair panel.title {
                 description = "right now";
-                link = "${url}/d/start";
+                link = "${origin}/d/start";
                 widget = {
                   type = "iframe";
                   name = "grafana-${toString id}";
-                  src = "${url}/d-solo/start/start?panelId=${toString id}&theme=dark&refresh=1m";
+                  src = "${origin}/d-solo/start/start?panelId=${toString id}&theme=dark&refresh=1m";
                   classes = "h-60 sm:h-60 md:h-60 lg:h-60 xl:h-60 2xl:h-72";
                   allowScrolling = "no";
                 };

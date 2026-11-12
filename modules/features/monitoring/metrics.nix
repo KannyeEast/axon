@@ -6,16 +6,6 @@
 # services with their own login must answer, "guarded" for those behind the gateway login must
 # refuse with 401.
 { lib, ... }:
-let
-  inherit (lib)
-    elem
-    filterAttrs
-    mapAttrsToList
-    optionals
-    range
-    toJSON
-    ;
-in
 {
   flake.modules.nixos.monitoring =
     { config, pkgs, ... }:
@@ -27,16 +17,16 @@ in
         routes
         ;
       exporters = config.services.prometheus.exporters;
-      scraped = filterAttrs (_: data: elem "metrics" data.host.features) cluster.hosts;
-      open = filterAttrs (_: service: service.route.access == "open") routes;
-      guarded = filterAttrs (_: service: service.route.access != "open") routes;
+      scraped = lib.filterAttrs (_: data: lib.elem "metrics" data.host.features) cluster.hosts;
+      open = lib.filterAttrs (_: service: service.route.access == "open") routes;
+      guarded = lib.filterAttrs (_: service: service.route.access != "open") routes;
       external = route: route.url;
 
       # every series carries the host it's about, and its class: alerts that a machine is off
       # only make sense for servers
       job = name: exporterPort: {
         job_name = name;
-        static_configs = mapAttrsToList (name: data: {
+        static_configs = lib.mapAttrsToList (name: data: {
           targets = [ "${name}:${toString exporterPort}" ];
           labels = {
             host = name;
@@ -57,7 +47,7 @@ in
         job_name = module;
         metrics_path = "/probe";
         params.module = [ module ];
-        static_configs = mapAttrsToList (name: service: {
+        static_configs = lib.mapAttrsToList (name: service: {
           targets = [ (url service.route) ];
           labels = {
             host = host.name;
@@ -80,31 +70,33 @@ in
         ];
       };
 
-      blackbox = pkgs.writeText "blackbox.json" (toJSON {
-        modules = {
-          service = {
-            prober = "http";
-            timeout = "5s";
-            http = {
-              follow_redirects = false;
-              valid_status_codes = range 200 499;
-              preferred_ip_protocol = "ip4";
+      blackbox = pkgs.writeText "blackbox.json" (
+        lib.toJSON {
+          modules = {
+            service = {
+              prober = "http";
+              timeout = "5s";
+              http = {
+                follow_redirects = false;
+                valid_status_codes = lib.range 200 499;
+                preferred_ip_protocol = "ip4";
+              };
+            };
+            route = {
+              prober = "http";
+              http.preferred_ip_protocol = "ip4";
+            };
+            # the gateway login refuses requests that aren't from a browser instead of redirecting
+            guarded = {
+              prober = "http";
+              http = {
+                valid_status_codes = [ 401 ];
+                preferred_ip_protocol = "ip4";
+              };
             };
           };
-          route = {
-            prober = "http";
-            http.preferred_ip_protocol = "ip4";
-          };
-          # the gateway login refuses requests that aren't from a browser instead of redirecting
-          guarded = {
-            prober = "http";
-            http = {
-              valid_status_codes = [ 401 ];
-              preferred_ip_protocol = "ip4";
-            };
-          };
-        };
-      });
+        }
+      );
     in
     {
       services.prometheus.exporters.blackbox = {
@@ -123,7 +115,7 @@ in
           (job "smartctl" exporters.smartctl.port)
           (probe "service" (route: "http://${route.endpoint}") routes)
         ]
-        ++ optionals routed [
+        ++ lib.optionals routed [
           (probe "route" external open)
           (probe "guarded" external guarded)
         ];

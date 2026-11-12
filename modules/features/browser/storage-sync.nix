@@ -2,9 +2,6 @@
 # extension. Values are merged over what is already there, and SponsorBlock and DeArrow share
 # one userID.
 { lib, ... }:
-let
-  inherit (lib) concatMapStringsSep escapeShellArg;
-in
 {
   flake.modules.homeManager.browser =
     { config, pkgs, ... }:
@@ -75,7 +72,7 @@ in
       };
 
       apply = id: value: ''
-        apply ${escapeShellArg id} ${escapeShellArg (lib.toJSON value)}
+        apply ${lib.escapeShellArg id} ${lib.escapeShellArg (lib.toJSON value)}
       '';
     in
     {
@@ -106,7 +103,7 @@ in
               || echo "zen: $id is busy, will apply on a later rebuild"
           }
 
-          ${concatMapStringsSep "" (id: apply id settings.${id}) (lib.attrNames settings)}
+          ${lib.concatMapStringsSep "" (id: apply id settings.${id}) (lib.attrNames settings)}
 
           # share one userID across SponsorBlock and DeArrow
           src=$(${sqlite} "$db" \

@@ -3,8 +3,6 @@
 # host.toml only chooses the device, the swap size and the space left for another OS.
 { inputs, lib, ... }:
 let
-  inherit (lib) head length optionalAttrs;
-
   subvolume = mountpoint: {
     inherit mountpoint;
     mountOptions = [
@@ -25,14 +23,14 @@ in
 
       assertions = [
         {
-          assertion = length boot.devices == 1;
+          assertion = lib.length boot.devices == 1;
           message = "hosts/${host.name}/host.toml: disk.boot takes exactly one device";
         }
       ];
 
       disko.devices.disk.main = {
         type = "disk";
-        device = head boot.devices;
+        device = lib.head boot.devices;
         content = {
           type = "gpt";
           partitions = {
@@ -63,7 +61,7 @@ in
             }
             // (if boot.reserve == 0 then { size = "100%"; } else { end = "-${toString boot.reserve}G"; });
           }
-          // optionalAttrs (boot.swap > 0) {
+          // lib.optionalAttrs (boot.swap > 0) {
             swap = {
               priority = 2;
               size = "${toString boot.swap}G";

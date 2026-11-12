@@ -63,7 +63,7 @@
         runtimeInputs = [
           pkgs.coreutils
           pkgs.findutils
-          pkgs.podman
+          config.virtualisation.podman.package
         ];
         text = ''
           name="sandbox:${image.imageTag}"
@@ -93,10 +93,8 @@
             done < <(find -L "$from" -type f -printf '%P\n')
           }
           mirror "$config/claude" /home/sandbox/.claude
-          # other tools Claude Code runs keep their own place
-          for tool in caveman ccstatusline; do
-            mirror "$config/$tool" "/home/sandbox/.config/$tool"
-          done
+          # the status line Claude Code runs keeps its own place
+          mirror "$config/ccstatusline" /home/sandbox/.config/ccstatusline
 
           # keys tools in here need (CONTEXT7_API_KEY=…), kept outside the dotfiles: they go public
           secrets="$config/sandbox/secrets.env"

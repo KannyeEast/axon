@@ -2,18 +2,6 @@
 # behind the gateway login unless it has its own. Public ones are on the tunnel as well.
 # One wildcard certificate from Let's Encrypt via a Cloudflare DNS challenge covers them all.
 { lib, ... }:
-let
-  inherit (lib)
-    attrNames
-    concatStringsSep
-    elem
-    filterAttrs
-    length
-    mapAttrs'
-    nameValuePair
-    optionalString
-    ;
-in
 {
   flake.modules.nixos.gateway =
     { config, ... }:
@@ -26,7 +14,9 @@ in
         ;
 
       ph = config.sops.placeholder;
-      gateways = attrNames (filterAttrs (_: data: elem "gateway" data.host.features) cluster.hosts);
+      gateways = lib.attrNames (
+        lib.filterAttrs (_: data: lib.elem "gateway" data.host.features) cluster.hosts
+      );
 
       # caddy gets no certificates itself (auto_https disable_certs), so every vhost names the acme files
       tls = "tls /var/lib/acme/${domain}/fullchain.pem /var/lib/acme/${domain}/key.pem";
@@ -36,8 +26,8 @@ in
 
       assertions = [
         {
-          assertion = length gateways == 1;
-          message = "cluster.toml: exactly one host may run the gateway feature, found ${concatStringsSep ", " gateways}";
+          assertion = lib.length gateways == 1;
+          message = "cluster.toml: exactly one host may run the gateway feature, found ${lib.concatStringsSep ", " gateways}";
         }
       ];
 
@@ -70,12 +60,12 @@ in
             abort
           '';
         }
-        // mapAttrs' (
+        // lib.mapAttrs' (
           _: service:
-          nameValuePair service.route.host {
+          lib.nameValuePair service.route.host {
             extraConfig = ''
               ${tls}
-              ${optionalString (service.route.access != "open") ''
+              ${lib.optionalString (service.route.access != "open") ''
                 forward_auth ${routes.auth.route.endpoint} {
                   uri /api/authz/forward-auth
                   copy_headers Remote-User

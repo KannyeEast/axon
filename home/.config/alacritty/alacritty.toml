@@ -1,19 +1,10 @@
-[general]
-live_config_reload = true
-working_directory = "None"
-
 [terminal]
 # every window its own tmux session in the folder it opens in, gone when the window closes
 # (`work` sessions are made elsewhere and stay); the login shell where tmux isn't installed
 shell = { program = "sh", args = ["-lc", "if command -v tmux >/dev/null; then exec tmux new-session \\; set-option destroy-unattached on; else exec \"${SHELL:-sh}\" -l; fi"] }
 
 [window]
-title = "Alacritty"
-dynamic_title = true
-
 decorations = "none"
-
-opacity = 1
 
 padding.x = 15
 padding.y = 15
@@ -23,45 +14,23 @@ columns = 160
 lines = 80
 
 [cursor.style]
-shape = "Block"
 blinking = "Never"
 
 [colors]
 draw_bold_text_with_bright_colors = true
 
 [env]
+# tmux.conf turns on extended keys (Shift+Enter and the like) for xterm* terminals
 TERM = "xterm-256color"
 
 [font]
 normal.family = "JetBrainsMonoNL Nerd Font Mono"
-normal.style = "Regular"
 size = 11.0
 
-[font.bold]
-family = "JetBrainsMonoNL Nerd Font Mono"
-style = "Bold"
-
-[font.italic]
-family = "JetBrainsMonoNL Nerd Font Mono"
-style = "Italic"
-
-[font.bold_italic]
-family = "JetBrainsMonoNL Nerd Font Mono"
-style = "Bold Italic"
-
-# Everything between these markers is written by `flavours apply`.
-# Start flavours
-[colors.cursor]
-cursor = "CellForeground"
-text = "CellBackground"
-
+# the palette; mako, fuzzel, swaylock, niri's colors.kdl and nvim's colors/terminal.lua repeat it
 [colors.selection]
 text = "CellForeground"
 background = "#323947"
-
-[colors.vi_mode_cursor]
-text = "CellBackground"
-cursor = "CellForeground"
 
 [colors.primary]
 background = "#0c0c12"
@@ -86,4 +55,3 @@ blue = "#8aa2ff"
 magenta = "#c79bf0"
 cyan = "#98d3ee"
 white = "#e6e8ee"
-# End flavours

@@ -53,7 +53,7 @@
             enableBlocks = true;
             enableNowPlaying = false;
           };
-          secrets.key = "dashboard/jellyfin/key";
+          key = true;
         };
         backup.paths = [ "/var/lib/jellyfin" ];
       };

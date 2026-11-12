@@ -86,6 +86,7 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   `/var/lib/private/<name>`.
 - **Name files for what they do** (`passwords.nix`, not `keepassxc.nix`).
 - **Formatting**: `nix fmt`. Never align `=` or values with extra spaces, in any file type.
+- **lib**: modules write `lib.<function>`; only `mkOption` and `types` may be inherited.
 - **Errors** read `<file or option>: <what is wrong>`, and say what to do where possible.
 - **Decisions are written down.** A deliberate choice that the comment on its lines explains
   stays in that comment. One that spans files or is about something deliberately missing goes

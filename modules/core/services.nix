@@ -4,11 +4,7 @@
 # reach no other machine.
 { lib, ... }:
 let
-  inherit (lib)
-    filterAttrs
-    mkOption
-    types
-    ;
+  inherit (lib) mkOption types;
 in
 {
   flake.modules.nixos.core =
@@ -43,7 +39,7 @@ in
       options.axon.routes = mkOption {
         type = types.attrsOf types.raw;
         readOnly = true;
-        default = filterAttrs (_: service: service.route != null) services;
+        default = lib.filterAttrs (_: service: service.route != null) services;
         defaultText = "the entries of axon.services with a route";
         description = "This host's services that have a route.";
       };
@@ -88,6 +84,20 @@ in
                           defaultText = "<address>:<port>";
                           description = "Where the service itself answers, on this host.";
                         };
+                        name = mkOption {
+                          type = types.str;
+                          readOnly = true;
+                          default = if config.axon.routed then route.config.host else route.config.address;
+                          defaultText = "host behind the gateway, else address";
+                          description = "The name the service answers to, for its own settings.";
+                        };
+                        origin = mkOption {
+                          type = types.str;
+                          readOnly = true;
+                          default = if config.axon.routed then route.config.url else "http://${route.config.endpoint}";
+                          defaultText = "url behind the gateway, else http://<endpoint>";
+                          description = "Where the service links to itself, for its own settings.";
+                        };
                         access = mkOption {
                           type = types.enum [
                             "open" # no gateway login: public, or the service authenticates itself
@@ -110,7 +120,7 @@ in
                   default = null;
                   description = "A tile on the gateway's start page, linked to the route.";
                   type = types.nullOr (
-                    types.submodule {
+                    types.submodule (dashboard: {
                       options = {
                         name = mkOption { type = types.str; };
                         group = mkOption { type = types.str; };
@@ -137,12 +147,15 @@ in
                           default = null;
                           description = "Homepage widget settings; url defaults to the route's address.";
                         };
+                        key = mkOption {
+                          type = types.bool;
+                          default = false;
+                          description = "The widget needs the service's API key, kept in the gateway host's secrets.json at dashboard/<name>/key.";
+                        };
                         secrets = mkOption {
                           type = types.attrsOf types.str;
-                          default = { };
-                          example = {
-                            key = "dashboard/radarr/key";
-                          };
+                          default = lib.optionalAttrs dashboard.config.key { key = "dashboard/${name}/key"; };
+                          defaultText = "{ key = \"dashboard/<name>/key\"; } with key, else { }";
                           description = "Widget field -> key in the gateway host's secrets.json that holds its value.";
                         };
                         instances = mkOption {
@@ -170,7 +183,7 @@ in
                           );
                         };
                       };
-                    }
+                    })
                   );
                 };
 

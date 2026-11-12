@@ -1,5 +1,6 @@
 /* Font, rounding, a calmer tab list, the folder redesign and a few hidden extras. */
 
+/* ── font and corners ──────── */
 * {
     font-family: 'Inter', sans-serif;
 }
@@ -8,7 +9,7 @@
     --zen-border-radius: 8px !important;
 }
 
-/* translucent tab strip */
+/* ── translucent tab strip ──────── */
 .browserSidebarContainer {
     background-color: rgba(0, 0, 0, 0.226) !important;
 }
@@ -17,7 +18,8 @@
     border: 2px solid #ffffff13 !important;
 }
 
-/* selected tab: a soft fill instead of a shadow; unloaded tabs dimmed */
+/* ── selected tab ──────── */
+/* a soft fill instead of a shadow; unloaded tabs dimmed */
 .tab-background:is([selected], [multiselected]) {
     box-shadow: none !important;
     background-color: rgba(255, 255, 255, 0.17) !important;
@@ -95,12 +97,13 @@ zen-folder {
     }
 }
 
-/* Per-tab unload buttons, but keep live-folder status icons */
+/* ── unload buttons ──────── */
+/* none per tab, but live folders keep their status icons */
 .reset-icon:not([live-folder-action]) {
     display: none !important;
 }
 
-/* clutter */
+/* ── clutter ──────── */
 #identity-icon-label,
 .tab-icon-overlay,
 .zen-workspace-close-unpinned-tabs-button {

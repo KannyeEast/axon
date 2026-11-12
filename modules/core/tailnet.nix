@@ -4,23 +4,16 @@
 # closed on a host outside it. network is null there.
 { lib, ... }:
 let
-  inherit (lib)
-    attrNames
-    attrValues
-    concatLists
-    elem
-    mkIf
-    mkOption
-    types
-    ;
+  inherit (lib) mkOption types;
 in
 {
   flake.modules.nixos.core =
     { config, ... }:
     let
       inherit (config.axon) cluster host overlay;
-      member = elem host.name (
-        attrNames cluster.ssh ++ concatLists (attrValues cluster.ssh ++ attrValues cluster.sync)
+      member = lib.elem host.name (
+        lib.attrNames cluster.ssh
+        ++ lib.concatLists (lib.attrValues cluster.ssh ++ lib.attrValues cluster.sync)
       );
     in
     {
@@ -63,7 +56,7 @@ in
         };
       };
 
-      config = mkIf member {
+      config = lib.mkIf member {
         axon.overlay.network = {
           ipv4 = "100.64.0.0/10";
           ipv6 = "fd7a:115c:a1e0::/48";

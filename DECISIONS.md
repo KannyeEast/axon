@@ -23,6 +23,7 @@ To change one, change it here in the same commit, with the new reason.
 |---|---|
 | Dotfiles are linked by our own `dotfiles-sync` (core/home.nix), not home-manager's file management | Nix never reads `home/`; files are live links into the checkout, edited in place, no rebuild |
 | `dev` is pushed to Forgejo without review | daily work; the review sits at the merge into `stable` |
+| core reads other hosts' `[forge] cache` key (core/nix.nix) | every host trusts the cluster's binary cache from its first build; the key is per host data, so it can't come from the feature lists alone |
 | Only `stable` (merged, reviewed pull requests from `dev`) and `main` (its framework part, built by CI after every merge) reach the mirrors | the mirrors are the fallback when node1 is down, so they hold only reviewed code; Forgejo's push mirrors (filter `stable,main`) are set in its UI, not here |
 
 ## Secrets
@@ -60,3 +61,4 @@ To change one, change it here in the same commit, with the new reason.
 | waybar, fuzzel and mako only get colours, nothing more | a shell of its own (separate repo) will replace them |
 | tower has no swap (`swap = 0`), so it can't hibernate, though the desktop class would resume from swap | chosen; it stays on or shuts down |
 | Plain numbered niri workspaces, none bound to a purpose | the owner finds fixed workspaces restrictive |
+| `kanshi` is installed on every desktop, though tower doesn't use it | for laptops and other hosts whose displays change; tower's fixed layout is in niri's own output config |

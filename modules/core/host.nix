@@ -7,7 +7,7 @@
 #   [hardware]   model-specific fixes
 { config, lib, ... }:
 let
-  inherit (lib) attrNames mkOption types;
+  inherit (lib) mkOption types;
 
   inherit (config.axon) classes features;
 
@@ -77,11 +77,11 @@ in
             description = "hosts/<name> inside the flake source, for files read at evaluation.";
           };
           class = mkOption {
-            type = types.enum (attrNames classes);
+            type = types.enum (lib.attrNames classes);
             description = "What kind of machine this is.";
           };
           features = mkOption {
-            type = types.listOf (types.enum (attrNames features));
+            type = types.listOf (types.enum (lib.attrNames features));
             default = [ ];
             description = "Opt-in features, by directory name under modules/features.";
           };

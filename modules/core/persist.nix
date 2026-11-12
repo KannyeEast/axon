@@ -6,12 +6,7 @@
 # system; without one it stays with the machine state.
 { inputs, lib, ... }:
 let
-  inherit (lib)
-    mkOption
-    optionalAttrs
-    optionals
-    types
-    ;
+  inherit (lib) mkOption types;
 
   entry = types.either types.str (
     types.submodule {
@@ -78,10 +73,10 @@ in
           "/persist" = {
             hideMounts = true;
             files = [ "/etc/machine-id" ];
-            directories = cfg.directories ++ optionals (state == null) stateDirectories;
+            directories = cfg.directories ++ lib.optionals (state == null) stateDirectories;
           };
         }
-        // optionalAttrs (state != null) {
+        // lib.optionalAttrs (state != null) {
           ${state} = {
             hideMounts = true;
             directories = stateDirectories;
@@ -93,7 +88,7 @@ in
         fileSystems = {
           "/persist".neededForBoot = true;
         }
-        // optionalAttrs (state != null) {
+        // lib.optionalAttrs (state != null) {
           ${state}.neededForBoot = true;
         };
 
@@ -103,7 +98,7 @@ in
           "d /persist/var/lib/private 0700 root root -"
           "d /var/lib/private 0700 root root -"
         ]
-        ++ optionals (state != null) [ "d ${state}/var/lib/private 0700 root root -" ];
+        ++ lib.optionals (state != null) [ "d ${state}/var/lib/private 0700 root root -" ];
 
         # the rollback below runs in the initrd: btrfs, coreutils and mount are there already,
         # find (to prune old roots) only when something else happens to need it

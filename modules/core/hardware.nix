@@ -1,19 +1,9 @@
 # Hardware is a generated report, not configuration. nixpkgs' facter module turns
 # hosts/<name>/facter.json into platform, firmware, microcode, initrd and driver settings.
-# This file only adds the opinions the report leaves open on purpose.
+# This file only adds the opinions the report leaves open on purpose, and derives
+# axon.laptop and axon.nvidia from it for other modules.
 { lib, ... }:
 let
-  inherit (lib)
-    concatMapStringsSep
-    filter
-    fromHexString
-    head
-    match
-    mkIf
-    mkMerge
-    optionalAttrs
-    ;
-
   vendors = {
     intel = 32902; # 0x8086
     amd = 4098; # 0x1002
@@ -24,8 +14,8 @@ let
   pciBusId =
     sysfs:
     "PCI:"
-    + concatMapStringsSep ":" (part: toString (fromHexString part)) (
-      match "[[:xdigit:]]+:([[:xdigit:]]+):([[:xdigit:]]+)\\.([0-7])" sysfs
+    + lib.concatMapStringsSep ":" (part: toString (lib.fromHexString part)) (
+      lib.match "[[:xdigit:]]+:([[:xdigit:]]+):([[:xdigit:]]+)\\.([0-7])" sysfs
     );
 in
 {
@@ -36,17 +26,32 @@ in
       report = config.hardware.facter.report;
 
       cards = report.hardware.graphics_card or [ ];
-      cardsOf = vendor: filter (card: (card.vendor.value or 0) == vendors.${vendor}) cards;
+      cardsOf = vendor: lib.filter (card: (card.vendor.value or 0) == vendors.${vendor}) cards;
       has = vendor: cardsOf vendor != [ ];
-      busId = vendor: pciBusId (head (cardsOf vendor)).sysfs_bus_id;
+      busId = vendor: pciBusId (lib.head (cardsOf vendor)).sysfs_bus_id;
 
-      nvidia = has "nvidia";
+      inherit (config.axon) laptop nvidia;
       hybrid = nvidia && (has "intel" || has "amd");
     in
     {
-      config = mkMerge [
+      options.axon = {
+        laptop = lib.mkOption {
+          type = lib.types.bool;
+          readOnly = true;
+          description = "Whether facter reports this machine as a laptop.";
+        };
+        nvidia = lib.mkOption {
+          type = lib.types.bool;
+          readOnly = true;
+          description = "Whether this machine has an NVIDIA graphics card.";
+        };
+      };
+
+      config = lib.mkMerge [
         {
           hardware.facter.reportPath = host.dir + "/facter.json";
+          axon.laptop = (report.hardware.system.form_factor or "") == "laptop";
+          axon.nvidia = has "nvidia";
 
           assertions = [
             {
@@ -57,7 +62,7 @@ in
         }
 
         # hardware video decoding on Intel GPUs; facter enables graphics, not the VA-API driver
-        (mkIf (has "intel") {
+        (lib.mkIf (has "intel") {
           hardware.graphics.extraPackages = [
             pkgs.intel-media-driver
             pkgs.vpl-gpu-rt
@@ -65,22 +70,22 @@ in
           environment.sessionVariables.LIBVA_DRIVER_NAME = "iHD";
         })
 
-        (mkIf nvidia {
+        (lib.mkIf nvidia {
           services.xserver.videoDrivers = [ "nvidia" ];
           hardware.nvidia.open = true;
         })
 
-        (mkIf hybrid {
+        (lib.mkIf hybrid {
           hardware.nvidia.prime = {
             offload.enable = true;
             offload.enableOffloadCmd = true;
             nvidiaBusId = busId "nvidia";
           }
-          // optionalAttrs (has "intel") { intelBusId = busId "intel"; }
-          // optionalAttrs (has "amd") { amdgpuBusId = busId "amd"; };
+          // lib.optionalAttrs (has "intel") { intelBusId = busId "intel"; }
+          // lib.optionalAttrs (has "amd") { amdgpuBusId = busId "amd"; };
         })
 
-        (mkIf ((report.hardware.system.form_factor or "") == "laptop") {
+        (lib.mkIf laptop {
           services.power-profiles-daemon.enable = true;
         })
       ];

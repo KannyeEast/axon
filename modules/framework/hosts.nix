@@ -14,28 +14,11 @@
   ...
 }:
 let
-  inherit (lib)
-    attrNames
-    attrValues
-    concatLists
-    concatStringsSep
-    elem
-    evalModules
-    filter
-    filterAttrs
-    genAttrs
-    mapAttrs
-    mkOption
-    pathExists
-    readDir
-    subtractLists
-    types
-    unique
-    ;
+  inherit (lib) mkOption types;
 
   inherit (config.flake.modules) nixos homeManager;
   inherit (config.axon) features schema clusterSchema;
-  classes = attrNames config.axon.classes;
+  classes = lib.attrNames config.axon.classes;
 
   root = ../..;
   hostsDir = root + "/hosts";
@@ -44,12 +27,12 @@ let
   # a folder starting with _ is kept for reference and never built (e.g. hosts/_old)
   isHost =
     name: type:
-    type == "directory" && !lib.hasPrefix "_" name && pathExists (hostsDir + "/${name}/host.toml");
-  raw = genAttrs (attrNames (filterAttrs isHost (readDir hostsDir))) (
+    type == "directory" && !lib.hasPrefix "_" name && lib.pathExists (hostsDir + "/${name}/host.toml");
+  raw = lib.genAttrs (lib.attrNames (lib.filterAttrs isHost (lib.readDir hostsDir))) (
     name: lib.importTOML (hostsDir + "/${name}/host.toml")
   );
 
-  list = concatStringsSep ", ";
+  list = lib.concatStringsSep ", ";
 
   # [ "core" <class> <features…> ], failing early with the file to fix
   bundles =
@@ -64,17 +47,17 @@ let
         let
           meta =
             features.${feature}
-              or (throw "${where}: unknown feature '${feature}' (known: ${list (attrNames features)})");
-          missing = filter (required: !elem required wanted) meta.requires;
+              or (throw "${where}: unknown feature '${feature}' (known: ${list (lib.attrNames features)})");
+          missing = lib.filter (required: !lib.elem required wanted) meta.requires;
         in
-        if !elem class meta.classes then
+        if !lib.elem class meta.classes then
           throw "${where}: feature '${feature}' runs on ${list meta.classes} hosts, not ${class}"
         else if missing != [ ] then
           throw "${where}: feature '${feature}' requires ${list missing}"
         else
           feature;
     in
-    if !elem class classes then
+    if !lib.elem class classes then
       throw "${where}: class '${class}' is not one of ${list classes}"
     else
       [
@@ -87,9 +70,9 @@ let
   check =
     name: data:
     removeAttrs
-      (evalModules {
+      (lib.evalModules {
         modules =
-          map (bundle: schema.${bundle}) (filter (bundle: schema ? ${bundle}) (bundles name data))
+          map (bundle: schema.${bundle}) (lib.filter (bundle: schema ? ${bundle}) (bundles name data))
           ++ [
             {
               _file = hostsDir + "/${name}/host.toml";
@@ -106,17 +89,17 @@ let
       }).config
       [ "_module" ];
 
-  hosts = mapAttrs check raw;
+  hosts = lib.mapAttrs check raw;
 
   # cluster.toml against its schema. Every name a relation mentions should be a host or
   # [external]; one that isn't yet (a host not installed so far) is left out with a warning,
   # so a cluster can be brought up one machine at a time.
   cluster =
     let
-      data = if pathExists clusterFile then lib.importTOML clusterFile else { };
+      data = if lib.pathExists clusterFile then lib.importTOML clusterFile else { };
       checked =
         removeAttrs
-          (evalModules {
+          (lib.evalModules {
             modules = [
               clusterSchema
               {
@@ -126,19 +109,19 @@ let
             ];
           }).config
           [ "_module" ];
-      members = attrNames hosts ++ attrNames checked.external;
-      known = name: elem name members;
+      members = lib.attrNames hosts ++ lib.attrNames checked.external;
+      known = name: lib.elem name members;
 
-      mentioned = unique (
-        attrNames checked.ssh
-        ++ concatLists (attrValues checked.ssh)
-        ++ concatLists (attrValues checked.sync)
+      mentioned = lib.unique (
+        lib.attrNames checked.ssh
+        ++ lib.concatLists (lib.attrValues checked.ssh)
+        ++ lib.concatLists (lib.attrValues checked.sync)
       );
-      strangers = subtractLists members mentioned;
+      strangers = lib.subtractLists members mentioned;
 
       present = checked // {
-        ssh = mapAttrs (_: filter known) (filterAttrs (name: _: known name) checked.ssh);
-        sync = mapAttrs (_: filter known) checked.sync;
+        ssh = lib.mapAttrs (_: lib.filter known) (lib.filterAttrs (name: _: known name) checked.ssh);
+        sync = lib.mapAttrs (_: lib.filter known) checked.sync;
         inherit hosts;
       };
     in
@@ -162,7 +145,7 @@ let
     in
     {
       _file = "modules/framework/hosts.nix";
-      options.axon = mapAttrs (
+      options.axon = lib.mapAttrs (
         _: _:
         mkOption {
           type = types.raw;
@@ -177,7 +160,7 @@ let
     let
       names = bundles name toml;
       # a bundle may have only a nixos half or only a homeManager half
-      select = set: map (bundle: set.${bundle}) (filter (bundle: set ? ${bundle}) names);
+      select = set: map (bundle: set.${bundle}) (lib.filter (bundle: set ? ${bundle}) names);
     in
     inputs.nixpkgs.lib.nixosSystem {
       modules =
@@ -190,5 +173,5 @@ let
     };
 in
 {
-  flake.nixosConfigurations = mapAttrs mkHost raw;
+  flake.nixosConfigurations = lib.mapAttrs mkHost raw;
 }

@@ -1,29 +1,15 @@
 # Spaces, pinned tabs and live folders, and which sites open in which space.
 { lib, ... }:
-let
-  inherit (lib)
-    any
-    attrNames
-    attrValues
-    elem
-    escapeRegex
-    findFirst
-    head
-    match
-    optionalAttrs
-    optionalString
-    ;
-in
 {
   flake.modules.homeManager.browser =
     { osConfig, ... }:
     let
       inherit (osConfig.axon) cluster remotes;
       inherit (cluster) domain;
-      hasGateway = any (data: elem "gateway" data.host.features) (attrValues cluster.hosts);
+      hasGateway = lib.any (data: lib.elem "gateway" data.host.features) (lib.attrValues cluster.hosts);
 
-      origin = findFirst (name: remotes.${name}.origin && remotes.${name}.web != null) null (
-        attrNames remotes
+      origin = lib.findFirst (name: remotes.${name}.origin && remotes.${name}.web != null) null (
+        lib.attrNames remotes
       );
 
       # one black for every space; spacesForce reapplies it on every switch, so change it here
@@ -71,7 +57,7 @@ in
           isEssential = true;
         };
       }
-      // optionalAttrs hasGateway {
+      // lib.optionalAttrs hasGateway {
         # ── development ────────
         "Server" = {
           id = "07324e6b-5fd0-4c7e-8872-0e8bbc66660b";
@@ -80,11 +66,11 @@ in
           workspace = spaces."Development".id;
         };
       }
-      // optionalAttrs (origin != null) {
+      // lib.optionalAttrs (origin != null) {
         # the forge origin pushes to; the mirrors are links on the start page
         ${lib.toSentenceCase origin} = {
           id = "e4b71c09-8a3d-4f62-9c15-7d20b6e9f3a8";
-          url = head (match "(https://[^/]+)/.*" remotes.${origin}.web);
+          url = "https://${remotes.${origin}.host}";
           position = 150;
           workspace = spaces."Development".id;
         };
@@ -132,7 +118,7 @@ in
             "tools" = regexMatch "regex101|starship\\.rs|quickshell|just\\.systems";
             "infra" = regexMatch (
               "dash\\.cloudflare|192\\.168\\.|tailscale"
-              + optionalString (domain != null) "|${escapeRegex domain}"
+              + lib.optionalString (domain != null) "|${lib.escapeRegex domain}"
             );
           };
         };

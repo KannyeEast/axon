@@ -7,15 +7,6 @@
 # Password resets and the like go through axon.mail to srv-info@, as that is the address its user
 # is seeded with. Without an account they land in notifications.txt in the state folder.
 { lib, ... }:
-let
-  inherit (lib)
-    filterAttrs
-    mapAttrsToList
-    mkIf
-    optional
-    toJSON
-    ;
-in
 {
   flake.modules.nixos.gateway =
     { config, ... }:
@@ -36,7 +27,7 @@ in
         "login" = "one_factor";
         "2fa" = "two_factor";
       };
-      guarded = filterAttrs (_: service: service.route.access != "open") routes;
+      guarded = lib.filterAttrs (_: service: service.route.access != "open") routes;
     in
     {
       sops.secrets."authelia/admin-hash" = { };
@@ -52,9 +43,9 @@ in
       '';
 
       # merged over the settings below when Authelia starts
-      sops.templates."authelia-mail.yml" = mkIf (mail != null) {
+      sops.templates."authelia-mail.yml" = lib.mkIf (mail != null) {
         owner = "authelia-main";
-        content = toJSON {
+        content = lib.toJSON {
           notifier.smtp = {
             address = "submission://${mail.host}:${toString mail.port}";
             username = mail.address;
@@ -93,7 +84,7 @@ in
 
       services.authelia.instances.main = {
         enable = true;
-        settingsFiles = optional (mail != null) config.sops.templates."authelia-mail.yml".path;
+        settingsFiles = lib.optional (mail != null) config.sops.templates."authelia-mail.yml".path;
         secrets = {
           jwtSecretFile = "${keys}/jwt";
           sessionSecretFile = "${keys}/session";
@@ -122,7 +113,7 @@ in
               { filesystem.filename = "${state}/notifications.txt"; };
           access_control = {
             default_policy = "deny";
-            rules = mapAttrsToList (_: service: {
+            rules = lib.mapAttrsToList (_: service: {
               domain = service.route.host;
               policy = policyOf.${service.route.access};
               subject = [ "group:admin" ];

@@ -5,39 +5,7 @@
 # shows no numbers. Below the tiles, axon.links and the [gateway] links of this host.
 { lib, ... }:
 let
-  inherit (lib)
-    all
-    attrNames
-    attrValues
-    concatLists
-    concatMap
-    concatMapStrings
-    concatStrings
-    concatStringsSep
-    defaultTo
-    elem
-    filter
-    filterAttrs
-    genAttrs
-    hasAttrByPath
-    head
-    length
-    mapAttrs
-    mapAttrsToList
-    match
-    mkOption
-    nameValuePair
-    optional
-    optionalAttrs
-    replaceStrings
-    sort
-    splitString
-    subtractLists
-    toJSON
-    toUpper
-    types
-    unique
-    ;
+  inherit (lib) mkOption types;
 in
 {
   axon.schema.gateway = {
@@ -68,36 +36,40 @@ in
 
       port = 8082;
 
-      tiles = filterAttrs (_: service: service.dashboard != null) routes;
-      groups = unique (sort (a: b: a < b) (mapAttrsToList (_: service: service.dashboard.group) tiles));
-      linkGroups = unique (sort (a: b: a < b) (mapAttrsToList (_: link: link.group) links));
+      tiles = lib.filterAttrs (_: service: service.dashboard != null) routes;
+      groups = lib.unique (
+        lib.sort (a: b: a < b) (lib.mapAttrsToList (_: service: service.dashboard.group) tiles)
+      );
+      linkGroups = lib.unique (lib.sort (a: b: a < b) (lib.mapAttrsToList (_: link: link.group) links));
 
       internal = route: "http://${route.endpoint}";
       # "dashboard/radarr/key" -> HOMEPAGE_VAR_DASHBOARD_RADARR_KEY
-      envName = secret: "HOMEPAGE_VAR_${toUpper (replaceStrings [ "/" "-" ] [ "_" "_" ] secret)}";
-      hasSecret = secret: hasAttrByPath (splitString "/" secret) config.axon.secrets;
-      hasKeys = service: all hasSecret (attrValues service.dashboard.secrets);
-      waiting = attrNames (filterAttrs (_: service: !hasKeys service) tiles);
-      secrets = unique (
-        concatMap (service: attrValues service.dashboard.secrets) (filter hasKeys (attrValues tiles))
+      envName = secret: "HOMEPAGE_VAR_${lib.toUpper (lib.replaceStrings [ "/" "-" ] [ "_" "_" ] secret)}";
+      hasSecret = secret: lib.hasAttrByPath (lib.splitString "/" secret) config.axon.secrets;
+      hasKeys = service: lib.all hasSecret (lib.attrValues service.dashboard.secrets);
+      waiting = lib.attrNames (lib.filterAttrs (_: service: !hasKeys service) tiles);
+      secrets = lib.unique (
+        lib.concatMap (service: lib.attrValues service.dashboard.secrets) (
+          lib.filter hasKeys (lib.attrValues tiles)
+        )
       );
 
       tile = service: name: instance: {
         ${name} = {
-          href = defaultTo service.route.url (instance.link or null);
-          description = defaultTo service.dashboard.description (instance.description or null);
+          href = lib.defaultTo service.route.url (instance.link or null);
+          description = lib.defaultTo service.dashboard.description (instance.description or null);
           inherit (service.dashboard) icon;
           siteMonitor = internal service.route + service.dashboard.monitor;
         }
         //
-          optionalAttrs
+          lib.optionalAttrs
             (hasKeys service && (service.dashboard.widget != null || instance.widget or { } != { }))
             {
               widget = {
                 url = internal service.route;
               }
-              // defaultTo { } service.dashboard.widget
-              // mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
+              // lib.defaultTo { } service.dashboard.widget
+              // lib.mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
               // instance.widget or { };
             };
       };
@@ -106,7 +78,7 @@ in
         if service.dashboard.instances == { } then
           [ (tile service service.dashboard.name { }) ]
         else
-          mapAttrsToList (tile service) service.dashboard.instances;
+          lib.mapAttrsToList (tile service) service.dashboard.instances;
       before =
         a: b:
         if a.dashboard.order != b.dashboard.order then
@@ -115,8 +87,10 @@ in
           a.dashboard.name < b.dashboard.name;
       inGroup =
         group:
-        concatMap tilesOf (
-          sort before (attrValues (filterAttrs (_: service: service.dashboard.group == group) tiles))
+        lib.concatMap tilesOf (
+          lib.sort before (
+            lib.attrValues (lib.filterAttrs (_: service: service.dashboard.group == group) tiles)
+          )
         );
 
       # top to bottom on a grid of four; groups in one row share it, each with an equal part.
@@ -133,33 +107,39 @@ in
       columns = 4;
       # groups of graphs: two per row, so they get the width
       wide = [ "System" ];
-      rows = filter (row: row != [ ]) (
-        map (filter (group: elem group groups)) rowsWanted
-        ++ map (group: [ group ]) (subtractLists (concatLists rowsWanted) groups)
+      rows = lib.filter (row: row != [ ]) (
+        map (lib.filter (group: lib.elem group groups)) rowsWanted
+        ++ map (group: [ group ]) (lib.subtractLists (lib.concatLists rowsWanted) groups)
       );
-      rowName = concatStringsSep " and ";
+      rowName = lib.concatStringsSep " and ";
       grid = count: {
         style = "row";
         columns = count;
       };
       layoutOf =
         row:
-        if length row == 1 then
-          nameValuePair (head row) (grid (if elem (head row) wide then 2 else columns))
+        if lib.length row == 1 then
+          lib.nameValuePair (lib.head row) (grid (if lib.elem (lib.head row) wide then 2 else columns))
         else
-          nameValuePair (rowName row) (
-            grid (length row) // { header = false; } // genAttrs row (_: grid (columns / length row))
+          lib.nameValuePair (rowName row) (
+            grid (lib.length row)
+            // {
+              header = false;
+            }
+            // lib.genAttrs row (_: grid (columns / lib.length row))
           );
 
       # Homepage shows groups in the order of their layout entries, and Nix writes attribute sets
       # sorted, so the layout is written out by hand, one entry per line in row order
       layout = map layoutOf rows;
       settingsFile = pkgs.writeText "settings.yaml" (
-        concatStrings (
-          mapAttrsToList (key: value: "${key}: ${toJSON value}\n") config.services.homepage-dashboard.settings
+        lib.concatStrings (
+          lib.mapAttrsToList (
+            key: value: "${key}: ${lib.toJSON value}\n"
+          ) config.services.homepage-dashboard.settings
         )
         + "layout:\n"
-        + concatMapStrings (entry: "  ${toJSON entry.name}: ${toJSON entry.value}\n") layout
+        + lib.concatMapStrings (entry: "  ${lib.toJSON entry.name}: ${lib.toJSON entry.value}\n") layout
       );
     in
     {
@@ -213,40 +193,40 @@ in
 
         services = map (
           row:
-          if length row == 1 then
-            { ${head row} = inGroup (head row); }
+          if lib.length row == 1 then
+            { ${lib.head row} = inGroup (lib.head row); }
           else
             { ${rowName row} = map (group: { ${group} = inGroup group; }) row; }
         ) rows;
 
         # one list per link group, the groups and the links in each alphabetical
         bookmarks = map (group: {
-          ${group} = mapAttrsToList (name: link: {
+          ${group} = lib.mapAttrsToList (name: link: {
             ${name} = [
               {
                 inherit (link) icon;
                 href = link.url;
-                description = "${head (match "[a-z]+://([^/]+).*" link.url)} ↗";
+                description = "${lib.head (lib.match "[a-z]+://([^/]+).*" link.url)} ↗";
               }
             ];
-          }) (filterAttrs (_: link: link.group == group) links);
+          }) (lib.filterAttrs (_: link: link.group == group) links);
         }) linkGroups;
       };
 
       axon.links = gateway.links;
 
       warnings =
-        optional (waiting != [ ])
-          "hosts/${host.name}/secrets.json: no widget key yet for ${concatStringsSep ", " waiting}, so those tiles show no numbers; add the keys with `just secrets ${host.name}`";
+        lib.optional (waiting != [ ])
+          "hosts/${host.name}/secrets.json: no widget key yet for ${lib.concatStringsSep ", " waiting}, so those tiles show no numbers; add the keys with `just secrets ${host.name}`";
 
       # Node exits with 143 on SIGTERM; without this every restart counts as a failure and mails
       systemd.services.homepage-dashboard.serviceConfig.SuccessExitStatus = [ 143 ];
 
       environment.etc."homepage-dashboard/settings.yaml".source = lib.mkForce settingsFile;
 
-      sops.secrets = genAttrs secrets (_: { });
+      sops.secrets = lib.genAttrs secrets (_: { });
       sops.templates."homepage.env" = {
-        content = concatStrings (map (secret: "${envName secret}=${ph.${secret}}\n") secrets);
+        content = lib.concatStrings (map (secret: "${envName secret}=${ph.${secret}}\n") secrets);
         # a running Homepage keeps the variables it started with
         restartUnits = [ "homepage-dashboard.service" ];
       };

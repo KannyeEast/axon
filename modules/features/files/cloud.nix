@@ -13,8 +13,6 @@
     let
       inherit (config.axon) mail routed services;
       inherit (services.cloud) route;
-      hostName = if routed then route.host else route.address;
-      url = if routed then route.url else "http://${route.endpoint}";
       data = config.axon.spaces.nextcloud.path;
       port = 8090;
     in
@@ -23,7 +21,7 @@
         services.nextcloud = {
           enable = true;
           package = pkgs.nextcloud35;
-          inherit hostName;
+          hostName = route.name;
           https = routed;
           datadir = data;
           database.createLocally = true;
@@ -31,14 +29,14 @@
           maxUploadSize = "16G";
           config.dbtype = "pgsql";
           settings = {
-            # the tunnel delivers plain http on localhost; links must still say https
+            # the gateway and the tunnel deliver plain http on localhost; links must still say https
             trusted_proxies = [
               "127.0.0.1"
               "::1"
             ];
             overwriteprotocol = lib.mkIf routed "https";
             # what background jobs put in links; they have no request to read the address from
-            "overwrite.cli.url" = url;
+            "overwrite.cli.url" = route.origin;
             default_phone_region = "DE";
             serverid = 1; # unique per PHP server; there is one, but Nextcloud warns without it
             maintenance_window_start = 1; # 01:00 UTC
@@ -52,7 +50,7 @@
         };
 
         # nextcloud's nginx only on localhost; caddy owns 80/443
-        services.nginx.virtualHosts.${hostName}.listen = [
+        services.nginx.virtualHosts.${route.name}.listen = [
           {
             addr = "127.0.0.1";
             inherit port;
@@ -102,7 +100,7 @@
                 "activeusers"
               ];
             };
-            secrets.key = "dashboard/cloud/key";
+            key = true;
           };
           backup = {
             paths = [

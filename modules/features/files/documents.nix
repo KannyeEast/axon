@@ -66,7 +66,7 @@
           description = "Documents";
           icon = "paperless-ngx.svg";
           widget.type = "paperlessngx";
-          secrets.key = "dashboard/docs/key";
+          key = true;
         };
         backup.paths = [ "${data}/export" ];
       };

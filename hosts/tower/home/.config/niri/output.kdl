@@ -1,4 +1,3 @@
-// @TODO: Script to auto switch monitor inputs when the usb switcher button is pressed
 // Modes are the exact ones from `niri msg outputs`; positions are in logical pixels.
 
 output "Acer Technologies QG271 M3 A4121352C3W01" {
@@ -18,8 +17,6 @@ output "GIGA-BYTE TECHNOLOGY CO., LTD. Gigabyte M32U 24081B002226" {
             proportion 0.5
             proportion 0.66667
         }
-
-        default-column-width { proportion 0.5; }
     }
 }
 

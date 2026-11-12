@@ -6,13 +6,17 @@
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
-    { config, ... }:
+    { config, pkgs, ... }:
     let
       inherit (config.axon) routed services volumes;
       state = "/var/lib/sabnzbd";
       finished = "${volumes.media or state}/downloads";
       incomplete = "${volumes.scratch or state}/usenet";
       port = 8080;
+      folders = [
+        finished
+        incomplete
+      ];
     in
     {
       services.sabnzbd = {
@@ -45,13 +49,14 @@
         };
       };
 
-      # the library is on a data disk that may be missing at boot (nofail)
-      systemd.services.sabnzbd.unitConfig.RequiresMountsFor =
-        lib.optional (volumes ? media) volumes.media ++ lib.optional (volumes ? scratch) volumes.scratch;
-
-      systemd.tmpfiles.rules =
-        lib.optional (volumes ? media) "d ${finished} 2775 root media -"
-        ++ lib.optional (volumes ? scratch) "d ${incomplete} 2775 root media -";
+      # the folders may be on data disks that are missing at boot (nofail): wait for them, and
+      # make the folders once they're mounted (tmpfiles may run before that)
+      systemd.services.sabnzbd = {
+        unitConfig.RequiresMountsFor = folders;
+        serviceConfig.ExecStartPre = map (
+          dir: "+${lib.getExe' pkgs.coreutils "install"} -d -o root -g media -m 2775 ${dir}"
+        ) folders;
+      };
 
       axon.persist.state.directories = [
         {
@@ -71,7 +76,7 @@
           description = "Downloads from Usenet";
           icon = "sabnzbd.svg";
           widget.type = "sabnzbd";
-          secrets.key = "dashboard/usenet/key";
+          key = true;
         };
         backup = {
           paths = [ state ];

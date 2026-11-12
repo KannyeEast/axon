@@ -2,7 +2,7 @@
 # host.toml each of them owns. hosts.nix, the docs and the installer all read these.
 { config, lib, ... }:
 let
-  inherit (lib) attrNames mkOption types;
+  inherit (lib) mkOption types;
 in
 {
   options.axon = {
@@ -30,7 +30,7 @@ in
               type = types.str;
             };
             classes = mkOption {
-              type = types.nonEmptyListOf (types.enum (attrNames config.axon.classes));
+              type = types.nonEmptyListOf (types.enum (lib.attrNames config.axon.classes));
               description = "Classes this feature can run on";
             };
             requires = mkOption {

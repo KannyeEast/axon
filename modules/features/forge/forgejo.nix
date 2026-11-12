@@ -21,9 +21,7 @@
       port = 3030;
       # the forges the repository is mirrored to, from cluster.toml [repo]
       mirrors = lib.unique (
-        lib.mapAttrsToList (_: remote: lib.head (lib.match "https://([^/]+)/.*" remote.web)) (
-          lib.filterAttrs (_: remote: !remote.origin && remote.web != null) remotes
-        )
+        lib.mapAttrsToList (_: remote: remote.host) (lib.filterAttrs (_: remote: remote.mirror) remotes)
       );
     in
     {
@@ -35,8 +33,8 @@
           server = {
             HTTP_ADDR = "127.0.0.1";
             HTTP_PORT = port;
-            DOMAIN = if routed then route.host else "localhost";
-            ROOT_URL = if routed then "${route.url}/" else "http://localhost:${toString port}/";
+            DOMAIN = route.name;
+            ROOT_URL = "${route.origin}/";
           };
           service.DISABLE_REGISTRATION = true;
           session.COOKIE_SECURE = routed;

@@ -33,6 +33,7 @@ in
           server.connections.forgejo = {
             url = "http://${services.git.route.endpoint}/";
             uuid = forge.runner;
+            # the module requires it null when the token comes from a file (token_url below)
             token = null;
           };
         };

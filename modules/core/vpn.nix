@@ -3,12 +3,7 @@
 # tunnel refuses to build such a service: running it would send its traffic out in the open.
 { lib, ... }:
 let
-  inherit (lib)
-    attrNames
-    concatStringsSep
-    mkOption
-    types
-    ;
+  inherit (lib) mkOption types;
 in
 {
   flake.modules.nixos.core =
@@ -59,7 +54,7 @@ in
       config.assertions = [
         {
           assertion = vpn.confined == { } || vpn.network != null;
-          message = "hosts/${host.name}/host.toml: ${concatStringsSep ", " (attrNames vpn.confined)} must run inside a tunnel but this host has none; list the vpn feature here";
+          message = "hosts/${host.name}/host.toml: ${lib.concatStringsSep ", " (lib.attrNames vpn.confined)} must run inside a tunnel but this host has none; list the vpn feature here";
         }
       ];
     };

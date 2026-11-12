@@ -6,7 +6,7 @@
 {
   flake.modules.nixos.desktop =
     { config, pkgs, ... }:
-    lib.mkIf ((config.hardware.facter.report.hardware.system.form_factor or "") == "laptop") {
+    lib.mkIf config.axon.laptop {
       environment.systemPackages = [ pkgs.brightnessctl ];
       # lets the user change the backlight without root
       services.udev.packages = [ pkgs.brightnessctl ];

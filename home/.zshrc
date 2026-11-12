@@ -34,12 +34,9 @@ setopt INTERACTIVE_COMMENTS
 setopt NO_BEEP
 
 # ── history ────────
-HISTFILE=~/.zsh_history
 HISTSIZE=5000
 SAVEHIST=$HISTSIZE
 
-setopt APPEND_HISTORY
-setopt SHARE_HISTORY
 setopt EXTENDED_HISTORY
 setopt HIST_VERIFY
 setopt HIST_REDUCE_BLANKS
@@ -69,8 +66,6 @@ zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompcache"
 
 # fzf-tab: directories list, everything else previews through bat
-zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --icons --color=always $realpath'
-zstyle ':fzf-tab:complete:__zoxide_z:*' fzf-preview 'eza -1 --icons --color=always $realpath'
 zstyle ':fzf-tab:complete:*:*' fzf-preview \
     '[ -d $realpath ] && eza -1 --icons --color=always $realpath || bat -n --color=always $realpath 2>/dev/null'
 zstyle ':fzf-tab:*' switch-group ',' '.'
@@ -80,15 +75,11 @@ zstyle ':fzf-tab:*' switch-group ',' '.'
 export FZF_DEFAULT_COMMAND="fd --type f --hidden --exclude .git"
 export FZF_CTRL_T_COMMAND="fd --hidden --exclude .git"
 export FZF_ALT_C_COMMAND="fd --type d --hidden --exclude .git"
-# man pages through bat, coloured as man
-export MANPAGER="sh -c 'col -bx | bat -l man -p'"
-export MANROFFOPT="-c"
 # -1 means "terminal default", so the palette follows the terminal theme
 export FZF_DEFAULT_OPTS="
   --height 40%
   --layout reverse
   --info inline
-  --border none
   --prompt '  '
   --pointer '>'
   --marker '+'
@@ -96,6 +87,11 @@ export FZF_DEFAULT_OPTS="
   --color 'fg+:regular:white,bg+:-1,hl+:cyan'
   --color 'info:8,prompt:cyan,pointer:cyan,marker:green,spinner:8,header:8,border:8'
 "
+
+# ── man ────────
+# man pages through bat, coloured as man
+export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+export MANROFFOPT="-c"
 
 # ── aliases ────────
 alias ls='eza --icons -a --group-directories-first'
