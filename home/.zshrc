@@ -58,6 +58,15 @@ bindkey -M viins '^Xs' sudo-command-line
 bindkey -M vicmd '^Xs' sudo-command-line
 bindkey -M viins '^W' backward-kill-word
 
+# yank and put through the system clipboard where zsh-system-clipboard loaded (desktops)
+if zle -l zsh-system-clipboard-vicmd-vi-yank; then
+    bindkey -M vicmd 'y' zsh-system-clipboard-vicmd-vi-yank
+    bindkey -M vicmd 'Y' zsh-system-clipboard-vicmd-vi-yank-whole-line
+    bindkey -M vicmd 'p' zsh-system-clipboard-vicmd-vi-put-after
+    bindkey -M vicmd 'P' zsh-system-clipboard-vicmd-vi-put-before
+    bindkey -M visual 'p' zsh-system-clipboard-visual-put-replace-selection
+fi
+
 # ── completion ────────
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"

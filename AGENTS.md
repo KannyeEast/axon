@@ -94,6 +94,9 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
 - **Comments describe the code as it is, not how it got there.** A module's header says what
   that module does. Inline comments only where the code isn't obvious on its own. No history,
   rejected alternatives or reasoning from a conversation: that belongs in the commit message.
+- **Comments are compact**: plain statements, a line or two each; more only where the code is
+  genuinely complex. A module's header may run a few lines, as short as it can be. Comments
+  never outgrow the code they describe.
 - **Quirks are explained where they're handled.** A workaround for a tool, driver or service gets
   a comment on the lines that do it, saying what breaks without them.
 - **A GUI app comes with its window rules.** Adding one, find its Wayland app id (the
