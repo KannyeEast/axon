@@ -44,7 +44,6 @@ in
       sops.templates."authelia-seed.yml".content = ''
         users:
           ${user.name}:
-            disabled: false
             displayname: "${user.name}"
             password: "${ph."authelia/admin-hash"}"
             email: ${email}

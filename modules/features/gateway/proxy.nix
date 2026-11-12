@@ -28,7 +28,7 @@ in
       ph = config.sops.placeholder;
       gateways = attrNames (filterAttrs (_: data: elem "gateway" data.host.features) cluster.hosts);
 
-      # with auto_https off caddy picks no certificate itself, so every vhost names the acme files
+      # caddy gets no certificates itself (auto_https disable_certs), so every vhost names the acme files
       tls = "tls /var/lib/acme/${domain}/fullchain.pem /var/lib/acme/${domain}/key.pem";
     in
     {

@@ -14,6 +14,7 @@ let
     concatMapStrings
     concatStrings
     concatStringsSep
+    defaultTo
     elem
     filter
     filterAttrs
@@ -81,11 +82,10 @@ in
         concatMap (service: attrValues service.dashboard.secrets) (filter hasKeys (attrValues tiles))
       );
 
-      or' = value: fallback: if value != null then value else fallback;
       tile = service: name: instance: {
         ${name} = {
-          href = or' (instance.link or null) service.route.url;
-          description = or' (instance.description or null) service.dashboard.description;
+          href = defaultTo service.route.url (instance.link or null);
+          description = defaultTo service.dashboard.description (instance.description or null);
           inherit (service.dashboard) icon;
           siteMonitor = internal service.route + service.dashboard.monitor;
         }
@@ -96,7 +96,7 @@ in
               widget = {
                 url = internal service.route;
               }
-              // (or' service.dashboard.widget { })
+              // defaultTo { } service.dashboard.widget
               // mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
               // instance.widget or { };
             };

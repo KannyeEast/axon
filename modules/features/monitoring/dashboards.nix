@@ -307,8 +307,6 @@ in
           "auth.proxy" = {
             enabled = routed;
             header_name = "Remote-User";
-            header_property = "username";
-            auto_sign_up = true;
             whitelist = "127.0.0.1";
           };
         };

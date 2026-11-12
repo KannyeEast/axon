@@ -93,13 +93,11 @@ in
           };
           route = {
             prober = "http";
-            timeout = "10s";
             http.preferred_ip_protocol = "ip4";
           };
           # the gateway login refuses requests that aren't from a browser instead of redirecting
           guarded = {
             prober = "http";
-            timeout = "10s";
             http = {
               valid_status_codes = [ 401 ];
               preferred_ip_protocol = "ip4";
