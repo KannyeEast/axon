@@ -30,12 +30,19 @@
 ## Delegation
 
 You plan, edit small things yourself and check what comes back; subagents look, check, report,
-and `builder` implements.
+and `builder` implements. These are standing instructions: use the agents below when their
+trigger applies, without being asked.
 
-- Finding code: `cavecrew-investigator`. Docs, packages and existing tools for a task:
-  `docs-researcher`, before building anything new.
-- A larger change with an agreed, written plan (files, what changes, how to verify): `builder`.
-  One builder on the live tree at a time; two only on files that don't overlap. Then `reviewer`.
-- After a change: `verifier` runs the project's checks. Before the user commits a larger change:
-  `reviewer`. A failure whose cause isn't clear: `debugger`.
-- Not for small fixes: a subagent costs the same quota as this session.
+- Before adding a script, wrapper, option, package or service: `docs-researcher` looks for what
+  exists. Skip it only when you already checked the source yourself and say so.
+- Finding code across more than a handful of files: `cavecrew-investigator`.
+- A change of more than 3 files, once the plan is agreed: write the plan (files, what changes,
+  how to verify) and hand it to `builder`. One builder on the live tree at a time; two only on
+  files that don't overlap.
+- Before you suggest a commit message for a change of more than 3 files: `reviewer` over the diff,
+  and fix what it confirms first.
+- An audit or sweep of more than one file: `reviewer` and `docs-researcher` in parallel, then you
+  check their findings before reporting them.
+- A failure whose cause isn't clear after one look: `debugger`.
+- Not for small fixes (up to 3 files, obvious change): a subagent costs the same quota as this
+  session.
