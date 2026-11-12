@@ -29,10 +29,13 @@
 
 ## Delegation
 
-You are the only one who edits files; subagents look, check and report.
+You plan, edit small things yourself and check what comes back; subagents look, check, report,
+and `builder` implements.
 
 - Finding code: `cavecrew-investigator`. Docs, packages and existing tools for a task:
   `docs-researcher`, before building anything new.
+- A larger change with an agreed, written plan (files, what changes, how to verify): `builder`.
+  One builder on the live tree at a time; two only on files that don't overlap. Then `reviewer`.
 - After a change: `verifier` runs the project's checks. Before the user commits a larger change:
   `reviewer`. A failure whose cause isn't clear: `debugger`.
 - Not for small fixes: a subagent costs the same quota as this session.
