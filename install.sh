@@ -1357,11 +1357,14 @@ stageFiles() {
   # the checkout, where axon.repo expects it: a clone of the commit that holds this host
   local branch key value
   git clone -q "$FLAKE" "$home/axon"
-  # its origin is this checkout; it gets the remotes this checkout uses instead
+  # its origin is this checkout. With cluster.toml [repo.remotes] the system git config holds the
+  # remotes (copying them too would give each two urls); without, it gets this checkout's
   git -C "$home/axon" remote remove origin
-  while read -r key value; do
-    git -C "$home/axon" config --add "$key" "$value"
-  done < <(git -C "$FLAKE" config --get-regexp '^remote\.')
+  if [[ "$(nixx eval --impure --expr "((builtins.fromTOML (builtins.readFile \"$FLAKE/cluster.toml\")).repo.remotes or { }) != { }")" != true ]]; then
+    while read -r key value; do
+      git -C "$home/axon" config --add "$key" "$value"
+    done < <(git -C "$FLAKE" config --get-regexp '^remote\.')
+  fi
   branch="$(git -C "$FLAKE" branch --show-current)"
   for key in remote merge; do
     value="$(git -C "$FLAKE" config "branch.$branch.$key")" || continue

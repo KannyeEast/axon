@@ -4,7 +4,7 @@ NixOS for my machines, as data plus a small framework.
 
 - A machine is a folder: `hosts/<name>/host.toml` says what it is, `facter.json` what hardware it
   has, `secrets.json` (sops) what it must keep secret.
-- `cluster.toml` says how machines relate: who may log in where, which folders sync between whom, and where this repository is pushed (`just remotes`).
+- `cluster.toml` says how machines relate: who may log in where, which folders sync between whom, and where this repository is pushed (the checkout's remotes, through the system git config).
 - Branches: `dev` for daily work, pushed to Forgejo only; `stable` takes it through a reviewed
   pull request (`just pr`), merged once check and review pass; `main` is the framework alone
   (`modules/`, `flake.nix` and its lock, the installer, this README), built from `stable` after

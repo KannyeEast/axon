@@ -2,7 +2,7 @@
 flake := justfile_directory()
 host := shell("hostname -s")
 # where origin lives, as https://host/owner/repo (from user@host:owner/repo.git and the like), and
-# its API; empty before `just remotes`
+# its API; origin comes from cluster.toml [repo] through the system git config, empty without it
 forge := shell('git -C "$1" remote get-url origin 2>/dev/null | sed -E "s#^(ssh://)?[^@/]+@([^:/]+)[:/]#https://\\2/#; s#\\.git\$##" || true', flake)
 api := replace_regex(forge, '^(https?://[^/]+)/(.*)$', '${1}/api/v1/repos/${2}')
 
@@ -181,40 +181,6 @@ findings:
 [group("git")]
 sync:
   cd {{flake}} && bash .forgejo/sync.sh
-
-# (Re)create the remotes under [repo] in cluster.toml; origin is the one pulled from and pushed to
-[group("git")]
-remotes:
-  #!/usr/bin/env bash
-  set -euo pipefail
-  cd {{flake}}
-  # origin's name, then "<name> <url>" per remote
-  mapfile -t lines < <(nix eval --raw --impure --expr '
-    let
-      repo = (builtins.fromTOML (builtins.readFile ./cluster.toml)).repo or { };
-    in
-    builtins.concatStringsSep "\n" (
-      [ (repo.origin or "") ]
-      ++ builtins.attrValues (builtins.mapAttrs (name: url: "${name} ${url}") (repo.remotes or { }))
-    )')
-  origin=${lines[0]:-}
-  remotes=("${lines[@]:1}")
-  if [ ${#remotes[@]} -eq 0 ]; then
-    echo "cluster.toml: no [repo.remotes], nothing to set up."
-    exit 0
-  fi
-  if [ -z "$origin" ]; then
-    echo "cluster.toml: [repo] needs an origin, one of the names under [repo.remotes]." >&2
-    exit 1
-  fi
-  for r in "${remotes[@]}" "origin x" "all x"; do git remote remove "${r%% *}" 2>/dev/null || true; done
-  for r in "${remotes[@]}"; do git remote add "${r%% *}" "${r#* }"; done
-  git remote add origin "$(git remote get-url "$origin")"
-  git fetch --all --prune
-  for b in main stable dev; do
-    git show-ref --verify -q "refs/heads/$b" && git branch --set-upstream-to="origin/$b" "$b" 2>/dev/null || true
-  done
-  git remote -v
 
 # ── private helpers ────────
 # Flakes only see files git knows about; make new ones visible without committing them
