@@ -13,7 +13,6 @@
         contents = [
           pkgs.bashInteractive
           pkgs.cacert
-          pkgs.ccusage
           pkgs.claude-code
           pkgs.coreutils
           pkgs.diffutils

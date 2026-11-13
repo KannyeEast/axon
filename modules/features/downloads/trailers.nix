@@ -21,7 +21,9 @@
         # reaches Radarr and Sonarr on 127.0.0.1; listens on all addresses, the firewall keeps the
         # port closed
         networks = [ "host" ];
-        volumes = [ "${state}:/config" ] ++ library;
+        # a subfolder: the entrypoint makes /config world-readable at every start, and the
+        # database holds the Radarr and Sonarr API keys; the 0750 parent keeps others out
+        volumes = [ "${state}/config:/config" ] ++ library;
         environment = {
           TZ = config.axon.locale.timezone;
           PUID = toString config.users.users.radarr.uid;
@@ -29,14 +31,24 @@
           WEBUI_DISABLE_AUTH = "true"; # the gateway login guards it
           UPDATE_YTDLP = "true"; # YouTube breaks a pinned yt-dlp within weeks
         };
-        # trailer folders in shows/ must stay writable for Sonarr, like the arr units' UMask
+        # group-writable for the *arr apps where Trailarr copies instead of moving, or makes parents
         extraOptions = [ "--umask=0002" ];
       };
 
-      # fixed, as the container gets it as a number; 996 is what node1 had allocated
+      # fixed, as the container gets it as a number
       users.groups.media.gid = 996;
 
+      # old image versions stay tagged, so plain pruning keeps them
+      virtualisation.podman.autoPrune = {
+        enable = true;
+        flags = [ "--all" ];
+      };
+
       systemd.services.podman-trailarr.unitConfig.RequiresMountsFor = [ media ];
+      systemd.tmpfiles.rules = map (dir: "d ${dir} 0750 radarr media -") [
+        state
+        "${state}/config"
+      ];
 
       axon.persist.state.directories = [
         {
@@ -59,7 +71,11 @@
           icon = "trailarr.svg";
           monitor = "/status";
         };
-        backup.paths = [ state ];
+        backup = {
+          paths = [ state ];
+          # posters and fanart it fetches again
+          exclude = [ "${state}/config/web/images" ];
+        };
       };
     };
 }
