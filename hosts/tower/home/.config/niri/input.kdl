@@ -1,6 +1,8 @@
 input {
     keyboard {
+        // any setting here replaces the system's layout from host.toml, so it's repeated
         xkb {
+            layout "eu"
             options "caps:none"
         }
     }

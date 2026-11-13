@@ -24,7 +24,7 @@ matters here, and the concrete fix. A choice recorded in DECISIONS.md is not a f
 flake.nix            inputs; outputs = every .nix under modules/ (import-tree)
 cluster.toml         relations between machines: [ssh], [sync], [external]; the repo's remotes: [repo]
 DECISIONS.md         deliberate choices that look like mistakes; never "fixed" or flagged
-.forgejo/            CI: check and review on pull requests, main published from stable; the reviewer's guide;
+.forgejo/            CI: check and review on pull requests (merged without findings), main published from stable; the reviewer's guide;
                      findings.sh, the latest review's open findings for the author
 hosts/<name>/        host.toml, facter.json, secrets.json (sops), optional home/
 hosts/_old/          previous hosts, kept for reference, never built
@@ -86,6 +86,7 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   `/var/lib/private/<name>`.
 - **Name files for what they do** (`passwords.nix`, not `keepassxc.nix`).
 - **Formatting**: `nix fmt`. Never align `=` or values with extra spaces, in any file type.
+- **lib**: modules write `lib.<function>`; only `mkOption` and `types` may be inherited.
 - **Errors** read `<file or option>: <what is wrong>`, and say what to do where possible.
 - **Decisions are written down.** A deliberate choice that the comment on its lines explains
   stays in that comment. One that spans files or is about something deliberately missing goes
@@ -93,6 +94,10 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
 - **Comments describe the code as it is, not how it got there.** A module's header says what
   that module does. Inline comments only where the code isn't obvious on its own. No history,
   rejected alternatives or reasoning from a conversation: that belongs in the commit message.
+- **Comments are compact and rare**: most lines need none; a comment is for what a reader can't
+  see from the code (a quirk, a reason, a non-obvious value). Plain statements, a line or two;
+  more only where the code is genuinely complex. A module's header may run a few lines, as short
+  as it can be. Comments never outgrow the code they describe.
 - **Quirks are explained where they're handled.** A workaround for a tool, driver or service gets
   a comment on the lines that do it, saying what breaks without them.
 - **A GUI app comes with its window rules.** Adding one, find its Wayland app id (the

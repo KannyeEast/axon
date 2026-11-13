@@ -1,10 +1,8 @@
-# Nextcloud at cloud.<domain> on servers. Files on the data volume, or in the state folder on a
-# host without one; app state on the system SSD, database in the shared Postgres.
-# It's public (through the gateway's tunnel) so share links work for people without Tailscale;
-# its own login guards it. Without a gateway on this host it stays on localhost.
-# The first account is created by hand after install:
+# Nextcloud at cloud.<domain> on servers. Files on the data volume (or in the state folder without
+# one), app state on the system SSD, database in the shared Postgres. Public through the tunnel so
+# share links work without Tailscale; its own login guards it. Without a gateway on this host it
+# stays on localhost. First account by hand after install, then two-factor in the web UI:
 #   nextcloud-occ user:add <you> && nextcloud-occ group:adduser admin <you>
-# then turn on two-factor in the web UI.
 # Major versions upgrade one at a time: bump the package by one, switch, repeat.
 { lib, ... }:
 {
@@ -13,8 +11,6 @@
     let
       inherit (config.axon) mail routed services;
       inherit (services.cloud) route;
-      hostName = if routed then route.host else route.address;
-      url = if routed then route.url else "http://${route.endpoint}";
       data = config.axon.spaces.nextcloud.path;
       port = 8090;
     in
@@ -23,7 +19,7 @@
         services.nextcloud = {
           enable = true;
           package = pkgs.nextcloud35;
-          inherit hostName;
+          hostName = route.name;
           https = routed;
           datadir = data;
           database.createLocally = true;
@@ -31,14 +27,14 @@
           maxUploadSize = "16G";
           config.dbtype = "pgsql";
           settings = {
-            # the tunnel delivers plain http on localhost; links must still say https
+            # the gateway and the tunnel deliver plain http on localhost; links must still say https
             trusted_proxies = [
               "127.0.0.1"
               "::1"
             ];
             overwriteprotocol = lib.mkIf routed "https";
             # what background jobs put in links; they have no request to read the address from
-            "overwrite.cli.url" = url;
+            "overwrite.cli.url" = route.origin;
             default_phone_region = "DE";
             serverid = 1; # unique per PHP server; there is one, but Nextcloud warns without it
             maintenance_window_start = 1; # 01:00 UTC
@@ -52,7 +48,7 @@
         };
 
         # nextcloud's nginx only on localhost; caddy owns 80/443
-        services.nginx.virtualHosts.${hostName}.listen = [
+        services.nginx.virtualHosts.${route.name}.listen = [
           {
             addr = "127.0.0.1";
             inherit port;
@@ -102,7 +98,7 @@
                 "activeusers"
               ];
             };
-            secrets.key = "dashboard/cloud/key";
+            key = true;
           };
           backup = {
             paths = [

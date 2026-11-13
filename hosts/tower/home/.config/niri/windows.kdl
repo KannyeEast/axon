@@ -18,7 +18,6 @@ window-rule {
     block-out-from "screen-capture"
 }
 
-// Dialogs and pickers are transient by nature
 window-rule {
     match app-id=r#"^org\.gnome\.Nautilus$"# title=r#"^(Open|Save|Rename)"#
     open-floating true

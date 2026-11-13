@@ -2,7 +2,7 @@
 # host.toml each of them owns. hosts.nix, the docs and the installer all read these.
 { config, lib, ... }:
 let
-  inherit (lib) attrNames mkOption types;
+  inherit (lib) mkOption types;
 in
 {
   options.axon = {
@@ -30,7 +30,7 @@ in
               type = types.str;
             };
             classes = mkOption {
-              type = types.nonEmptyListOf (types.enum (attrNames config.axon.classes));
+              type = types.nonEmptyListOf (types.enum (lib.attrNames config.axon.classes));
               description = "Classes this feature can run on";
             };
             requires = mkOption {
@@ -43,8 +43,7 @@ in
       );
     };
 
-    # host.toml is checked against core's piece plus the pieces of the host's class and features,
-    # so a table belonging to a feature the host doesn't list is an error
+    # a host.toml table owned by a feature the host doesn't list is an error
     schema = mkOption {
       type = types.attrsOf types.deferredModule;
       default = { };
@@ -59,7 +58,7 @@ in
   };
 
   config = {
-    # the installer asks the flake what exists instead of keeping its own list
+    # for the installer's lists of classes and features
     flake.axon = {
       inherit (config.axon) classes features;
     };

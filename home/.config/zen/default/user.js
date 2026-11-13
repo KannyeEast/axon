@@ -6,17 +6,13 @@ user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
 // bookmarks.html next to this file, imported on every start
 user_pref("browser.places.importBookmarksHTML", true);
 user_pref("devtools.chrome.enabled", true);
-user_pref("font.default.x-western", "serif");
 user_pref("font.name.sans-serif.x-western", "Inter");
 user_pref("font.name.serif.x-western", "Barlow");
 user_pref("font.name.monospace.x-western", "JetBrainsMono Nerd Font");
-user_pref("font.size.variable.x-western", 16);
 user_pref("font.size.monospace.x-western", 13);
 
 user_pref("browser.display.document_color_use", 0);
-user_pref("browser.tabs.warnOnClose", false);
 user_pref("browser.urlbar.clipboard.featureGate", false);
-user_pref("browser.urlbar.addons.featureGate", false);
 user_pref("browser.urlbar.suggest.addons", false);
 user_pref("browser.urlbar.suggest.engines", false);
 user_pref("browser.urlbar.suggest.mdn", false);
@@ -24,8 +20,6 @@ user_pref("browser.urlbar.suggest.topsites", false);
 user_pref("browser.urlbar.suggest.trending", false);
 user_pref("browser.urlbar.suggest.weather", false);
 user_pref("browser.urlbar.suggest.yelp", false);
-user_pref("browser.urlbar.trending.featureGate", false);
-user_pref("browser.urlbar.quicksuggest.enabled", false);
 
 user_pref("general.smoothScroll", false);
 user_pref("general.autoScroll", true);
@@ -85,7 +79,6 @@ user_pref("uc.pins.bg", false);
 user_pref("uc.pins.transition-bg", false);
 user_pref("uc.pins.transition-speed", "100ms");
 user_pref("zen.workspaces.indicator-position", "");
-user_pref("browser.sessionstore.restore_pinned_tabs_on_demand", true);
 user_pref("uc.pins.stay-at-top", true);
 user_pref("uc.pins.active-bg", false);
 user_pref("mod.superpins.pins.active-bg", "#ffffff");

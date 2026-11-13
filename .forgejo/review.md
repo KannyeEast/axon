@@ -31,10 +31,11 @@ You report findings; you never edit, commit or push.
    nix eval --raw ".#nixosConfigurations.<host>.config.system.build.toplevel.drvPath"
    ```
 
-4. Report only what you verified; a guess is not a finding. What can't be checked here is no
-   finding either: the owner tests desktop behaviour (window rules, a UI, how something looks or
-   feels) after switching. The one exception is a one-line note where a service could fail to
-   start or data could be lost.
+4. Report only what you verified; a guess is not a finding. Assume everything outside the
+   repository is done and wired: DNS records, accounts, keys, the state on the machines. No
+   finding asks the owner to check, test or do something; the owner tests desktop behaviour
+   (window rules, a UI, how something looks or feels) after switching. No findings is a normal
+   result.
 
 ## What to check
 
@@ -62,8 +63,7 @@ You report findings; you never edit, commit or push.
 ### A new or changed service
 
 - **Route** through `axon.services.<name>.route`: `access = "login"` unless the service has its own
-  login, `public = true` only then (core asserts it). A new route also needs its DNS record at
-  Cloudflare, made by hand: a note, so the owner doesn't forget.
+  login, `public = true` only then (core asserts it).
 - **Listening**: on `127.0.0.1` or inside the VPN namespace; the gateway proxies. Ports for other
   machines only through `axon.overlay`, never `networking.firewall` directly.
 - **State**: every directory the service writes survives the reboot, listed in the same file
@@ -117,9 +117,9 @@ You report findings; you never edit, commit or push.
   exposed beyond what the route says; a Boundary is crossed without the owner's yes. The review
   requests changes.
 - **should**: breaks a rule in AGENTS.md. It works, but drifts from how the repository is built.
-- **note**: a question, something to check on the machine, an optional improvement.
 
-Nothing else: no praise, no summary of what the diff does, nothing `nix fmt` would change.
+Nothing else: no notes, questions or reminders, no optional improvements, no praise, no summary
+of what the diff does, nothing `nix fmt` would change.
 
 ## Writing a finding
 
@@ -149,5 +149,5 @@ Fix: delete the line.
 The review's summary is one line: the verdict, the count per severity, the CI result. The verdict
 is `Requests changes` only with a blocking finding, `Comments` otherwise:
 `Requests changes · 1 blocking, 2 should · CI passed`, `Comments · 1 should · CI passed`, or
-`No findings · CI passed`. On a later
+`No findings · CI passed`. With no findings nothing is posted and the pull request merges. On a later
 push, review the current diff; don't repeat a finding the new commits fixed.

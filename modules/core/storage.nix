@@ -1,23 +1,9 @@
-# Every [disk.<label>] table in host.toml except disk.boot: one btrfs filesystem each, on one disk or as an array.
-# disko has no multi-device type, so an array is written the way mkfs.btrfs takes it:
-# the first device carries the filesystem and names the others; the others get an empty table.
+# Every [disk.<label>] in host.toml but disk.boot: one btrfs filesystem each, on one disk or an
+# array. disko has no multi-device type, so the first device carries the filesystem and names the
+# others for mkfs.btrfs; the others get an empty table.
 { lib, ... }:
 let
-  inherit (lib)
-    concatMapAttrs
-    head
-    imap0
-    length
-    listToAttrs
-    mapAttrs'
-    mapAttrsToList
-    mkForce
-    mkOption
-    nameValuePair
-    optionals
-    tail
-    types
-    ;
+  inherit (lib) mkOption types;
 
   # the fewest devices that make the profile worth having; mkfs.btrfs accepts fewer
   minimum = {
@@ -43,8 +29,7 @@ let
       profile;
 
   mountOptions = [
-    # light compression: bulk data (media) barely shrinks, and level 1 keeps writes fast; the
-    # boot disk uses zstd's default level
+    # bulk data (media) barely shrinks, so level 1 keeps writes fast; the boot disk uses the default
     "compress=zstd:1"
     "noatime"
     "nofail" # a missing data disk must not stop the boot
@@ -54,12 +39,12 @@ let
   disks =
     label: fs:
     let
-      members = tail fs.devices;
+      members = lib.tail fs.devices;
     in
     {
       ${label} = {
         type = "disk";
-        device = head fs.devices;
+        device = lib.head fs.devices;
         destroy = false; # only the boot disk is ever wiped
         content = {
           type = "btrfs";
@@ -70,19 +55,19 @@ let
             "-d"
             fs.profile
           ]
-          ++ optionals (metadataFor fs.profile != null) [
+          ++ lib.optionals (metadataFor fs.profile != null) [
             "-m"
             (metadataFor fs.profile)
           ]
           ++ members;
-          subvolumes = mapAttrs' (
-            subvolume: mountpoint: nameValuePair subvolume { inherit mountpoint mountOptions; }
+          subvolumes = lib.mapAttrs' (
+            subvolume: mountpoint: lib.nameValuePair subvolume { inherit mountpoint mountOptions; }
           ) fs.mounts;
         };
       };
     }
-    // listToAttrs (
-      imap0 (index: device: {
+    // lib.listToAttrs (
+      lib.imap0 (index: device: {
         name = "${label}-member-${toString index}";
         value = {
           type = "disk";
@@ -107,25 +92,25 @@ in
       options.axon.volumes = mkOption {
         type = types.attrsOf types.str;
         readOnly = true;
-        default = concatMapAttrs (_: fs: fs.mounts) storage;
+        default = lib.concatMapAttrs (_: fs: fs.mounts) storage;
         defaultText = "the mounts of every [disk.<label>] table";
         description = "This host's data disks, name to mountpoint. A feature that can't work without a volume asserts it; one that can falls back to its state folder.";
       };
 
       config = {
-        assertions = mapAttrsToList (label: fs: {
-          assertion = length fs.devices >= minimum.${fs.profile};
+        assertions = lib.mapAttrsToList (label: fs: {
+          assertion = lib.length fs.devices >= minimum.${fs.profile};
           message = "hosts/${host.name}/host.toml: disk.${label} uses ${fs.profile}, which needs ${toString minimum.${fs.profile}} devices";
         }) storage;
 
-        disko.devices.disk = concatMapAttrs disks storage;
+        disko.devices.disk = lib.concatMapAttrs disks storage;
 
         # disko mounts by the first device's path; by label the mount still finds the filesystem
         # after that disk is replaced
-        fileSystems = concatMapAttrs (
+        fileSystems = lib.concatMapAttrs (
           label: fs:
-          mapAttrs' (
-            _: mountpoint: nameValuePair mountpoint { device = mkForce "/dev/disk/by-label/${label}"; }
+          lib.mapAttrs' (
+            _: mountpoint: lib.nameValuePair mountpoint { device = lib.mkForce "/dev/disk/by-label/${label}"; }
           ) fs.mounts
         ) storage;
 

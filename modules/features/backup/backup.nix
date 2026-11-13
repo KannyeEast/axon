@@ -1,76 +1,56 @@
 # restic, one repository per target. What gets backed up is whatever services declare in
-# axon.services.<name>.backup.paths; targets (repository, schedule, password, env) live in
-# secrets.json under backup.<name>. With no targets it does nothing.
+# axon.services.<name>.backup.paths; targets live in secrets.json under backup.<name> as
+# repository_unencrypted, schedule_unencrypted, password and env. With no targets it does nothing.
 { lib, ... }:
-let
-  inherit (lib)
-    attrValues
-    concatMap
-    concatMapAttrs
-    concatStringsSep
-    filter
-    filterAttrs
-    hasPrefix
-    hasSuffix
-    mapAttrs
-    mapAttrs'
-    mapAttrsToList
-    nameValuePair
-    optional
-    optionalAttrs
-    removeSuffix
-    unique
-    ;
-in
 {
   flake.modules.nixos.backup =
     { config, pkgs, ... }:
     let
       inherit (config.axon) host;
       ph = config.sops.placeholder;
-
-      # targets are data in secrets.json: backup.<name>.{password, repository_unencrypted, schedule_unencrypted, env}
       targets = config.axon.secrets.backup or { };
 
-      # sops-nix can also leave values unencrypted with this suffix; useful when values need to be read at eval
-      rmSuffix = mapAttrs' (name: value: nameValuePair (removeSuffix "_unencrypted" name) value);
+      # sops leaves values with this suffix unencrypted, so Nix can read them at eval
+      rmSuffix = lib.mapAttrs' (
+        name: value: lib.nameValuePair (lib.removeSuffix "_unencrypted" name) value
+      );
 
       envOf = data: data.env or { };
-      secretEnv = filterAttrs (key: _: !hasSuffix "_unencrypted" key);
+      secretEnv = lib.filterAttrs (key: _: !lib.hasSuffix "_unencrypted" key);
 
       mkEnv =
         name: env:
-        concatStringsSep "\n" (
-          mapAttrsToList (
+        lib.concatStringsSep "\n" (
+          lib.mapAttrsToList (
             key: value:
-            if hasSuffix "_unencrypted" key then
-              "${removeSuffix "_unencrypted" key}='${value}'"
+            if lib.hasSuffix "_unencrypted" key then
+              "${lib.removeSuffix "_unencrypted" key}='${value}'"
             else
               "${key}='${ph."backup/${name}/env/${key}"}'"
           ) env
         );
 
-      backups = filter (service: service.backup.paths != [ ]) (attrValues config.axon.services);
+      backups = lib.filter (service: service.backup.paths != [ ]) (lib.attrValues config.axon.services);
 
-      paths = unique (concatMap (service: service.backup.paths) backups);
-      exclude = unique (concatMap (service: service.backup.exclude) backups);
+      paths = lib.unique (lib.concatMap (service: service.backup.paths) backups);
+      exclude = lib.unique (lib.concatMap (service: service.backup.exclude) backups);
     in
     {
       warnings =
-        optional (targets == { })
+        lib.optional (targets == { })
           "hosts/${host.name}/secrets.json: the backup feature has no targets, so nothing is backed up; add backup.<name> with `just secrets ${host.name}`";
 
-      sops.secrets = concatMapAttrs (
+      sops.secrets = lib.concatMapAttrs (
         name: data:
         {
           "backup/${name}/password" = { };
         }
-        // concatMapAttrs (key: _: { "backup/${name}/env/${key}" = { }; }) (secretEnv (envOf data))
+        // lib.concatMapAttrs (key: _: { "backup/${name}/env/${key}" = { }; }) (secretEnv (envOf data))
       ) targets;
 
-      sops.templates = mapAttrs' (
-        name: data: nameValuePair "restic-${name}.env" { content = mkEnv name (envOf data); }
-      ) (filterAttrs (_: data: envOf data != { }) targets);
+      sops.templates = lib.mapAttrs' (
+        name: data: lib.nameValuePair "restic-${name}.env" { content = mkEnv name (envOf data); }
+      ) (lib.filterAttrs (_: data: envOf data != { }) targets);
 
       axon.persist.state.directories = [
         "/root/.cache/restic"
@@ -78,10 +58,9 @@ in
 
       environment.systemPackages = [
         pkgs.restic
-        pkgs.rclone
       ];
 
-      services.restic.backups = mapAttrs (
+      services.restic.backups = lib.mapAttrs (
         name: data:
         let
           target = rmSuffix data;
@@ -104,19 +83,18 @@ in
             RandomizedDelaySec = "20m";
             Persistent = true;
           };
-
         }
-        // optionalAttrs (hasPrefix "/" target.repository) {
+        // lib.optionalAttrs (lib.hasPrefix "/" target.repository) {
           checkOpts = [ "--read-data-subset=5%" ];
         }
-        // optionalAttrs (envOf data != { }) {
+        // lib.optionalAttrs (envOf data != { }) {
           environmentFile = config.sops.templates."restic-${name}.env".path;
         }
       ) targets;
 
-      systemd.services = concatMapAttrs (
+      systemd.services = lib.concatMapAttrs (
         name: data:
-        optionalAttrs (hasPrefix "/" (rmSuffix data).repository) {
+        lib.optionalAttrs (lib.hasPrefix "/" (rmSuffix data).repository) {
           "restic-backups-${name}".unitConfig.RequiresMountsFor = [ (rmSuffix data).repository ];
         }
       ) targets;

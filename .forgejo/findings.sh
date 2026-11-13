@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Prints the open findings of the latest review on the pull request into stable: the summary,
-# then file:line and text per unresolved comment. For the owner (`just findings`) and the author
-# assistant, who fixes them. FORGE (https://host/owner/repo) and API come from the justfile.
+# then file:line and text per unresolved comment. FORGE (https://host/owner/repo) and API come
+# from the justfile (`just findings`).
 set -euo pipefail
 
 : "${FORGE:?} ${API:?}"

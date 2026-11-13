@@ -1,8 +1,5 @@
 # Extensions as policy: the ones here and in axon.browser are installed, every other is blocked.
 { lib, ... }:
-let
-  inherit (lib) isString mapAttrs;
-in
 {
   flake.modules.homeManager.browser =
     { osConfig, ... }:
@@ -23,8 +20,8 @@ in
         in
         if pinned then base // { default_area = "navbar"; } else base // { default_area = "menupanel"; };
 
-      mkExtensionSettings = mapAttrs (
-        _: entry: if isString entry then mkExtensionEntry { id = entry; } else mkExtensionEntry entry
+      mkExtensionSettings = lib.mapAttrs (
+        _: entry: if lib.isString entry then mkExtensionEntry { id = entry; } else mkExtensionEntry entry
       );
 
       extensions = {

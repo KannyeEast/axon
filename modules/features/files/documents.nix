@@ -1,10 +1,8 @@
-# Paperless-ngx at docs.<domain> on servers: scanned and filed documents, OCR in German and
-# English. Tailnet only; its own login. Without a gateway on this host it stays on localhost.
-# Documents on the data volume, or in the state folder on a host without one, sorted by
-# correspondent and year; database in the shared Postgres.
-# The first account is created by hand after install:
-#   sudo paperless-manage createsuperuser
-# A nightly export (originals, OCR'd copies, tags and metadata) is what gets backed up.
+# Paperless-ngx at docs.<domain> on servers: scanned documents, OCR'd and filed. Tailnet only, its
+# own login; without a gateway on this host it stays on localhost. Documents on the data volume
+# (or in the state folder without one), database in the shared Postgres. The nightly export
+# (originals, OCR'd copies, tags and metadata) is what gets backed up.
+# First account by hand after install: sudo paperless-manage createsuperuser
 { lib, ... }:
 {
   flake.modules.nixos.files =
@@ -66,7 +64,7 @@
           description = "Documents";
           icon = "paperless-ngx.svg";
           widget.type = "paperlessngx";
-          secrets.key = "dashboard/docs/key";
+          key = true;
         };
         backup.paths = [ "${data}/export" ];
       };

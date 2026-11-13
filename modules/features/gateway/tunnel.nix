@@ -1,21 +1,11 @@
 # Public services (route.public) are reachable from the internet through a Cloudflare Tunnel:
-# this host dials out to Cloudflare, so no router port is opened and the home IP stays hidden.
-# The tunnel is created once by hand (cloudflared tunnel create), its id goes in host.toml
-# [gateway] and its credentials file in secrets.json as cloudflare-tunnel.
-# Names aren't managed here either: every route is a DNS record at Cloudflare, pointing at this
-# host's tailnet address, or at the tunnel for a public one (cloudflared tunnel route dns).
+# this host dials out, so no router port is opened and the home IP stays hidden. The tunnel is
+# created once by hand (cloudflared tunnel create); its id goes in host.toml [gateway], its
+# credentials file in secrets.json as cloudflare-tunnel. Each public route needs a DNS record at
+# Cloudflare, made by hand (cloudflared tunnel route dns); tailnet-only routes need none.
 { lib, ... }:
 let
-  inherit (lib)
-    attrNames
-    concatStringsSep
-    filterAttrs
-    mapAttrs'
-    mkIf
-    mkOption
-    nameValuePair
-    types
-    ;
+  inherit (lib) mkOption types;
 in
 {
   axon.schema.gateway = {
@@ -30,7 +20,7 @@ in
     { config, ... }:
     let
       inherit (config.axon) host routes gateway;
-      public = filterAttrs (_: service: service.route.public) routes;
+      public = lib.filterAttrs (_: service: service.route.public) routes;
     in
     {
       assertions = lib.mapAttrsToList (name: service: {
@@ -40,17 +30,17 @@ in
 
       warnings =
         lib.optional (public != { } && gateway.tunnel == null)
-          "hosts/${host.name}/host.toml: ${concatStringsSep ", " (attrNames public)} would be public, but [gateway] has no tunnel yet";
+          "hosts/${host.name}/host.toml: ${lib.concatStringsSep ", " (lib.attrNames public)} would be public, but [gateway] has no tunnel yet";
 
-      sops.secrets.cloudflare-tunnel = mkIf (gateway.tunnel != null) { };
+      sops.secrets.cloudflare-tunnel = lib.mkIf (gateway.tunnel != null) { };
 
-      services.cloudflared = mkIf (gateway.tunnel != null && public != { }) {
+      services.cloudflared = lib.mkIf (gateway.tunnel != null && public != { }) {
         enable = true;
         tunnels.${gateway.tunnel} = {
           credentialsFile = config.sops.secrets.cloudflare-tunnel.path;
           default = "http_status:404";
-          ingress = mapAttrs' (
-            _: service: nameValuePair service.route.host "http://${service.route.endpoint}"
+          ingress = lib.mapAttrs' (
+            _: service: lib.nameValuePair service.route.host "http://${service.route.endpoint}"
           ) public;
         };
       };

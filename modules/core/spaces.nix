@@ -1,29 +1,11 @@
-# Contract: axon.spaces. A service's own space on the data volume: on a host with one it is the
-# btrfs subvolume <data>/<name>, which host.toml [limits] can cap; without it, /var/lib/<name>.
-# One unit per space creates it before the service's units start (they also wait for its disk);
-# storage-limits applies [limits] to spaces and whole volumes, so a changed limit takes effect on
-# the next switch, without moving data.
-# A space that is still a plain folder holding files is left alone, with a warning in its unit's
-# log; an empty one (made by a service's own tmpfiles rules) becomes a subvolume.
+# Contract: axon.spaces. A service's own space: the btrfs subvolume <data>/<name> on a host with
+# a data volume, which host.toml [limits] can cap; /var/lib/<name> without one. A unit per space
+# creates it before the service starts; storage-limits applies [limits], so a changed limit takes
+# effect on the next switch without moving data. A plain folder holding files is left alone with
+# a warning in its unit's log; an empty one (from the service's tmpfiles) becomes a subvolume.
 { lib, ... }:
 let
-  inherit (lib)
-    attrNames
-    attrValues
-    concatMap
-    concatMapStrings
-    concatStringsSep
-    filterAttrs
-    getExe'
-    mapAttrs'
-    mapAttrsToList
-    mkMerge
-    mkOption
-    nameValuePair
-    optionalAttrs
-    types
-    unique
-    ;
+  inherit (lib) mkOption types;
 in
 {
   axon.schema.core = {
@@ -47,12 +29,12 @@ in
         spaces
         volumes
         ;
-      btrfs = getExe' pkgs.btrfs-progs "btrfs";
+      btrfs = lib.getExe' pkgs.btrfs-progs "btrfs";
 
-      onVolume = filterAttrs (_: space: space.onVolume) spaces;
+      onVolume = lib.filterAttrs (_: space: space.onVolume) spaces;
       # what [limits] may name: whole volumes and the spaces on them
-      limitable = attrNames volumes ++ attrNames onVolume;
-      paths = volumes // mapAttrs' (name: space: nameValuePair name space.path) onVolume;
+      limitable = lib.attrNames volumes ++ lib.attrNames onVolume;
+      paths = volumes // lib.mapAttrs' (name: space: lib.nameValuePair name space.path) onVolume;
 
       unitOf = name: "storage-${name}";
 
@@ -82,20 +64,20 @@ in
 
       # quotas are switched on, per filesystem, only where something is limited: through the volume
       # it lives on, which is mounted even while a space doesn't exist yet
-      limited = filterAttrs (name: _: paths ? ${name}) limits;
+      limited = lib.filterAttrs (name: _: paths ? ${name}) limits;
       volumeOf = name: volumes.${name} or volumes.data;
       applyLimits = pkgs.writeShellScript "storage-limits" ''
         set -u
-        ${concatMapStrings (path: ''
+        ${lib.concatMapStrings (path: ''
           ${btrfs} quota enable ${path}
-        '') (unique (map volumeOf (attrNames limited)))}
-        for path in ${concatStringsSep " " (attrValues paths)}; do
+        '') (lib.unique (map volumeOf (lib.attrNames limited)))}
+        for path in ${lib.concatStringsSep " " (lib.attrValues paths)}; do
           [ "$(stat -c %i "$path" 2>/dev/null)" = 256 ] || continue
           ${btrfs} qgroup show "$path" >/dev/null 2>&1 || continue
           case "$path" in
-          ${concatMapStrings (name: ''
+          ${lib.concatMapStrings (name: ''
             ${paths.${name}}) ${btrfs} qgroup limit ${limits.${name}} "$path" ;;
-          '') (attrNames limited)}
+          '') (lib.attrNames limited)}
             *) ${btrfs} qgroup limit none "$path" ;;
           esac
         done
@@ -136,23 +118,23 @@ in
       config = {
         # a space on a volume persists with it; the fallback in /var/lib is persisted here
         axon.persist.state.directories = lib.mkAfter (
-          mapAttrsToList (_: space: {
+          lib.mapAttrsToList (_: space: {
             directory = space.path;
             inherit (space) user group;
             mode = "0750";
-          }) (filterAttrs (_: space: !space.onVolume) spaces)
+          }) (lib.filterAttrs (_: space: !space.onVolume) spaces)
         );
 
-        assertions = mapAttrsToList (name: _: {
+        assertions = lib.mapAttrsToList (name: _: {
           assertion = paths ? ${name};
-          message = "hosts/${host.name}/host.toml: [limits] names ${name}, which is neither a volume nor a service's space on one (${concatStringsSep ", " limitable})";
+          message = "hosts/${host.name}/host.toml: [limits] names ${name}, which is neither a volume nor a service's space on one (${lib.concatStringsSep ", " limitable})";
         }) limits;
 
-        systemd.services = mkMerge (
+        systemd.services = lib.mkMerge (
           [
-            (mapAttrs' (
+            (lib.mapAttrs' (
               name: space:
-              nameValuePair (unitOf name) {
+              lib.nameValuePair (unitOf name) {
                 description = "Space for ${name}";
                 # also for a space no unit lists, which then still exists after boot
                 wantedBy = [ "multi-user.target" ];
@@ -165,12 +147,12 @@ in
                 };
               }
             ) spaces)
-            (optionalAttrs (paths != { }) {
+            (lib.optionalAttrs (paths != { }) {
               storage-limits = {
                 description = "Apply [limits] to volumes and spaces";
                 wantedBy = [ "multi-user.target" ];
-                after = map (name: "${unitOf name}.service") (attrNames onVolume);
-                unitConfig.RequiresMountsFor = attrValues paths;
+                after = map (name: "${unitOf name}.service") (lib.attrNames onVolume);
+                unitConfig.RequiresMountsFor = lib.attrValues paths;
                 serviceConfig = {
                   Type = "oneshot";
                   RemainAfterExit = true;
@@ -179,8 +161,7 @@ in
               };
             })
           ]
-          # every unit that uses a space starts after it exists and waits for its disk
-          ++ concatMap (
+          ++ lib.concatMap (
             name:
             map (unit: {
               ${unit} = {
@@ -189,7 +170,7 @@ in
                 unitConfig.RequiresMountsFor = [ spaces.${name}.path ];
               };
             }) spaces.${name}.units
-          ) (attrNames spaces)
+          ) (lib.attrNames spaces)
         );
       };
     };

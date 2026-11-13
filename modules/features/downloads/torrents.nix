@@ -1,17 +1,17 @@
 # qBittorrent, locked into the VPN. Finished downloads go next to the library on the media volume
-# so imports are instant, or into its state folder on a host without one. In progress on the
-# scratch volume where the host has one. The module rewrites qBittorrent.conf on every start, so
-# what its UI changes is gone after a restart: settings that matter belong here.
+# so imports are instant (else into its state folder), unfinished ones on the scratch volume if
+# any. The module rewrites qBittorrent.conf on every start, so what the UI changes doesn't last.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
-    { config, ... }:
+    { config, pkgs, ... }:
     let
       inherit (config.axon) volumes vpn;
       state = "/var/lib/qBittorrent";
       finished = "${volumes.media or state}/downloads";
       incomplete = "${volumes.scratch}/torrents";
       port = 8081;
+      folders = [ finished ] ++ lib.optional (volumes ? scratch) incomplete;
     in
     {
       users.groups.media = { };
@@ -46,13 +46,14 @@
         };
       };
 
-      # the library is on a data disk that may be missing at boot (nofail)
-      systemd.services.qbittorrent.unitConfig.RequiresMountsFor =
-        lib.optional (volumes ? media) volumes.media ++ lib.optional (volumes ? scratch) volumes.scratch;
-
-      systemd.tmpfiles.rules =
-        lib.optional (volumes ? media) "d ${finished} 2775 root media -"
-        ++ lib.optional (volumes ? scratch) "d ${incomplete} 2775 root media -";
+      # the folders may be on data disks that are missing at boot (nofail): wait for them, and
+      # make the folders once they're mounted (tmpfiles may run before that)
+      systemd.services.qbittorrent = {
+        unitConfig.RequiresMountsFor = folders;
+        serviceConfig.ExecStartPre = map (
+          dir: "+${lib.getExe' pkgs.coreutils "install"} -d -o root -g media -m 2775 ${dir}"
+        ) folders;
+      };
 
       axon.persist.state.directories = [
         {

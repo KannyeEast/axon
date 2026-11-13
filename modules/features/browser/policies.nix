@@ -1,8 +1,5 @@
 # Browser policies (about:policies); profile prefs are in the dotfiles (user.js).
 { lib, ... }:
-let
-  inherit (lib) optionals;
-in
 {
   flake.modules.homeManager.browser =
     { osConfig, ... }:
@@ -32,7 +29,7 @@ in
             "https://cloudflare.com"
             "https://tailscale.com"
           ]
-          ++ optionals (domain != null) [
+          ++ lib.optionals (domain != null) [
             "https://${domain}"
           ];
           Behavior = "reject-tracker-and-partition-foreign";
@@ -73,7 +70,6 @@ in
         Permissions = {
           Location.BlockNewRequests = true;
           Notifications.BlockNewRequests = true;
-          Autoplay.BlockNewRequests = true;
           VirtualReality.BlockNewRequests = true;
           ScreenShare.BlockNewRequests = true;
         };

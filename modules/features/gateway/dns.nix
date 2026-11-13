@@ -25,8 +25,6 @@
 
       services.adguardhome = {
         enable = true;
-
-        # nix own the adguardhome.yaml; no changes allowed through the webui
         mutableSettings = false;
 
         settings = {

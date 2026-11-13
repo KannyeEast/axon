@@ -38,9 +38,7 @@
       }
     ]
   ],
-  "colorLevel": 2,
   "defaultSeparator": "·",
-  "defaultPaddingSide": "both",
   "numberFormat": {
     "percent": {
       "decimals": 0

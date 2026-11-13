@@ -23,6 +23,7 @@ To change one, change it here in the same commit, with the new reason.
 |---|---|
 | Dotfiles are linked by our own `dotfiles-sync` (core/home.nix), not home-manager's file management | Nix never reads `home/`; files are live links into the checkout, edited in place, no rebuild |
 | `dev` is pushed to Forgejo without review | daily work; the review sits at the merge into `stable` |
+| core reads other hosts' `[forge] cache` key (core/nix.nix) | every host trusts the cluster's binary cache from its first build; the key is per host data, so it can't come from the feature lists alone |
 | Only `stable` (merged, reviewed pull requests from `dev`) and `main` (its framework part, built by CI after every merge) reach the mirrors | the mirrors are the fallback when node1 is down, so they hold only reviewed code; Forgejo's push mirrors (filter `stable,main`) are set in its UI, not here |
 
 ## Secrets
@@ -35,14 +36,16 @@ To change one, change it here in the same commit, with the new reason.
 
 | Decision | Why |
 |---|---|
-| Jellyfin, Seerr, Immich and Nextcloud are public through the Cloudflare tunnel | family devices have no Tailscale; the risk under Cloudflare's terms (video streaming) is accepted |
-| DNS records are made by hand at Cloudflare | not managed from this repo; a new route needs its record added there |
+| Jellyfin, Seerr, Immich, Nextcloud and Vaultwarden are public through the Cloudflare tunnel | family devices have no Tailscale; the risk under Cloudflare's terms (video streaming) is accepted |
+| DNS records for public routes are made by hand at Cloudflare | not managed from this repo; a new public route needs its tunnel record (`cloudflared tunnel route dns`), a tailnet-only one none |
+| Vaultwarden's admin page exists only while `secrets.json` holds `vaultwarden/admin-token` (passwords/vault.nix) | it is needed only to invite the family; off otherwise, so the public route has no admin login to attack |
 | Radarr, Sonarr and Prowlarr settings (quality profiles, indexers) live in their UIs, not in Nix | they are per-host choices |
 | qBittorrent's hardlinks into the library fail (it writes 0644) | btrfs shares the data anyway, so no space is lost |
 | Nextcloud is file storage only | no calendar, contacts or other apps |
 | Space usage is not on the start page | quotas are set per user in the apps; apps show the whole volume's size, as btrfs limits don't change what statfs reports |
 | Avahi only comes with printing | nothing else needs it since the `.local` names went |
 | `onShutdown = "shutdown"` for libvirt | a saved state with virtiofs attached can't be restored |
+| Trailarr runs as a rootful podman container (downloads/trailers.nix), unlike the rootless podman of `dev` | its entrypoint needs root to switch to the PUID/PGID it is given; rootless, its files would belong to a mapped uid outside the media group |
 
 ## Backups and monitoring
 
@@ -60,3 +63,4 @@ To change one, change it here in the same commit, with the new reason.
 | waybar, fuzzel and mako only get colours, nothing more | a shell of its own (separate repo) will replace them |
 | tower has no swap (`swap = 0`), so it can't hibernate, though the desktop class would resume from swap | chosen; it stays on or shuts down |
 | Plain numbered niri workspaces, none bound to a purpose | the owner finds fixed workspaces restrictive |
+| `kanshi` is installed on every desktop, though tower doesn't use it | for laptops and other hosts whose displays change; tower's fixed layout is in niri's own output config |

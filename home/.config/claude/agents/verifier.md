@@ -1,6 +1,6 @@
 ---
 name: verifier
-description: Runs a project's checks after a change - the commands its AGENTS.md, CLAUDE.md or README names (evaluation, tests, builds, linters) - and reports what passes and what fails. Use after edits, before saying something works.
+description: Runs a project's checks after a change - the commands its AGENTS.md, CLAUDE.md or README names (evaluation, tests, builds, linters) - and reports what passes and what fails. Use after edits, before saying something works, when the checks aren't run otherwise.
 disallowedTools: Edit, Write, NotebookEdit
 model: sonnet
 color: green

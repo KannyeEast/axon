@@ -3,7 +3,12 @@
 # dotfile (.zshrc, .config/tmux/tmux.conf, .config/starship.toml, .config/nvim/init.lua).
 {
   flake.modules.nixos.terminal =
-    { config, pkgs, ... }:
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
     let
       omz = "${pkgs.oh-my-zsh}/share/oh-my-zsh";
     in
@@ -28,7 +33,14 @@
           source ${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh
           source ${pkgs.zsh-history-substring-search}/share/zsh-history-substring-search/zsh-history-substring-search.zsh
           source ${pkgs.zsh-you-should-use}/share/zsh/plugins/you-should-use/you-should-use.plugin.zsh
+          ${lib.optionalString (config.axon.host.class == "desktop") ''
 
+            # clipboard widgets for vi yank/put, bound in ~/.zshrc; its own maps would take deletes too.
+            # Without USE_WL_CLIPBOARD it skips wl-copy whenever $DISPLAY is set (XWayland)
+            ZSH_SYSTEM_CLIPBOARD_DISABLE_DEFAULT_MAPS=1
+            ZSH_SYSTEM_CLIPBOARD_USE_WL_CLIPBOARD=1
+            source ${pkgs.zsh-system-clipboard}/share/zsh/zsh-system-clipboard/zsh-system-clipboard.zsh
+          ''}
           eval "$(fzf --zsh)"
         '';
       };
@@ -58,11 +70,17 @@
         configure = {
           packages.axon.start = [
             pkgs.vimPlugins.nvim-treesitter.withAllGrammars
-            pkgs.vimPlugins.telescope-nvim
-            pkgs.vimPlugins.telescope-fzf-native-nvim
+            pkgs.vimPlugins.blink-cmp
+            pkgs.vimPlugins.conform-nvim
+            pkgs.vimPlugins.friendly-snippets
             pkgs.vimPlugins.gitsigns-nvim
+            pkgs.vimPlugins.lazydev-nvim
+            pkgs.vimPlugins.mini-nvim
             pkgs.vimPlugins.nvim-lspconfig
+            pkgs.vimPlugins.snacks-nvim
+            pkgs.vimPlugins.trouble-nvim
             pkgs.vimPlugins.vimtex
+            pkgs.vimPlugins.which-key-nvim
           ];
           customLuaRC = ''
             local init = vim.fn.stdpath("config") .. "/init.lua"
@@ -80,7 +98,6 @@
         pkgs.fzf
         pkgs.jq
         pkgs.lazygit
-        pkgs.nil
         pkgs.ripgrep
         pkgs.starship
         pkgs.zsh-completions

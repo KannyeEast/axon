@@ -1,11 +1,11 @@
-# KeePassXC is the password manager and the system secret store (Secret Service), so apps
-# that save passwords put them in the vault. Its settings, including [FdoSecrets], are
+# On desktops, KeePassXC is the password manager and the system secret store (Secret Service),
+# so apps that save passwords put them in the vault. Its settings, including [FdoSecrets], are
 # dotfiles; this only installs it and starts it with the session.
 { lib, ... }:
 {
   flake.modules.nixos.passwords =
-    { pkgs, ... }:
-    {
+    { config, pkgs, ... }:
+    lib.mkIf (config.axon.host.class == "desktop") {
       environment.systemPackages = [ pkgs.keepassxc ];
 
       # the browser extension, the link that lets it talk to the app, and the browser's own password

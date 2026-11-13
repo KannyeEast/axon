@@ -1,10 +1,9 @@
 """Turns a Stream Deck into a control surface.
 
-~/.config/control-surface/layout.toml says what each dial and key runs. The strip
-shows each dial's state and a key can show live state of its own, both polled so
-changes made elsewhere appear too. Two groups of keys fill themselves from the files
-Claude Code's hooks write: one key per running session, one per running subagent.
-The layout reloads when saved, and the deck can come and go while this runs.
+~/.config/control-surface/layout.toml says what each dial and key runs. Dial and key
+states are polled, so changes made elsewhere show too. Two key groups fill from the
+files Claude Code's hooks write: one key per running session, one per subagent. The
+layout reloads when saved, and the deck can come and go while this runs.
 """
 import json
 import os
@@ -227,11 +226,11 @@ def press_key(key, slot, poller):
 
 
 class Poller(threading.Thread):
-    """Runs the read commands of keys and dials away from the main loop, which a slow one would stall.
+    """Runs the read commands of keys and dials, each in a thread of its own, so a slow one
+    (an ssh, a CLI) holds up neither the main loop nor the other reads.
 
-    Each read runs in a thread of its own, so a slow one (an ssh, a CLI) doesn't hold up the
-    rest. What it reads carries the layout generation it was started for; the main loop drops
-    readings from a layout that has since been replaced.
+    A reading carries the layout generation it was started for; the main loop drops readings
+    from a layout that has since been replaced.
     """
 
     def __init__(self, keys, dials, events, generation=0):

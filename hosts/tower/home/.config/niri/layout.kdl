@@ -1,18 +1,6 @@
 layout {
     gaps 4
-    center-focused-column "never"
-    // Wait for https://github.com/niri-wm/niri/pull/2240 to merge
-    // always-center-single-column
-
     default-column-display "tabbed"
-
-    preset-column-widths {
-        proportion 0.33333
-        proportion 0.5
-        proportion 0.66667
-    }
-
-    default-column-width { proportion 0.5; }
 
     border {
         on
@@ -23,8 +11,8 @@ layout {
         width 1
     }
 
-    // a bar along the top of the column, one segment per tab; outside the column it fell into
-    // the 4px gap between columns and couldn't be seen
+    // a bar along the top of the column, one segment per tab; outside the column it would sit in
+    // the 4px gap between columns, where it can't be seen
     tab-indicator {
         hide-when-single-tab
         place-within-column
