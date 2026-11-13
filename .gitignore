@@ -2,6 +2,7 @@ result
 result-*
 .direnv
 .idea
+*.DotSettings.user
 _inputs/
 *.bak
 .claude/*

@@ -71,7 +71,11 @@
                   copy_headers Remote-User
                 }
               ''}
-              reverse_proxy ${service.route.endpoint}
+              # services that trust Cloudflare's client-address header must not take it from a
+              # tailnet client; the tunnel bypasses Caddy, so here it is always the real peer
+              reverse_proxy ${service.route.endpoint} {
+                header_up Cf-Connecting-IP {remote_host}
+              }
             '';
           }
         ) routes;
