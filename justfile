@@ -32,10 +32,19 @@ boot *ARGS: pull _stage
 build *ARGS: _stage
   nh os build {{flake}} -H {{host}} {{ARGS}}
 
-# Push, then switch another host to it
+# Push, update HOST's checkout, deploy to it; rolls back if HOST stops answering
 [group("system")]
-deploy HOST MESSAGE="": (push MESSAGE)
-  ssh -t {{HOST}} just -f axon/justfile switch
+deploy HOST:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  cd {{flake}}
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "just deploy: commit first, so {{HOST}}'s checkout matches what it runs" >&2
+    exit 1
+  fi
+  git push
+  ssh {{HOST}} git -C axon pull --ff-only
+  nix run --inputs-from . nixpkgs#deploy-rs -- .#{{HOST}}
 
 # Regenerate this machine's hardware report after a hardware change
 [group("system")]
@@ -81,7 +90,17 @@ docs:
 # Edit a host's secrets (this one by default)
 [group("secrets")]
 secrets HOST=host:
-  sops {{flake}}/hosts/{{HOST}}/secrets.json
+  #!/usr/bin/env bash
+  set -euo pipefail
+  file=hosts/{{HOST}}/secrets.json
+  cd {{flake}}
+  if [ "{{HOST}}" = "{{host}}" ]; then exec sops "$file"; fi
+  # only HOST can decrypt its secrets: sops runs there on this file, the encrypted result comes back
+  ssh {{HOST}} "cat > axon/$file" <"$file"
+  ssh -t {{HOST}} "cd axon && sops $file"
+  ssh {{HOST}} "cat axon/$file" >"$file.new"
+  mv "$file.new" "$file"
+  ssh {{HOST}} "git -C axon checkout -- $file"
 
 # ── git ────────
 # Stage everything
@@ -152,7 +171,7 @@ pr:
     *) echo "just pr: scheduling the merge of $web/pulls/$number failed (HTTP $status)" >&2; exit 1 ;;
   esac
 
-# The open findings of the latest review on the pull request into stable: summary, file:line, text
+# The open findings of the latest review on the pull request into stable: summary, file:line, text, testtestsetesthkisujhdjsjfdjsgfjhsjhfsgfsghjfdsgfgshjfghjsdgfjhsghfdsgjfsgfjs
 [group("git")]
 findings:
   cd {{flake}} && FORGE="{{forge}}" API="{{api}}" bash .forgejo/findings.sh
