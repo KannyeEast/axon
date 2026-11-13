@@ -104,7 +104,8 @@ pr:
   fi
   # a branch of its own, so pushing dev doesn't start a review; only this does
   git push origin +dev:review
-  forge=$(git remote get-url origin | sed -E 's#^(ssh://)?[^@/]+@([^:/]+)[:/]#https://\2/#; s#\.git$##')
+  # git config, not git remote get-url: that one ignores remotes from the system config
+  forge=$(git config --get remote.origin.url | sed -E 's#^(ssh://)?[^@/]+@([^:/]+)[:/]#https://\2/#; s#\.git$##')
   api=$(sed -E 's#^(https?://[^/]+)/(.*)$#\1/api/v1/repos/\2#' <<<"$forge")
   token=$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/forgejo/token")
   call() { curl --silent --show-error --fail-with-body -H "Authorization: token $token" -H "Content-Type: application/json" "$@"; }

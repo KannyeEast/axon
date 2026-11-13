@@ -4,7 +4,8 @@
 # from origin unless set.
 set -euo pipefail
 
-: "${FORGE:=$(git remote get-url origin | sed -E "s#^(ssh://)?[^@/]+@([^:/]+)[:/]#https://\2/#; s#\.git\$##")}"
+# git config, not git remote get-url: that one ignores remotes from the system config
+: "${FORGE:=$(git config --get remote.origin.url | sed -E "s#^(ssh://)?[^@/]+@([^:/]+)[:/]#https://\2/#; s#\.git\$##")}"
 : "${FORGE:?findings.sh: no origin remote; set FORGE to https://host/owner/repo}"
 : "${API:=$(sed -E 's#^(https?://[^/]+)/(.*)$#\1/api/v1/repos/\2#' <<<"$FORGE")}"
 
