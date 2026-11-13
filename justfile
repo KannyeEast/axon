@@ -96,11 +96,12 @@ secrets HOST=host:
   cd {{flake}}
   if [ "{{HOST}}" = "{{host}}" ]; then exec sops "$file"; fi
   # only HOST can decrypt its secrets: sops runs there on this file, the encrypted result comes back
+  trap 'rm -f "$file.new"; ssh {{HOST}} "git -C axon checkout -- $file"' EXIT
   ssh {{HOST}} "cat > axon/$file" <"$file"
-  ssh -t {{HOST}} "cd axon && sops $file"
+  # 200: closed without a change
+  ssh -t {{HOST}} "cd axon && sops $file" || [ $? -eq 200 ]
   ssh {{HOST}} "cat axon/$file" >"$file.new"
-  mv "$file.new" "$file"
-  ssh {{HOST}} "git -C axon checkout -- $file"
+  [ -s "$file.new" ] && mv "$file.new" "$file"
 
 # ── git ────────
 # Stage everything
@@ -171,7 +172,7 @@ pr:
     *) echo "just pr: scheduling the merge of $web/pulls/$number failed (HTTP $status)" >&2; exit 1 ;;
   esac
 
-# The open findings of the latest review on the pull request into stable: summary, file:line, text, testtestsetesthkisujhdjsjfdjsgfjhsjhfsgfsghjfdsgfgshjfghjsdgfjhsghfdsgjfsgfjs
+# The open findings of the latest review on the pull request into stable: summary, file:line, text
 [group("git")]
 findings:
   cd {{flake}} && FORGE="{{forge}}" API="{{api}}" bash .forgejo/findings.sh
