@@ -44,6 +44,7 @@ To change one, change it here in the same commit, with the new reason.
 | Space usage is not on the start page | quotas are set per user in the apps; apps show the whole volume's size, as btrfs limits don't change what statfs reports |
 | Avahi only comes with printing | nothing else needs it since the `.local` names went |
 | `onShutdown = "shutdown"` for libvirt | a saved state with virtiofs attached can't be restored |
+| Trailarr runs as a rootful podman container (downloads/trailers.nix), unlike the rootless podman of `dev` | its entrypoint needs root to switch to the PUID/PGID it is given; rootless, its files would belong to a mapped uid outside the media group |
 
 ## Backups and monitoring
 
