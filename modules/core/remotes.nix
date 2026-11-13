@@ -1,6 +1,5 @@
-# The repository's remotes, from cluster.toml [repo]: checked (origin must be one of them) and
-# given the forge's host and the repository's web address on it. Every mirror on another forge
-# than the cluster's own domain is a link on the gateway's start page.
+# The repository's remotes from cluster.toml [repo], with each forge's host and web address.
+# A mirror outside the cluster's own domain is a link on the gateway's start page.
 { lib, ... }:
 let
   inherit (lib) mkOption types;

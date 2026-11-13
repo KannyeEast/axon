@@ -74,13 +74,11 @@ zstyle ':completion:*' menu no
 zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompcache"
 
-# fzf-tab: directories list, everything else previews through bat
 zstyle ':fzf-tab:complete:*:*' fzf-preview \
     '[ -d $realpath ] && eza -1 --icons --color=always $realpath || bat -n --color=always $realpath 2>/dev/null'
 zstyle ':fzf-tab:*' switch-group ',' '.'
 
 # ── fzf ────────
-# files come from fd: hidden ones included, .git left out
 export FZF_DEFAULT_COMMAND="fd --type f --hidden --exclude .git"
 export FZF_CTRL_T_COMMAND="fd --hidden --exclude .git"
 export FZF_ALT_C_COMMAND="fd --type d --hidden --exclude .git"
@@ -114,7 +112,7 @@ alias debug_zsh='time ZSH_DEBUGRC=1 zsh -i -c exit'
 
 # ── functions ────────
 # `work` in a project folder: one tmux session named after it, Claude on the left and a shell on
-# the right (lazygit is prefix g). Run again, from anywhere in tmux, it switches back to it.
+# the right. Run again, from anywhere in tmux, it switches back to it.
 work() {
     local name=${${PWD:t}//[.:]/_}
     if ! tmux has-session -t "=$name" 2>/dev/null; then

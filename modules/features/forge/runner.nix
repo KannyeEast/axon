@@ -1,8 +1,7 @@
-# CI on this host: a Forgejo runner that runs jobs right here (runs-on: native), with Nix, git and
-# Node at hand, so a repository's workflow can check and build its flake. Only this forge's own
-# repositories send it jobs. It registers with the UUID in host.toml [forge] runner and the token
-# in secrets.json at forge/runner, both shown when the runner is created in Forgejo (Site
-# Administration → Actions → Runners → Create new runner). Without a UUID there is no runner.
+# CI: a Forgejo runner that runs jobs on this host (runs-on: native) with Nix, git and Node at
+# hand; only this forge's repositories send it jobs. It registers with the UUID in host.toml
+# [forge] runner and the token in secrets.json at forge/runner, both shown when the runner is
+# created (Site Administration → Actions → Runners → Create new runner). No UUID, no runner.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -54,9 +53,9 @@ in
         ];
       };
 
-      # it registers with Forgejo on start, so Forgejo has to be up first. A deploy runs right after
-      # its push started a job here, so a switch leaves the runner alone instead of cancelling that
-      # job; a changed runner takes effect on the next reboot or `systemctl restart`
+      # it registers with Forgejo on start, so Forgejo comes first. A deploy's switch lands while
+      # the job its push started still runs, so it leaves the runner alone; a changed runner takes
+      # effect on the next reboot or `systemctl restart`
       systemd.services.forgejo-runner-native = {
         after = [ "forgejo.service" ];
         wants = [ "forgejo.service" ];

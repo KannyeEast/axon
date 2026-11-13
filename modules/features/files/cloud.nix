@@ -1,10 +1,8 @@
-# Nextcloud at cloud.<domain> on servers. Files on the data volume, or in the state folder on a
-# host without one; app state on the system SSD, database in the shared Postgres.
-# It's public (through the gateway's tunnel) so share links work for people without Tailscale;
-# its own login guards it. Without a gateway on this host it stays on localhost.
-# The first account is created by hand after install:
+# Nextcloud at cloud.<domain> on servers. Files on the data volume (or in the state folder without
+# one), app state on the system SSD, database in the shared Postgres. Public through the tunnel so
+# share links work without Tailscale; its own login guards it. Without a gateway on this host it
+# stays on localhost. First account by hand after install, then two-factor in the web UI:
 #   nextcloud-occ user:add <you> && nextcloud-occ group:adduser admin <you>
-# then turn on two-factor in the web UI.
 # Major versions upgrade one at a time: bump the package by one, switch, repeat.
 { lib, ... }:
 {

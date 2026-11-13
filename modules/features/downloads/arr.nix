@@ -69,9 +69,8 @@
       systemd.services = lib.mkMerge [
         (lib.genAttrs [ "radarr" "sonarr" "bazarr" ] (_: {
           unitConfig.RequiresMountsFor = [ media ];
-          # what one app creates in the library, the others in the media group must be able to
-          # write to: Bazarr puts subtitles into the folders Radarr and Sonarr make. Forced, as
-          # their modules set 0022
+          # Bazarr writes subtitles into the folders Radarr and Sonarr make, so what one creates
+          # stays group-writable; forced over their modules' 0022
           serviceConfig.UMask = lib.mkForce "0002";
         }))
         # the library folders, made once the disk is mounted (tmpfiles may run before that)

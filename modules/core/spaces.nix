@@ -1,10 +1,8 @@
-# Contract: axon.spaces. A service's own space on the data volume: on a host with one it is the
-# btrfs subvolume <data>/<name>, which host.toml [limits] can cap; without it, /var/lib/<name>.
-# One unit per space creates it before the service's units start (they also wait for its disk);
-# storage-limits applies [limits] to spaces and whole volumes, so a changed limit takes effect on
-# the next switch, without moving data.
-# A space that is still a plain folder holding files is left alone, with a warning in its unit's
-# log; an empty one (made by a service's own tmpfiles rules) becomes a subvolume.
+# Contract: axon.spaces. A service's own space: the btrfs subvolume <data>/<name> on a host with
+# a data volume, which host.toml [limits] can cap; /var/lib/<name> without one. A unit per space
+# creates it before the service starts; storage-limits applies [limits], so a changed limit takes
+# effect on the next switch without moving data. A plain folder holding files is left alone with
+# a warning in its unit's log; an empty one (from the service's tmpfiles) becomes a subvolume.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -163,7 +161,6 @@ in
               };
             })
           ]
-          # every unit that uses a space starts after it exists and waits for its disk
           ++ lib.concatMap (
             name:
             map (unit: {

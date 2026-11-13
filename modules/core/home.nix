@@ -1,9 +1,6 @@
-# Nix owns the system; dotfiles own taste.
-# home/ holds the dotfiles every host shares, hosts/<name>/home the exceptions; both mirror
-# $HOME and the host's file wins. Every file is a symlink into the live checkout, so editing
-# either side edits the same file. A watcher handles what a link can't: files added, removed
-# or renamed show up within a moment, and a 15 minute resync restores links deleted from ~.
-# Nix never reads these files.
+# Dotfiles: home/ is shared, hosts/<name>/home wins per file; both mirror $HOME as symlinks into
+# the live checkout; Nix never reads them. A watcher links added, removed or renamed files within
+# a moment, and a 15 minute resync restores links deleted from ~.
 { inputs, ... }:
 {
   flake.modules.nixos.core =

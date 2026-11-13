@@ -1,7 +1,6 @@
-# Hardware is a generated report, not configuration. nixpkgs' facter module turns
-# hosts/<name>/facter.json into platform, firmware, microcode, initrd and driver settings.
-# This file only adds the opinions the report leaves open on purpose, and derives
-# axon.laptop and axon.nvidia from it for other modules.
+# nixpkgs' facter module turns hosts/<name>/facter.json into platform, firmware, microcode,
+# initrd and driver settings. This file adds what the report leaves open and derives axon.laptop
+# and axon.nvidia from it.
 { lib, ... }:
 let
   vendors = {

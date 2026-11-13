@@ -1,10 +1,8 @@
-# Forgejo at git.<domain>: git repositories on the tailnet, with its own login and sign-up off.
-# Without a gateway on this host it stays on localhost. Everything (repositories, SQLite
-# database, dumps) lives on the data volume, or in /var/lib on a host without one. Git over SSH
-# goes through the host's own sshd as forgejo@git.<domain>.
-# The first account is created by hand after install:
+# Forgejo at git.<domain>: git repositories on the tailnet, its own login, sign-up off. Without a
+# gateway on this host it stays on localhost. Repositories, SQLite database and dumps live on the
+# data volume (or in /var/lib without one); the nightly dump is what gets backed up. Git over SSH
+# goes through the host's own sshd as forgejo@git.<domain>. First account by hand after install:
 #   sudo -u forgejo forgejo --work-path <state dir> admin user create --admin --username <name> --email <address> --random-password
-# A nightly dump is what gets backed up.
 { lib, ... }:
 {
   flake.modules.nixos.forge =
@@ -44,9 +42,8 @@
       # the admin command line
       environment.systemPackages = [ cfg.package ];
 
-      # push mirrors connect over SSH as forgejo unless their address names a user, and forges
-      # only take git; this way a mirror works however its address was entered. It holds for every
-      # user on this host; git is the SSH login on every forge
+      # push mirrors log in over SSH as forgejo unless their address names a user, and forges only
+      # take git. It applies to every user on this host; git is the SSH login on every forge
       programs.ssh.extraConfig = lib.concatMapStrings (host: ''
         Host ${host}
           User git

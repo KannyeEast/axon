@@ -1,7 +1,5 @@
-# Apps that open files from the file manager or a link: images in Loupe, text and logs in
-# GNOME Text Editor, local videos in mpv, archives in File Roller. Which app opens which type
-# is the dotfile ~/.config/mimeapps.list. mpv gets a modern interface with thumbnails, and shows
-# up for media keys through MPRIS.
+# Viewers: images in Loupe, text in GNOME Text Editor, videos in mpv (uosc interface, thumbnails,
+# media keys through MPRIS), archives in File Roller. ~/.config/mimeapps.list maps the types.
 {
   flake.modules.nixos.desktop =
     { pkgs, ... }:

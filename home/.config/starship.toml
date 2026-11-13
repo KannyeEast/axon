@@ -1,8 +1,6 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
-# Colours are named so they resolve against the terminal palette. Set the
-# palette once in the terminal and prompt, fzf, eza and bat all follow.
-# Nothing here needs touching for a theme change.
+# Colours are named, so they follow the terminal's palette.
 
 command_timeout = 1000
 
@@ -63,7 +61,6 @@ ahead = "[⇡${count}](bold blue) "
 behind = "[⇣${count}](bold blue) "
 diverged = "[⇡${ahead_count}⇣${behind_count}](bold blue) "
 
-# rebase / merge / bisect state
 [git_state]
 format = '[$state( $progress_current/$progress_total)]($style) '
 style = "bold red"

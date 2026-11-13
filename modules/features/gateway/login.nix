@@ -1,11 +1,9 @@
-# The gateway login (Authelia), for routed services that don't have their own.
-# The user database is seeded once from the admin hash in secrets.json; after that
-# Authelia owns it, so a changed hash in secrets.json doesn't apply any more.
-# Its three keys (session cookies, database encryption, reset links) are random values
-# nobody types, so the host makes them on first start and keeps them in the state folder,
-# which is persisted and backed up: the database is unreadable without its key.
-# Password resets and the like go through axon.mail to srv-info@, as that is the address its user
-# is seeded with. Without an account they land in notifications.txt in the state folder.
+# The gateway login (Authelia), for routed services without their own. The user database is
+# seeded once from the admin hash in secrets.json; Authelia owns it after that, so a changed hash
+# doesn't apply. Its three keys (session cookies, database encryption, reset links) are random,
+# so the host makes them on first start in the persisted, backed-up state folder: the database is
+# unreadable without its key. Password resets and the like go through axon.mail to srv-info@, the
+# address its user is seeded with; without an account they land in notifications.txt there.
 { lib, ... }:
 {
   flake.modules.nixos.gateway =

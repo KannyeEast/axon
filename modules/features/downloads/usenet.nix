@@ -1,8 +1,7 @@
-# SABnzbd: downloads from Usenet, outside the VPN (the provider connection is SSL, and nobody
-# else sees it). Unfinished downloads on the scratch volume, finished ones next to the torrents
-# on the media volume, by category (movies, tv) so Radarr and Sonarr import them; on a host
-# without those volumes, in its state folder. Provider, connections and the API key are set in its
-# UI and kept; what is declared here wins on every start.
+# SABnzbd: downloads from Usenet, outside the VPN (the provider connection is SSL; nobody else
+# sees it). Unfinished downloads on the scratch volume, finished ones next to the torrents on the
+# media volume by category (movies, tv) for Radarr and Sonarr; in its state folder without those
+# volumes. UI settings (provider, connections, API key) are kept; declared ones win on every start.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
@@ -26,9 +25,8 @@
         settings = {
           misc = {
             inherit port;
-            # the gateway login guards the UI; SABnzbd itself only checks the name it's reached by.
-            # It listens on loopback only, so the forwarded address (a tailnet one, which it
-            # doesn't count as local) has nothing to add
+            # the gateway login guards the UI; SABnzbd only checks the name it's reached by. It
+            # listens on loopback, so the forwarded address (tailnet, not local to it) adds nothing
             host_whitelist = lib.optionalString routed services.usenet.route.host;
             verify_xff_header = false;
             download_dir = incomplete;

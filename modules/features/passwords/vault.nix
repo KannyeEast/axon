@@ -1,8 +1,8 @@
 # Vaultwarden at vault.<domain> on servers: the family's password manager for the Bitwarden apps.
-# It's public (through the gateway's tunnel), guarded by its own login. Nobody signs up; accounts
-# are invited from the admin page, which is on only while secrets.json holds vaultwarden/admin-token
-# (an argon2 hash). With axon.mail it sends invitations and account mail.
-# A copy made at 23:00 is what gets backed up, on the data volume where a host has one.
+# Public through the tunnel, guarded by its own login. Nobody signs up; accounts are invited from
+# the admin page, on only while secrets.json holds vaultwarden/admin-token (an argon2 hash). With
+# axon.mail it sends invitations and account mail. Its 23:00 copy is what gets backed up, on the
+# data volume where a host has one.
 { lib, ... }:
 {
   flake.modules.nixos.passwords =

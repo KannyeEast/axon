@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Publishes main: the framework part of stable (what a build needs, nothing of the owner's), as
-# one commit on top of origin/main listing the commits it brings. Built in a temporary index, so
-# no branch is switched and the working tree stays as it is. Run by workflows/sync.yml after every
-# merge into stable, or by hand through `just sync`.
+# Publishes main: the framework part of stable as one commit on top of origin/main, listing the
+# commits it brings. Built in a temporary index, so no branch is switched and the working tree
+# stays as it is. Run by workflows/sync.yml after every merge into stable, or by `just sync`.
 set -euo pipefail
 
 # what main carries; everything else in stable stays private

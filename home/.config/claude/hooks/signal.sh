@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# Writes what this Claude session is doing to ~/.claude/signal/, for things outside the sandbox
-# (the Stream Deck daemon) to show. Called by the hooks in settings.json with the hook's JSON on
-# stdin and one argument: the session's new state (working, needs, waiting, error), `end`, or
-# `agent-start`/`agent-stop` for a subagent. One file per session and per running subagent,
-# replaced atomically, so a reader never sees half a file.
+# Writes this Claude session's state to ~/.claude/signal/ for the Stream Deck daemon outside the
+# sandbox. Called by settings.json's hooks with the hook's JSON on stdin and one argument: the new
+# state (working, needs, waiting, error), `end`, or `agent-start`/`agent-stop` for a subagent.
+# One file per session and per running subagent, replaced atomically.
 set -euo pipefail
 
 dir="$HOME/.claude/signal"

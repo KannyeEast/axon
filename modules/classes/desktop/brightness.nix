@@ -1,7 +1,6 @@
-# On laptops, as facter reports them; a desktop's monitor has no backlight to control here.
-# Bind the brightness keys to `brightnessctl -c backlight -e -n 1 set 5%+` (and 5%-): -e steps
-# along an exponential curve, as brightness is perceived roughly logarithmically, and -n 1 keeps
-# the screen from going fully dark.
+# Backlight control on laptops (facter); a desktop's monitor has none. Bind the keys to
+# `brightnessctl -c backlight -e -n 1 set 5%+` (and 5%-): -e steps exponentially, as brightness is
+# perceived roughly logarithmically, and -n 1 keeps the screen from going fully dark.
 { lib, ... }:
 {
   flake.modules.nixos.desktop =

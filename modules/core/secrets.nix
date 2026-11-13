@@ -1,6 +1,6 @@
 # One encrypted file per host. The SSH host key is the age identity (sops-nix finds it through
-# services.openssh.hostKeys), so there is no key file to lose. The user's private key is itself a secret, which lets the user
-# edit secrets.json without any extra key material.
+# services.openssh.hostKeys), so there is no key file to lose. The user's private key is itself a
+# secret, so the user edits secrets.json with no extra key material.
 { inputs, lib, ... }:
 {
   flake.modules.nixos.core =
@@ -25,9 +25,8 @@
       };
 
       config = {
-        # sops-nix finds a missing key only at boot, and then installs none of the host's
-        # secrets (the Tailscale key among them). Every secret a module declares from this
-        # file must exist here, so the evaluation, and install.sh before it wipes, fails first.
+        # sops-nix finds a missing key only at boot and then installs none of the host's secrets
+        # (Tailscale's among them), so evaluation, and install.sh before it wipes, fails first
         assertions =
           let
             ours = lib.filter (secret: secret.sopsFile == file && secret.key != "") (

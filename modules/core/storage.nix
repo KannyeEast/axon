@@ -1,6 +1,6 @@
-# Every [disk.<label>] table in host.toml except disk.boot: one btrfs filesystem each, on one disk or as an array.
-# disko has no multi-device type, so an array is written the way mkfs.btrfs takes it:
-# the first device carries the filesystem and names the others; the others get an empty table.
+# Every [disk.<label>] in host.toml but disk.boot: one btrfs filesystem each, on one disk or an
+# array. disko has no multi-device type, so the first device carries the filesystem and names the
+# others for mkfs.btrfs; the others get an empty table.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -29,8 +29,7 @@ let
       profile;
 
   mountOptions = [
-    # light compression: bulk data (media) barely shrinks, and level 1 keeps writes fast; the
-    # boot disk uses zstd's default level
+    # bulk data (media) barely shrinks, so level 1 keeps writes fast; the boot disk uses the default
     "compress=zstd:1"
     "noatime"
     "nofail" # a missing data disk must not stop the boot

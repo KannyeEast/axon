@@ -1,6 +1,5 @@
-# The boot disk layout belongs to the framework, because persist.nix depends on it:
-# a root subvolume that is replaced every boot, next to nix, persist and home.
-# host.toml only chooses the device, the swap size and the space left for another OS.
+# The boot disk layout, fixed because persist.nix depends on it: a root subvolume replaced every
+# boot, next to nix, persist and home. host.toml picks the device, swap and space for another OS.
 { inputs, lib, ... }:
 let
   subvolume = mountpoint: {

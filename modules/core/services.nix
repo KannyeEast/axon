@@ -1,7 +1,6 @@
-# Contract: axon.services. What a service offers the rest of the cluster.
-# Declared in core so every module can publish unconditionally; on a host without a
-# gateway or backup feature, nobody reads it. Only a server warns, as its routes then
-# reach no other machine.
+# Contract: axon.services. What a service offers the rest of the cluster. On a host without the
+# gateway or backup feature nobody reads it; a server warns (server/headless.nix), as its routes
+# then reach no other machine.
 { lib, ... }:
 let
   inherit (lib) mkOption types;

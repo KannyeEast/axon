@@ -1,6 +1,3 @@
--- Understanding and writing code: syntax trees, language servers, completion, formatting and the
--- problem list.
-
 local map = vim.keymap.set
 
 -- ── syntax ────────
@@ -55,7 +52,6 @@ end
 require("lazydev").setup({})
 
 vim.diagnostic.config({ virtual_text = true, severity_sort = true })
--- parameter names and types inline, where the server offers them
 vim.lsp.inlay_hint.enable()
 
 -- ── completion ────────
@@ -73,7 +69,6 @@ require("blink.cmp").setup({
 })
 
 -- ── formatting ────────
--- on save, with the language's usual formatter, else the language server's
 local conform = require("conform")
 conform.setup({
   formatters_by_ft = {

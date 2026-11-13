@@ -1,8 +1,7 @@
-# A Nix binary cache (harmonia) at cache.<domain>, tailnet only: it serves this host's store, which
-# holds every host's latest system once CI has built it, so the others download their updates
-# instead of building them. Without a login, since Nix can't do one; what it serves is signed with
-# the key in secrets.json at forge/cache, whose public half is host.toml [forge] cache, and every
-# other host trusts that. Without a public key there is no cache.
+# A Nix binary cache (harmonia) at cache.<domain>, tailnet only. It serves this host's store, which
+# holds every host's latest system once CI built it, so the others download their updates. It
+# signs with the key in secrets.json at forge/cache; every other host trusts its public half,
+# host.toml [forge] cache. Without a public key there is no cache.
 { lib, ... }:
 let
   inherit (lib) mkOption types;

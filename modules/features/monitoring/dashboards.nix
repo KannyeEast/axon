@@ -1,11 +1,10 @@
-# Grafana at grafana.<domain>: graphs over Prometheus, with its data source and dashboards
-# provisioned from here. Behind the gateway login, which Grafana trusts: the user the login names
-# is signed in, and the host.toml user is Grafana's admin, with monitoring/password for the API.
-# Without a gateway on this host it stays on localhost, with only its own login.
-# Its secret key is made on first start and kept in its persisted state folder.
-# The "Start page" dashboard is written here: two tables on top, each embedded on the gateway's
-# start page (every host's CPU, GPU, memory and temperature; every disk's use), graphs over the
-# last day below them.
+# Grafana at grafana.<domain>: graphs over Prometheus, data source and dashboards provisioned from
+# here. Behind the gateway login, which Grafana trusts: the user it names is signed in; the
+# host.toml user is the admin, with monitoring/password for the API. Without a gateway on this host
+# it stays on localhost, with only its own login. Its secret key is made on first start in its
+# persisted state folder. The "Start page" dashboard: two tables on top, each embedded on the
+# gateway's start page (every host's CPU, GPU, memory and temperature; every disk's use), graphs
+# of the last day below.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -161,7 +160,6 @@
           )
         })";
 
-      # the start page's tables, then the graphs
       overview = [
         (
           table "System"

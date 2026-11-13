@@ -1,8 +1,7 @@
 # `sandbox` opens a rootless podman container that sees the current folder, read-only copies of
 # its tools' dotfiles and the keys in ~/.config/sandbox/secrets.env; not ~, not the SSH keys.
-# `sandbox claude` runs Claude Code in it;
-# without arguments it's a shell for trying untrusted code.
-# The container's home (Claude's login, shell history) persists in ~/.local/share/sandbox.
+# `sandbox claude` runs Claude Code in it; bare `sandbox` is a shell for trying untrusted code.
+# Its home (Claude's login, shell history) persists in ~/.local/share/sandbox.
 { lib, ... }:
 {
   flake.modules.nixos.dev =
@@ -75,11 +74,10 @@
           state="''${XDG_DATA_HOME:-$HOME/.local/share}/sandbox"
           mkdir -p "$state"
 
-          # personal settings stay in the dotfiles, read-only in here: edit them there. Dotfiles
-          # are links into the checkout, so every file is mounted by its real path, never a folder.
-          # ~/.config/claude/<path> is ~/.claude/<path> in here (CLAUDE.md, agents/, …), except
-          # settings.json: claude gets that through --settings, so it wins over ~/.claude's own
-          # settings.json, which stays writable for what a session changes
+          # dotfiles are read-only in here, each file mounted by its real path (they're links
+          # into the checkout). ~/.config/claude/<path> is ~/.claude/<path>, except settings.json:
+          # it goes in through --settings, so it wins over ~/.claude/settings.json, which stays
+          # writable for what a session changes
           config="''${XDG_CONFIG_HOME:-$HOME/.config}"
           opts=()
           mirror() {
@@ -109,9 +107,8 @@
             args+=("''${@:2}")
           fi
 
-          # the host's store, read-only, and its daemon: evals and builds use the host's cache
-          # instead of a second store. The store is world-readable on the host anyway; secrets
-          # never enter it.
+          # the host's store, read-only, and its daemon: builds share the host's cache. The store
+          # is world-readable on the host anyway; secrets never enter it.
           exec podman run --rm -it \
             --userns=keep-id \
             --volume /nix/store:/nix/store:ro \

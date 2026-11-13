@@ -1,7 +1,6 @@
 # qBittorrent, locked into the VPN. Finished downloads go next to the library on the media volume
-# so imports are instant, or into its state folder on a host without one. In progress on the
-# scratch volume where the host has one. The module rewrites qBittorrent.conf on every start, so
-# what its UI changes is gone after a restart: settings that matter belong here.
+# so imports are instant (else into its state folder), unfinished ones on the scratch volume if
+# any. The module rewrites qBittorrent.conf on every start, so what the UI changes doesn't last.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =

@@ -1,6 +1,6 @@
 # restic, one repository per target. What gets backed up is whatever services declare in
-# axon.services.<name>.backup.paths; targets (repository, schedule, password, env) live in
-# secrets.json under backup.<name>. With no targets it does nothing.
+# axon.services.<name>.backup.paths; targets live in secrets.json under backup.<name> as
+# repository_unencrypted, schedule_unencrypted, password and env. With no targets it does nothing.
 { lib, ... }:
 {
   flake.modules.nixos.backup =
@@ -8,8 +8,6 @@
     let
       inherit (config.axon) host;
       ph = config.sops.placeholder;
-
-      # targets are data in secrets.json: backup.<name>.{password, repository_unencrypted, schedule_unencrypted, env}
       targets = config.axon.secrets.backup or { };
 
       # sops leaves values with this suffix unencrypted, so Nix can read them at eval

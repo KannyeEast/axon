@@ -1,9 +1,6 @@
-# Contract: axon.persist. Root is replaced on every boot; anything else that must
-# survive is declared here, by the module that creates it, in the same file.
-# /home is its own subvolume and is never rolled back.
-# Machine state (network, keys, logs) stays on the boot disk. Service state, what features
-# persist, goes to the host's state volume when it has one, so the boot disk holds only the
-# system; without one it stays with the machine state.
+# Contract: axon.persist. Root is replaced on every boot; what must survive is declared here by
+# the module that creates it. /home is its own subvolume, never rolled back. Machine state stays
+# on the boot disk; service state goes to the host's state volume when it has one.
 { inputs, lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -35,9 +32,8 @@ in
       cfg = config.axon.persist;
       device = config.fileSystems."/".device;
       state = config.axon.volumes.state or null;
-      # a space without its volume falls back to /var/lib/<name>, which its service may list as
-      # its own state too; impermanence refuses a path twice, so the first entry for a path wins
-      # (spaces add theirs last)
+      # a space without its volume is /var/lib/<name>, which its service may list too; impermanence
+      # refuses a path twice, so the first entry wins (spaces add theirs last)
       pathOf = entry: if lib.isString entry then entry else entry.directory;
       stateDirectories = lib.attrValues (
         lib.foldl' (
@@ -68,7 +64,7 @@ in
           "/var/log"
         ];
 
-        # the backend; swapping it for another one changes nothing else
+        # the backend; nothing outside this file depends on it
         environment.persistence = {
           "/persist" = {
             hideMounts = true;
@@ -83,8 +79,8 @@ in
           };
         };
 
-        # the backend wants its sources mounted early; a missing state disk (nofail) only leaves
-        # its services without their state until it is back
+        # impermanence needs its sources mounted early; a missing state disk (nofail) only leaves
+        # its services without their state
         fileSystems = {
           "/persist".neededForBoot = true;
         }
@@ -92,16 +88,15 @@ in
           ${state}.neededForBoot = true;
         };
 
-        # systemd starts DynamicUser services only under a 0700 /var/lib/private. Impermanence
-        # copies every parent's mode from where it persists on each activation, so the copy there sets it.
+        # systemd starts DynamicUser services only under a 0700 /var/lib/private; impermanence copies
+        # each parent's mode from the persisted copy on every activation, so that copy sets it
         systemd.tmpfiles.rules = [
           "d /persist/var/lib/private 0700 root root -"
           "d /var/lib/private 0700 root root -"
         ]
         ++ lib.optionals (state != null) [ "d ${state}/var/lib/private 0700 root root -" ];
 
-        # the rollback below runs in the initrd: btrfs, coreutils and mount are there already,
-        # find (to prune old roots) only when something else happens to need it
+        # find prunes old roots in the rollback; btrfs, coreutils and mount are in the initrd already
         boot.initrd.systemd.initrdBin = [ pkgs.findutils ];
 
         boot.initrd.systemd.services.rollback = {

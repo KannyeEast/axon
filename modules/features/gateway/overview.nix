@@ -1,8 +1,8 @@
 # The start page (Homepage) at home.<domain>: a tile for every service with a dashboard entry,
 # grouped, linked to its route and with a status dot; live numbers where it sets a widget, one
-# tile per instance where it lists several. Widget credentials come from this host's
-# secrets.json; a service only makes its key once it runs, so until the key is there its tile
-# shows no numbers. Below the tiles, axon.links and the [gateway] links of this host.
+# tile per instance where it lists several. Widget keys come from secrets.json, and a service
+# makes its key only once it runs, so its tile shows no numbers until then. Below the tiles,
+# axon.links and this host's [gateway] links.
 { lib, ... }:
 let
   inherit (lib) mkOption types;

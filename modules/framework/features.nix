@@ -43,8 +43,7 @@ in
       );
     };
 
-    # host.toml is checked against core's piece plus the pieces of the host's class and features,
-    # so a table belonging to a feature the host doesn't list is an error
+    # a host.toml table owned by a feature the host doesn't list is an error
     schema = mkOption {
       type = types.attrsOf types.deferredModule;
       default = { };
@@ -59,7 +58,7 @@ in
   };
 
   config = {
-    # the installer asks the flake what exists instead of keeping its own list
+    # for the installer's lists of classes and features
     flake.axon = {
       inherit (config.axon) classes features;
     };

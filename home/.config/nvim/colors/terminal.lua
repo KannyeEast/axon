@@ -1,7 +1,6 @@
--- The terminal's palette as a full colour scheme: mini.base16 turns 16 colours into every syntax,
--- language server and plugin group. The colours come from alacritty.toml;
--- base03, base04, base06, base09 and base0F aren't in the terminal and are mixed from its colours.
--- Change the terminal's palette, change this one with it.
+-- The terminal's palette (alacritty.toml) as a colour scheme: mini.base16 turns 16 colours into
+-- every syntax, language server and plugin group. base03, 04, 06, 09 and 0F aren't in the terminal
+-- and are mixed from its colours; a palette change goes into both files.
 local p = {
   base00 = "#0c0c12", -- background
   base01 = "#1c1e27", -- raised background: statusline, cursor line

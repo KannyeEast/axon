@@ -357,7 +357,6 @@ tomlList() { # bash array -> TOML array of strings
 }
 
 # ── filter lists ────────
-# == nixos-hardware modules ==
 listNixosHardwareModules() {
   local rev ref="github:NixOS/nixos-hardware"
   rev="$(jq -r '.nodes["nixos-hardware"].locked.rev // empty' "$FLAKE/flake.lock" 2>/dev/null || true)"
@@ -377,7 +376,6 @@ listNixosHardwareModules() {
   jq -r '.[]' <<< "$json" | sort
 }
 
-# == timezones ==
 listSupportedTimezones() {
   local zones=""
   zones=$(timedatectl list-timezones 2>/dev/null || true)
@@ -390,7 +388,6 @@ listSupportedTimezones() {
   printf '%s\n' "$zones"
 }
 
-# == locale ==
 listSupportedLocales() {
   command -v locale &>/dev/null || return 1
   locale -a 2>/dev/null \
@@ -399,7 +396,6 @@ listSupportedLocales() {
     | sort -u
 }
 
-# == keyboard layouts ==
 listKeyboardLayouts() {
   [[ -r ${XKB_RULES:-} ]] || return 1
   awk '/^! layout/{f=1;next} /^!/{f=0} f&&NF{print $1}' "$XKB_RULES"
@@ -412,7 +408,6 @@ listKeyboardVariants() {
   awk -v l="$1" '/^! variant/{f=1;next} /^!/{f=0} f&&$2==l":"{print $1}' "$XKB_RULES"
 }
 
-# == disks ==
 listDisks() {
   probe lsblk -dno NAME,SIZE,MODEL -e 7,11 | awk 'NF'
 }
@@ -427,7 +422,6 @@ diskId() {
   printf '%s' "${byid:-/dev/$name}"
 }
 
-# == list directories ==
 listDirs() {
   find / -xdev -maxdepth 6 -type d \
     \( -path /nix -o -path /proc -o -path /sys -o -path /dev -o -path /run \
@@ -436,7 +430,6 @@ listDirs() {
 }
 
 # ── information gathering ────────
-# == ssh target ==
 gatherTarget() {
   formHeader "Target"
   TARGET=""
@@ -476,7 +469,6 @@ gatherTarget() {
   fi
 }
 
-# == host ==
 gatherIdentity() {
   formHeader "Identity"
   HOSTNAME=""
@@ -654,7 +646,6 @@ preserveIdentity() {
   logInfo "Recovered the host key"
 }
 
-# == user ==
 gatherUser() {
   formHeader "User"
   USERNAME=""
@@ -673,7 +664,6 @@ gatherUser() {
   done
 }
 
-# == locale ==
 gatherLocale() {
   formHeader "Locale"
   TIMEZONE=""
@@ -724,7 +714,6 @@ gatherHardware() {
   return 0
 }
 
-# == disk ==
 gatherDisk() {
   formHeader "Boot disk"
   DISK=""
@@ -824,7 +813,6 @@ gatherData() {
   done
 }
 
-# == swap ==
 gatherSwap() {
   formHeader "Swap"
   SWAP=""
@@ -882,7 +870,6 @@ gatherLayout() {
   done
 }
 
-# == dotfiles (optional) ==
 gatherDotfiles() {
   formHeader "Dotfiles (optional)"
   DOTFILES=""
@@ -899,7 +886,6 @@ gatherDotfiles() {
   fi
 }
 
-# == summary ==
 gatherSummary() {
   formHeader "Review Configuration"
 
@@ -1308,10 +1294,9 @@ kexecTarget() {
   logWarn "Switching $TARGET into the installer; until the install, a reboot brings the old system back"
   ssh -o ControlPath="$TEMP_DIR/ssh-%C" -O exit "$TARGET" &>/dev/null || true
 
-  # nixos-anywhere waits for the installer at the old address and never gives up, but DHCP
-  # may hand it another one. So it runs on its own (its own session, so stopping it stops its
-  # ssh too) while the installer is looked for by its network card.
-  # --flake is required even here; only the disko and install phases build anything
+  # nixos-anywhere waits for the installer at the old address forever, but DHCP may hand it
+  # another one: it runs in its own session (stopping it stops its ssh too) while the installer is
+  # looked for by its network card. --flake is required even here; only disko and install build.
   setsid nix --extra-experimental-features "nix-command flakes" run --inputs-from "$FLAKE" \
     nixpkgs#nixos-anywhere -- --phases kexec --flake "$FLAKE#$HOSTNAME" --target-host "$TARGET" \
     </dev/null &
@@ -1627,7 +1612,6 @@ installRemote() {
   finish
 }
 
-# == verify the new system is reachable ==
 verifyRemote() {
   local addr="${TARGET#*@}" ok=false i ip
   local -a candidates

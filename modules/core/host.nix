@@ -1,10 +1,6 @@
-# The schema of host.toml and cluster.toml. hosts.nix checks every host's file against
-# these options (plus the pieces its class and features add) before NixOS evaluates,
-# so a mistake points at the file, and every host sees every other host's checked data.
-#
-#   [host]       what the machine is        [locale]   time, language, keyboard
-#   [user]       the one person on it       [disk.*]   boot disk and any extra disks
-#   [hardware]   model-specific fixes
+# The schema of host.toml and cluster.toml. hosts.nix checks every host's file against these
+# options (plus its class's and features' pieces) before NixOS evaluates, so a mistake points at
+# the file.
 { config, lib, ... }:
 let
   inherit (lib) mkOption types;

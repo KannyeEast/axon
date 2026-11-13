@@ -1,12 +1,8 @@
-# Discovers hosts/<name>/host.toml and turns each into nixosConfigurations.<name>.
-#
-# Two passes, both before any NixOS evaluation:
-#   1. class, features and hardware.quirks are read raw, because they decide what gets
-#      imported and imports cannot depend on config
-#   2. every host.toml is checked against the schema pieces of core, its class and its
-#      features, and cluster.toml against the cluster schema; defaults are filled in
-# Each host then receives its own checked tables as config.axon.<table>, and every
-# host's checked tables as config.axon.cluster.hosts.
+# Turns every hosts/<name>/host.toml into nixosConfigurations.<name>, in two passes before NixOS
+# evaluates: class, features and hardware.quirks are read raw, as imports can't depend on config;
+# then each file is checked against the schema pieces of core, its class and its features
+# (cluster.toml against the cluster schema), defaults filled in. A host gets its own tables as
+# config.axon.<table> and every host's as config.axon.cluster.hosts.
 {
   inputs,
   config,
@@ -91,9 +87,8 @@ let
 
   hosts = lib.mapAttrs check raw;
 
-  # cluster.toml against its schema. Every name a relation mentions should be a host or
-  # [external]; one that isn't yet (a host not installed so far) is left out with a warning,
-  # so a cluster can be brought up one machine at a time.
+  # cluster.toml against its schema. A name in a relation that is neither a host nor [external]
+  # is left out with a warning, so a cluster can be brought up one machine at a time.
   cluster =
     let
       data = if lib.pathExists clusterFile then lib.importTOML clusterFile else { };

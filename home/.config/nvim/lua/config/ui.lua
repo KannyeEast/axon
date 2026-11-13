@@ -1,5 +1,4 @@
--- How nvim looks: the colour scheme, icons, statusline, notifications, indent guides, and
--- which-key, which lists the keys that can follow a prefix.
+-- How nvim looks; which-key lists the keys that can follow a prefix.
 
 vim.o.termguicolors = true
 vim.cmd.colorscheme("terminal")
@@ -7,7 +6,6 @@ vim.cmd.colorscheme("terminal")
 -- the statusline shows the mode; one statusline for every window
 vim.o.showmode = false
 vim.o.laststatus = 3
--- hover, signature and other floating windows get a frame
 vim.o.winborder = "rounded"
 
 local icons = require("mini.icons")

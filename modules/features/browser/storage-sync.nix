@@ -1,6 +1,5 @@
 # Settings of extensions using storage.sync, a single SQLite file with one JSON blob per
-# extension. Values are merged over what is already there, and SponsorBlock and DeArrow share
-# one userID.
+# extension. Values are merged over what is already there.
 { lib, ... }:
 {
   flake.modules.homeManager.browser =
@@ -57,7 +56,7 @@
         };
 
         "deArrow@ajay.app" = {
-          # Free key :)
+          # DeArrow's free key, not a secret
           licenseKey = "AjI0L-6f166";
 
           casualMode = true;

@@ -1,9 +1,8 @@
 # Public services (route.public) are reachable from the internet through a Cloudflare Tunnel:
-# this host dials out to Cloudflare, so no router port is opened and the home IP stays hidden.
-# The tunnel is created once by hand (cloudflared tunnel create), its id goes in host.toml
-# [gateway] and its credentials file in secrets.json as cloudflare-tunnel.
-# Each public route needs its DNS record at Cloudflare, made by hand (cloudflared tunnel route dns);
-# tailnet-only routes need none.
+# this host dials out, so no router port is opened and the home IP stays hidden. The tunnel is
+# created once by hand (cloudflared tunnel create); its id goes in host.toml [gateway], its
+# credentials file in secrets.json as cloudflare-tunnel. Each public route needs a DNS record at
+# Cloudflare, made by hand (cloudflared tunnel route dns); tailnet-only routes need none.
 { lib, ... }:
 let
   inherit (lib) mkOption types;

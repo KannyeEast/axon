@@ -1,5 +1,3 @@
--- Editor behaviour: options, basic keys, pairs, surround, text objects, small automatic things.
-
 -- ── options ────────
 local o = vim.opt
 -- the current line shows its own number, every other line its distance from it

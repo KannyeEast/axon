@@ -1,10 +1,9 @@
-# Prometheus: scrapes the exporters on every host listing the metrics feature every 30 s and
-# keeps 90 days. Grafana reads it; it has no route of its own.
-# The blackbox exporter checks every route: "service" asks the service directly (any answer
-# below 500 means it runs). Where this host runs the gateway, https://<name>.<domain> is also
-# called the way clients do (DNS, Caddy, certificate, the tunnel for public ones): "route" for
-# services with their own login must answer, "guarded" for those behind the gateway login must
-# refuse with 401.
+# Prometheus: scrapes the exporters on every host listing the metrics feature and keeps 90 days.
+# Grafana reads it; it has no route of its own. The blackbox exporter checks every route:
+# "service" asks the service directly (any answer below 500 means it runs). Where this host runs
+# the gateway, https://<name>.<domain> is also called the way clients do (DNS, Caddy, certificate,
+# the tunnel for public ones): "route" (own login) must answer, "guarded" (behind the gateway
+# login) must refuse with 401.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
