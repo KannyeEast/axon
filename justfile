@@ -90,11 +90,28 @@ secrets HOST=host:
   [ -s "$file.new" ] && mv "$file.new" "$file"
 
 # ── git ────────
-# Push dev, open or update its pull request into stable
+# Push dev and put it up for review: the review branch and its pull request into stable
 [group("git")]
 pr:
-  git -C {{flake}} push origin dev
-  git -C {{flake}} push origin dev:refs/for/stable/dev -o title="dev to stable"
+  #!/usr/bin/env bash
+  set -euo pipefail
+  cd {{flake}}
+  git push origin dev
+  git fetch -q origin stable
+  if git diff --quiet origin/stable dev; then
+    echo "stable already has everything on dev."
+    exit 0
+  fi
+  # a branch of its own, so pushing dev doesn't start a review; only this does
+  git push origin +dev:review
+  forge=$(git remote get-url origin | sed -E 's#^(ssh://)?[^@/]+@([^:/]+)[:/]#https://\2/#; s#\.git$##')
+  api=$(sed -E 's#^(https?://[^/]+)/(.*)$#\1/api/v1/repos/\2#' <<<"$forge")
+  token=$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/forgejo/token")
+  call() { curl --silent --show-error --fail-with-body -H "Authorization: token $token" -H "Content-Type: application/json" "$@"; }
+  open=$(call "$api/pulls?state=open&limit=50" | jq '[.[] | select(.base.ref == "stable" and .head.ref == "review")] | length')
+  if [ "$open" -eq 0 ]; then
+    call -X POST "$api/pulls" --data '{"base": "stable", "head": "review", "title": "dev to stable"}' | jq -r .html_url
+  fi
 
 # ── private helpers ────────
 # Flakes only see files git knows about

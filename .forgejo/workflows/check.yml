@@ -1,7 +1,6 @@
-# Every push and pull request: the flake evaluates, and every host's system builds. On a pull
-# request the reviewer then posts its review, or merges it when there is nothing to report.
+# Every pull request: the flake evaluates, every host's system builds, then the reviewer posts its
+# review, or merges it when there is nothing to report.
 on:
-  push:
   pull_request:
 
 jobs:
@@ -22,7 +21,7 @@ jobs:
   # the reviewer (AGENTS.md, Roles), after the check so it can explain a failure
   review:
     needs: check
-    if: always() && github.event_name == 'pull_request'
+    if: always()
     runs-on: native
     timeout-minutes: 30
     steps:
