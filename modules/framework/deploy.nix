@@ -1,5 +1,5 @@
-# deploy.nodes.<host> for deploy-rs: logs in as the host's user, builds on the host and rolls back
-# when the host stops answering after the switch.
+# deploy.nodes.<host> for deploy-rs: logs in as root, builds on the host and rolls back when the
+# host stops answering after the switch.
 {
   inputs,
   config,
@@ -24,9 +24,7 @@
     in
     {
       hostname = name;
-      sshUser = host.config.axon.user.name;
-      user = "root";
-      interactiveSudo = true;
+      sshUser = "root";
       remoteBuild = true;
       profiles.system.path = pkgs.deploy-rs.lib.activate.nixos host;
     }

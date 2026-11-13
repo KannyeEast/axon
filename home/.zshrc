@@ -133,15 +133,21 @@ work() {
 # ls after any directory change - covers cd, zoxide jumps and pushd
 chpwd() { ls }
 
-# don't append "command not found" to history
-# https://www.zsh.org/mla/users//2014/msg00715.html
+# history keeps a command once it exits 0 or is stopped with Ctrl-C; a failed one stays only until
+# the next line, to fix it with up-arrow. A line zshaddhistory refuses lingers just that long
 zshaddhistory() {
-    local j=1
-    while ([[ ${${(z)1}[$j]} == *=* ]]) {
-        ((j++))
-    }
-    whence ${${(z)1}[$j]} >| /dev/null || return 1
+    [[ $1 == ' '* ]] || _history_line=${1%%$'\n'}
+    return 1
 }
+history-keep-success() {
+    local st=$?
+    if [[ -n $_history_line ]] && (( st == 0 || st == 130 )); then
+        print -sr -- "$_history_line"
+    fi
+    _history_line=
+}
+# first, so it sees the command's exit status
+precmd_functions=(history-keep-success $precmd_functions)
 
 # ── debug ────────
 if [ -n "${ZSH_DEBUGRC+1}" ]; then
