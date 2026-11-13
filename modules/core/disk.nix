@@ -1,10 +1,7 @@
-# The boot disk layout belongs to the framework, because persist.nix depends on it:
-# a root subvolume that is replaced every boot, next to nix, persist and home.
-# host.toml only chooses the device, the swap size and the space left for another OS.
+# The boot disk layout, fixed because persist.nix depends on it: a root subvolume replaced every
+# boot, next to nix, persist and home. host.toml picks the device, swap and space for another OS.
 { inputs, lib, ... }:
 let
-  inherit (lib) head length optionalAttrs;
-
   subvolume = mountpoint: {
     inherit mountpoint;
     mountOptions = [
@@ -25,14 +22,14 @@ in
 
       assertions = [
         {
-          assertion = length boot.devices == 1;
+          assertion = lib.length boot.devices == 1;
           message = "hosts/${host.name}/host.toml: disk.boot takes exactly one device";
         }
       ];
 
       disko.devices.disk.main = {
         type = "disk";
-        device = head boot.devices;
+        device = lib.head boot.devices;
         content = {
           type = "gpt";
           partitions = {
@@ -63,7 +60,7 @@ in
             }
             // (if boot.reserve == 0 then { size = "100%"; } else { end = "-${toString boot.reserve}G"; });
           }
-          // optionalAttrs (boot.swap > 0) {
+          // lib.optionalAttrs (boot.swap > 0) {
             swap = {
               priority = 2;
               size = "${toString boot.swap}G";

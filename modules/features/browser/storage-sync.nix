@@ -1,10 +1,6 @@
 # Settings of extensions using storage.sync, a single SQLite file with one JSON blob per
-# extension. Values are merged over what is already there, and SponsorBlock and DeArrow share
-# one userID.
+# extension. Values are merged over what is already there.
 { lib, ... }:
-let
-  inherit (lib) concatMapStringsSep escapeShellArg;
-in
 {
   flake.modules.homeManager.browser =
     { config, pkgs, ... }:
@@ -60,7 +56,7 @@ in
         };
 
         "deArrow@ajay.app" = {
-          # Free key :)
+          # DeArrow's free key, not a secret
           licenseKey = "AjI0L-6f166";
 
           casualMode = true;
@@ -75,7 +71,7 @@ in
       };
 
       apply = id: value: ''
-        apply ${escapeShellArg id} ${escapeShellArg (lib.toJSON value)}
+        apply ${lib.escapeShellArg id} ${lib.escapeShellArg (lib.toJSON value)}
       '';
     in
     {
@@ -106,7 +102,7 @@ in
               || echo "zen: $id is busy, will apply on a later rebuild"
           }
 
-          ${concatMapStringsSep "" (id: apply id settings.${id}) (lib.attrNames settings)}
+          ${lib.concatMapStringsSep "" (id: apply id settings.${id}) (lib.attrNames settings)}
 
           # share one userID across SponsorBlock and DeArrow
           src=$(${sqlite} "$db" \

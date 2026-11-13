@@ -4,7 +4,7 @@
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
-    { config, ... }:
+    { config, pkgs, ... }:
     let
       inherit (config.axon) vpn;
       inherit (config.axon.volumes) media;
@@ -48,7 +48,7 @@
           type = name;
         }
         // lib.optionalAttrs (app ? fields) { inherit (app) fields; };
-        secrets.key = "dashboard/${name}/key";
+        key = true;
       };
     in
     lib.mkIf (config.axon.volumes ? media) {
@@ -66,17 +66,25 @@
       };
       services.prowlarr.enable = true;
 
-      systemd.services = lib.genAttrs [ "radarr" "sonarr" "bazarr" ] (_: {
-        unitConfig.RequiresMountsFor = [ media ];
-        # what one app creates in the library, the others in the media group must be able to
-        # write to: Bazarr puts subtitles into the folders Radarr and Sonarr make. Forced, as
-        # their modules set 0022
-        serviceConfig.UMask = lib.mkForce "0002";
-      });
-
-      systemd.tmpfiles.rules = map (dir: "d ${media}/${dir} 2775 root media -") [
-        "movies"
-        "shows"
+      systemd.services = lib.mkMerge [
+        (lib.genAttrs [ "radarr" "sonarr" "bazarr" ] (_: {
+          unitConfig.RequiresMountsFor = [ media ];
+          # Bazarr writes subtitles into the folders Radarr and Sonarr make, so what one creates
+          # stays group-writable; forced over their modules' 0022
+          serviceConfig.UMask = lib.mkForce "0002";
+        }))
+        # the library folders, made once the disk is mounted (tmpfiles may run before that)
+        (lib.mapAttrs
+          (_: dir: {
+            serviceConfig.ExecStartPre = [
+              "+${lib.getExe' pkgs.coreutils "install"} -d -o root -g media -m 2775 ${media}/${dir}"
+            ];
+          })
+          {
+            radarr = "movies";
+            sonarr = "shows";
+          }
+        )
       ];
 
       axon.vpn = {
@@ -92,11 +100,7 @@
 
       # Radarr's module only declares .config/Radarr, so tmpfiles makes .config root's and then
       # refuses the unsafe step from radarr's folder into it: Radarr is never created
-      systemd.tmpfiles.settings."10-radarr"."/var/lib/radarr/.config".d = {
-        user = "radarr";
-        group = "media";
-        mode = "0750";
-      };
+      systemd.tmpfiles.rules = [ "d /var/lib/radarr/.config 0750 radarr media -" ];
 
       axon.persist.state.directories =
         map (app: {

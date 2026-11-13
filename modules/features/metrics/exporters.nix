@@ -1,16 +1,6 @@
 # Exporters for the cluster's Prometheus (the monitoring feature): the system (node) and the
 # disks' SMART health. They answer on the overlay only.
 { lib, ... }:
-let
-  inherit (lib)
-    attrValues
-    concatMap
-    concatStringsSep
-    escapeRegex
-    filterAttrs
-    tail
-    ;
-in
 {
   flake.modules.nixos.metrics =
     { config, ... }:
@@ -21,10 +11,12 @@ in
       # one mountpoint per filesystem: /home, /nix and /persist are subvolumes of the boot disk,
       # and a data disk's further mounts are the same filesystem as its first; impermanence's
       # bind mounts of persisted folders aren't filesystems at all
-      dataDisks = attrValues (filterAttrs (label: fs: label != "boot" && fs.mounts or { } != { }) disk);
-      repeated = concatMap (fs: tail (attrValues fs.mounts)) dataDisks;
-      excluded = concatStringsSep "|" (
-        [ "/(dev|proc|run|sys|etc|root|var|nix|home|persist)" ] ++ map escapeRegex repeated
+      dataDisks = lib.attrValues (
+        lib.filterAttrs (label: fs: label != "boot" && fs.mounts or { } != { }) disk
+      );
+      repeated = lib.concatMap (fs: lib.tail (lib.attrValues fs.mounts)) dataDisks;
+      excluded = lib.concatStringsSep "|" (
+        [ "/(dev|proc|run|sys|etc|root|var|nix|home|persist)" ] ++ map lib.escapeRegex repeated
       );
     in
     {

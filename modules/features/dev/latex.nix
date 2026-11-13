@@ -1,6 +1,5 @@
-# TeX Live for writing documents in nvim (vimtex, with texlab for completion and errors), on
-# desktops. scheme-medium covers the usual classes and packages; latexmk does the rebuilds, and
-# zathura shows the PDF next to the source.
+# TeX Live on desktops for writing documents in nvim (vimtex, texlab for completion and errors).
+# scheme-medium covers the usual classes and packages; latexmk does the rebuilds.
 { lib, ... }:
 {
   flake.modules.nixos.dev =

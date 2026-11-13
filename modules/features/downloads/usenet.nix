@@ -1,18 +1,21 @@
-# SABnzbd: downloads from Usenet, outside the VPN (the provider connection is SSL, and nobody
-# else sees it). Unfinished downloads on the scratch volume, finished ones next to the torrents
-# on the media volume, by category (movies, tv) so Radarr and Sonarr import them; on a host
-# without those volumes, in its state folder. Provider, connections and the API key are set in its
-# UI and kept; what is declared here wins on every start.
+# SABnzbd: downloads from Usenet, outside the VPN (the provider connection is SSL; nobody else
+# sees it). Unfinished downloads on the scratch volume, finished ones next to the torrents on the
+# media volume by category (movies, tv) for Radarr and Sonarr; in its state folder without those
+# volumes. UI settings (provider, connections, API key) are kept; declared ones win on every start.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
-    { config, ... }:
+    { config, pkgs, ... }:
     let
       inherit (config.axon) routed services volumes;
       state = "/var/lib/sabnzbd";
       finished = "${volumes.media or state}/downloads";
       incomplete = "${volumes.scratch or state}/usenet";
       port = 8080;
+      folders = [
+        finished
+        incomplete
+      ];
     in
     {
       services.sabnzbd = {
@@ -22,9 +25,8 @@
         settings = {
           misc = {
             inherit port;
-            # the gateway login guards the UI; SABnzbd itself only checks the name it's reached by.
-            # It listens on loopback only, so the forwarded address (a tailnet one, which it
-            # doesn't count as local) has nothing to add
+            # the gateway login guards the UI; SABnzbd only checks the name it's reached by. It
+            # listens on loopback, so the forwarded address (tailnet, not local to it) adds nothing
             host_whitelist = lib.optionalString routed services.usenet.route.host;
             verify_xff_header = false;
             download_dir = incomplete;
@@ -45,13 +47,14 @@
         };
       };
 
-      # the library is on a data disk that may be missing at boot (nofail)
-      systemd.services.sabnzbd.unitConfig.RequiresMountsFor =
-        lib.optional (volumes ? media) volumes.media ++ lib.optional (volumes ? scratch) volumes.scratch;
-
-      systemd.tmpfiles.rules =
-        lib.optional (volumes ? media) "d ${finished} 2775 root media -"
-        ++ lib.optional (volumes ? scratch) "d ${incomplete} 2775 root media -";
+      # the folders may be on data disks that are missing at boot (nofail): wait for them, and
+      # make the folders once they're mounted (tmpfiles may run before that)
+      systemd.services.sabnzbd = {
+        unitConfig.RequiresMountsFor = folders;
+        serviceConfig.ExecStartPre = map (
+          dir: "+${lib.getExe' pkgs.coreutils "install"} -d -o root -g media -m 2775 ${dir}"
+        ) folders;
+      };
 
       axon.persist.state.directories = [
         {
@@ -71,7 +74,7 @@
           description = "Downloads from Usenet";
           icon = "sabnzbd.svg";
           widget.type = "sabnzbd";
-          secrets.key = "dashboard/usenet/key";
+          key = true;
         };
         backup = {
           paths = [ state ];

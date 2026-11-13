@@ -1,13 +1,9 @@
-# The schema of host.toml and cluster.toml. hosts.nix checks every host's file against
-# these options (plus the pieces its class and features add) before NixOS evaluates,
-# so a mistake points at the file, and every host sees every other host's checked data.
-#
-#   [host]       what the machine is        [locale]   time, language, keyboard
-#   [user]       the one person on it       [disk.*]   boot disk and any extra disks
-#   [hardware]   model-specific fixes
+# The schema of host.toml and cluster.toml. hosts.nix checks every host's file against these
+# options (plus its class's and features' pieces) before NixOS evaluates, so a mistake points at
+# the file.
 { config, lib, ... }:
 let
-  inherit (lib) attrNames mkOption types;
+  inherit (lib) mkOption types;
 
   inherit (config.axon) classes features;
 
@@ -77,11 +73,11 @@ in
             description = "hosts/<name> inside the flake source, for files read at evaluation.";
           };
           class = mkOption {
-            type = types.enum (attrNames classes);
+            type = types.enum (lib.attrNames classes);
             description = "What kind of machine this is.";
           };
           features = mkOption {
-            type = types.listOf (types.enum (attrNames features));
+            type = types.listOf (types.enum (lib.attrNames features));
             default = [ ];
             description = "Opt-in features, by directory name under modules/features.";
           };

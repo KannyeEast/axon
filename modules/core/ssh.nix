@@ -28,7 +28,6 @@ in
         ];
       };
 
-      # losing the host key means losing access to secrets.json; offer it to whatever backs up
       axon.services.ssh.backup.paths = [ "/persist/etc/ssh" ];
 
       # every host in the cluster trusts every other host by its recorded key

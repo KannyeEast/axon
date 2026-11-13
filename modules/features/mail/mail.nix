@@ -1,9 +1,8 @@
 # Mail leaves through Proton's SMTP with a token; a home connection can't deliver mail itself.
-# Swapping the provider means changing axon.mail's host and port here, and the secrets.
-# The sender address lives in secrets.json (mail/user, mail/domain, mail/token), so it never
-# lands in the repo. Recipients are srv-alert@, srv-report@ and srv-info@ the cluster domain,
-# which a Sieve rule on the recipient's local part files away. Failure mails and the weekly report
-# come from _notify/notify.py; every mail of ours uses the page in _notify/page.html.
+# The sender lives in secrets.json (mail/user, mail/domain, mail/token), out of the repo.
+# Recipients are srv-alert@, srv-report@ and srv-info@ the cluster domain, filed away by a Sieve
+# rule on the local part. Failure mails and the weekly report come from _notify/notify.py; every
+# mail of ours uses the page in _notify/page.html.
 { lib, ... }:
 {
   flake.modules.nixos.mail =
@@ -61,8 +60,6 @@
           defaults
           auth on
           tls on
-          tls_starttls on
-          tls_trust_file /etc/ssl/certs/ca-certificates.crt
           logfile -
 
           account proton
@@ -111,7 +108,6 @@
         };
       };
 
-      # a short health summary every Sunday evening
       systemd.services.report = {
         description = "Weekly report to ${mail.report}";
         serviceConfig = {

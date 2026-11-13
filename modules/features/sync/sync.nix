@@ -4,18 +4,7 @@
 # one of this host's volumes lives on that volume, everywhere else in ~/<folder>.
 { lib, ... }:
 let
-  inherit (lib)
-    attrNames
-    concatLists
-    elem
-    filter
-    filterAttrs
-    genAttrs
-    mkOption
-    remove
-    types
-    unique
-    ;
+  inherit (lib) mkOption types;
 in
 {
   axon.schema.sync = {
@@ -38,9 +27,9 @@ in
       peerPort = 22000;
 
       # folders this host is a member of, and everyone it shares them with
-      folders = attrNames (filterAttrs (_: members: elem host.name members) cluster.sync);
-      peersOf = folder: remove host.name cluster.sync.${folder};
-      peers = unique (concatLists (map peersOf folders));
+      folders = lib.attrNames (lib.filterAttrs (_: members: lib.elem host.name members) cluster.sync);
+      peersOf = folder: lib.remove host.name cluster.sync.${folder};
+      peers = lib.unique (lib.concatLists (map peersOf folders));
 
       device =
         peer:
@@ -58,7 +47,7 @@ in
           throw "cluster.toml: ${peer} shares a folder but has no syncthing id; give [external.${peer}] a sync id";
 
       pathOf = folder: volumes.${folder} or "${home}/${folder}";
-      onVolumes = filter (folder: volumes ? ${folder}) folders;
+      onVolumes = lib.filter (folder: volumes ? ${folder}) folders;
     in
     {
       services.syncthing = {
@@ -76,8 +65,8 @@ in
           # rejects; it still only listens on localhost, and the gateway login is in front.
           # Elsewhere the check stays: it keeps websites out of the local UI (DNS rebinding).
           gui.insecureSkipHostcheck = config.axon.routed;
-          devices = genAttrs peers device;
-          folders = genAttrs folders (folder: {
+          devices = lib.genAttrs peers device;
+          folders = lib.genAttrs folders (folder: {
             path = pathOf folder;
             devices = peersOf folder;
             # sync passes on a deletion or a damaged file as readily as a good change; the machine
@@ -112,7 +101,6 @@ in
         }
       ];
 
-      # producer side of the services contract: a gateway reads the route, backup the paths
       axon.services.sync = {
         route.port = 8384;
         dashboard = {
@@ -121,7 +109,7 @@ in
           description = "Folders between machines";
           icon = "syncthing.svg";
           widget.type = "syncthing";
-          secrets.key = "dashboard/sync/key";
+          key = true;
         };
         backup.paths = [ "/var/lib/syncthing" ] ++ map pathOf onVolumes;
       };

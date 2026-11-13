@@ -32,7 +32,7 @@
           wireguardConfigFile = config.sops.secrets.mullvad-wireguard.path;
           # not the bridge's own subnet: the namespace already has that route, and
           # VPN-Confinement fails adding it twice ("RTNETLINK answers: File exists")
-          accessibleFrom = [ "127.0.0.1/32" ];
+          allowedIngress = [ "127.0.0.1/32" ];
           portMappings = lib.concatMap (
             service:
             map (port: {

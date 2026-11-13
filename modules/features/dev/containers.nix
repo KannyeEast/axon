@@ -1,6 +1,5 @@
-# One container engine: rootless podman. `docker` and `docker compose` are aliases for it,
-# so projects written for Docker run unchanged, without a root-equivalent docker group.
-# The sandbox (sandbox.nix) runs on it too.
+# One container engine: rootless podman, with `docker` and `docker compose` as aliases so
+# projects written for Docker run unchanged. The sandbox (sandbox.nix) runs on it too.
 { lib, ... }:
 {
   flake.modules.nixos.dev =

@@ -12,7 +12,7 @@
 
       services.smartd.enable = true;
 
-      # a hung machine reboots by itself after 30 s
+      # a hung machine reboots by itself
       systemd.settings.Manager.RuntimeWatchdogSec = "30s";
 
       assertions = [

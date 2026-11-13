@@ -1,16 +1,13 @@
 # One person per host. Who may log in comes from cluster.toml [ssh], declared once,
 # on the side that holds the key.
 { lib, ... }:
-let
-  inherit (lib) attrNames elem filterAttrs;
-in
 {
   flake.modules.nixos.core =
     { config, ... }:
     let
       inherit (config.axon) host user cluster;
 
-      inbound = attrNames (filterAttrs (_: targets: elem host.name targets) cluster.ssh);
+      inbound = lib.attrNames (lib.filterAttrs (_: targets: lib.elem host.name targets) cluster.ssh);
 
       keyOf =
         member:

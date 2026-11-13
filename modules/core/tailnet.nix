@@ -1,26 +1,18 @@
-# Contract: axon.overlay. The private network between machines, here Tailscale; cluster relations
-# (ssh, sync) run over it. A host joins by being named in a relation in cluster.toml; any other
-# host stays off it and needs no key. Features list the ports they serve on it and those stay
-# closed on a host outside it. network is null there.
+# Contract: axon.overlay. The private network between machines (Tailscale) that cluster relations
+# run over. A host joins by being named in a cluster.toml relation; any other stays off, needs no
+# key, keeps the listed ports closed and has a null network.
 { lib, ... }:
 let
-  inherit (lib)
-    attrNames
-    attrValues
-    concatLists
-    elem
-    mkIf
-    mkOption
-    types
-    ;
+  inherit (lib) mkOption types;
 in
 {
   flake.modules.nixos.core =
     { config, ... }:
     let
       inherit (config.axon) cluster host overlay;
-      member = elem host.name (
-        attrNames cluster.ssh ++ concatLists (attrValues cluster.ssh ++ attrValues cluster.sync)
+      member = lib.elem host.name (
+        lib.attrNames cluster.ssh
+        ++ lib.concatLists (lib.attrValues cluster.ssh ++ lib.attrValues cluster.sync)
       );
     in
     {
@@ -63,7 +55,7 @@ in
         };
       };
 
-      config = mkIf member {
+      config = lib.mkIf member {
         axon.overlay.network = {
           ipv4 = "100.64.0.0/10";
           ipv6 = "fd7a:115c:a1e0::/48";

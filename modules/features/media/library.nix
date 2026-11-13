@@ -26,14 +26,19 @@
       # the library is on a data disk that may be missing at boot (nofail)
       systemd.services.jellyfin.unitConfig.RequiresMountsFor = [ media ];
 
-      axon.persist.state.directories = [
-        {
-          directory = "/var/lib/jellyfin";
-          user = "jellyfin";
-          group = "media";
-          mode = "0750";
-        }
-      ];
+      axon.persist.state.directories =
+        map
+          (directory: {
+            inherit directory;
+            user = "jellyfin";
+            group = "media";
+            mode = "0750";
+          })
+          [
+            "/var/lib/jellyfin"
+            # image cache and transcodes; rebuilt after every boot otherwise
+            config.services.jellyfin.cacheDir
+          ];
 
       axon.services.jellyfin = {
         route = {
@@ -53,7 +58,7 @@
             enableBlocks = true;
             enableNowPlaying = false;
           };
-          secrets.key = "dashboard/jellyfin/key";
+          key = true;
         };
         backup.paths = [ "/var/lib/jellyfin" ];
       };
