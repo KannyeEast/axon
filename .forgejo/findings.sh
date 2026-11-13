@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 # Prints the open findings of the latest review on the pull request into stable: the summary,
 # then file:line and text per unresolved comment. FORGE (https://host/owner/repo) and API come
-# from the justfile (`just findings`).
+# from origin unless set.
 set -euo pipefail
 
-: "${FORGE:?} ${API:?}"
+: "${FORGE:=$(git remote get-url origin | sed -E "s#^(ssh://)?[^@/]+@([^:/]+)[:/]#https://\2/#; s#\.git\$##")}"
+: "${FORGE:?findings.sh: no origin remote; set FORGE to https://host/owner/repo}"
+: "${API:=$(sed -E 's#^(https?://[^/]+)/(.*)$#\1/api/v1/repos/\2#' <<<"$FORGE")}"
 
 token=${FORGEJO_TOKEN:-$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/forgejo/token" 2>/dev/null || true)}
 auth=()
 if [ -n "$token" ]; then auth=(-H "Authorization: token $token"); fi
 call() { curl --silent --show-error --fail-with-body "${auth[@]}" "$@"; }
 number=$(call "$API/pulls?state=open&limit=50" \
-  | jq '[.[] | select(.base.ref == "stable" and .head.ref == "dev")][0].number // empty')
+  | jq '[.[] | select(.base.ref == "stable")][0].number // empty')
 if [ -z "$number" ]; then echo "No open pull request into stable."; exit 0; fi
 review=$(call "$API/pulls/$number/reviews" | jq 'map(select(.user.login == "forgejo-actions")) | last // empty')
 if [ -z "$review" ]; then echo "$FORGE/pulls/$number has no review yet."; exit 0; fi

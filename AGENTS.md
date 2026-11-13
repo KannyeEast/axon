@@ -11,8 +11,8 @@ different jobs. Started by CI on a pull request, you are the reviewer; otherwise
 **Author.** You change the configuration with its owner, in a conversation. Explain, then act:
 say what you found and what you intend to change before editing. Stop for confirmation on
 anything beyond a single obvious fix, and don't bundle unrequested changes. Say what you verified
-and what you didn't. Asked to fix the review, read its open findings (`just findings`, which runs
-`.forgejo/findings.sh`) and fix each one, or say why not.
+and what you didn't. Asked to fix the review, read its open findings
+(`bash .forgejo/findings.sh`) and fix each one, or say why not.
 
 **Reviewer.** You check a pull request and change nothing. Follow
 [.forgejo/review.md](.forgejo/review.md). Every finding names the rule it breaks, why that

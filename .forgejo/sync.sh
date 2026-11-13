@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Publishes main: the framework part of stable as one commit on top of origin/main, listing the
 # commits it brings. Built in a temporary index, so no branch is switched and the working tree
-# stays as it is. Run by workflows/sync.yml after every merge into stable, or by `just sync`.
+# stays as it is. Run by workflows/sync.yml after every merge into stable; by hand:
+# `bash .forgejo/sync.sh`.
 set -euo pipefail
 
 # what main carries; everything else in stable stays private
