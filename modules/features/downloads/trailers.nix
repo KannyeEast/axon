@@ -4,7 +4,7 @@
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
-    { config, ... }:
+    { config, pkgs, ... }:
     let
       inherit (config.axon.volumes) media;
       state = "/var/lib/trailarr";
@@ -44,11 +44,16 @@
         flags = [ "--all" ];
       };
 
-      systemd.services.podman-trailarr.unitConfig.RequiresMountsFor = [ media ];
-      systemd.tmpfiles.rules = map (dir: "d ${dir} 0750 radarr media -") [
-        state
-        "${state}/config"
-      ];
+      systemd.services.podman-trailarr = {
+        unitConfig.RequiresMountsFor = [ media ];
+        # podman refuses a missing mount source
+        serviceConfig.ExecStartPre =
+          map (dir: "+${lib.getExe' pkgs.coreutils "install"} -d -o radarr -g media -m 0750 ${dir}")
+            [
+              state
+              "${state}/config"
+            ];
+      };
 
       axon.persist.state.directories = [
         {
