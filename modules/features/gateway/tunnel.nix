@@ -2,8 +2,8 @@
 # this host dials out to Cloudflare, so no router port is opened and the home IP stays hidden.
 # The tunnel is created once by hand (cloudflared tunnel create), its id goes in host.toml
 # [gateway] and its credentials file in secrets.json as cloudflare-tunnel.
-# Names aren't managed here either: every route is a DNS record at Cloudflare, pointing at this
-# host's tailnet address, or at the tunnel for a public one (cloudflared tunnel route dns).
+# Each public route needs its DNS record at Cloudflare, made by hand (cloudflared tunnel route dns);
+# tailnet-only routes need none.
 { lib, ... }:
 let
   inherit (lib) mkOption types;

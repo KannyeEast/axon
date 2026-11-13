@@ -37,7 +37,7 @@ To change one, change it here in the same commit, with the new reason.
 | Decision | Why |
 |---|---|
 | Jellyfin, Seerr, Immich and Nextcloud are public through the Cloudflare tunnel | family devices have no Tailscale; the risk under Cloudflare's terms (video streaming) is accepted |
-| DNS records are made by hand at Cloudflare | not managed from this repo; a new route needs its record added there |
+| DNS records for public routes are made by hand at Cloudflare | not managed from this repo; a new public route needs its tunnel record (`cloudflared tunnel route dns`), a tailnet-only one none |
 | Radarr, Sonarr and Prowlarr settings (quality profiles, indexers) live in their UIs, not in Nix | they are per-host choices |
 | qBittorrent's hardlinks into the library fail (it writes 0644) | btrfs shares the data anyway, so no space is lost |
 | Nextcloud is file storage only | no calendar, contacts or other apps |
