@@ -18,7 +18,7 @@
       users.groups.seerr.gid = id;
 
       virtualisation.oci-containers.containers.seerr = {
-        image = "ghcr.io/seerr-team/seerr:v3.5.1@sha256:d8fab675b55ad293ded98fd71efcfd46054cbad9746534ae1cc4794a88c0b3be";
+        image = "ghcr.io/seerr-team/seerr:v3.5.2@sha256:aadee014b40e28cf9aa4928bc9d1183a6eb08f8c44d543cddc9efdcb16549be2";
         user = "${toString id}:${toString id}";
         # reaches Jellyfin, Radarr and Sonarr on 127.0.0.1
         networks = [ "host" ];
