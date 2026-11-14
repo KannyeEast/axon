@@ -114,7 +114,7 @@ if jq --exit-status '.findings == []' <<<"$review" >/dev/null && [ "$CHECK" = su
   fi
   # scheduled while this job runs (201; 409 when an earlier run did); a newer push's run cancels it
   status=$(merge POST --data "$(jq -n --arg sha "$HEAD_SHA" \
-    '{Do: "merge", merge_when_checks_succeed: true, head_commit_id: $sha}')")
+    '{Do: "merge", merge_when_checks_succeed: true, head_commit_id: $sha, delete_branch_after_merge: true}')")
   case $status in
     200 | 201 | 409) exit 0 ;;
     *) echo "The merge failed: HTTP $status." >&2 && exit 1 ;;
