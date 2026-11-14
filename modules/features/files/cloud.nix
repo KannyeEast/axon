@@ -79,7 +79,6 @@
         axon.services.cloud = {
           route = {
             inherit port;
-            access = "open"; # Nextcloud's own login
             public = true;
           };
           dashboard = {

@@ -68,7 +68,6 @@
       axon.services.vault = {
         route = {
           inherit port;
-          access = "open"; # Vaultwarden's own login
           public = true;
         };
         dashboard = {

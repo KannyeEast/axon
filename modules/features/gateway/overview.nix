@@ -42,7 +42,6 @@ in
       );
       linkGroups = lib.unique (lib.sort (a: b: a < b) (lib.mapAttrsToList (_: link: link.group) links));
 
-      internal = route: "http://${route.endpoint}";
       # "dashboard/radarr/key" -> HOMEPAGE_VAR_DASHBOARD_RADARR_KEY
       envName = secret: "HOMEPAGE_VAR_${lib.toUpper (lib.replaceStrings [ "/" "-" ] [ "_" "_" ] secret)}";
       hasSecret = secret: lib.hasAttrByPath (lib.splitString "/" secret) config.axon.secrets;
@@ -59,14 +58,14 @@ in
           href = lib.defaultTo service.route.url (instance.link or null);
           description = lib.defaultTo service.dashboard.description (instance.description or null);
           inherit (service.dashboard) icon;
-          siteMonitor = internal service.route + service.dashboard.monitor;
+          siteMonitor = service.route.internal + service.dashboard.monitor;
         }
         //
           lib.optionalAttrs
             (hasKeys service && (service.dashboard.widget != null || instance.widget or { } != { }))
             {
               widget = {
-                url = internal service.route;
+                url = service.route.internal;
               }
               // lib.defaultTo { } service.dashboard.widget
               // lib.mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets

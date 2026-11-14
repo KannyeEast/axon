@@ -6,11 +6,16 @@
 # devices past the tunnel, so the cap only applies from outside.
 # Thumbnails and transcoded videos, which the timeline loads by the hundred, live in Immich's
 # state on a host with a state volume, bind-mounted into the photo folder.
+# Its settings come from here, read-only in the UI. With a login provider (axon.sso) the family
+# logs in there, matched to accounts by mail address, new ones made on first login.
 { lib, ... }:
 {
   flake.modules.nixos.files =
     { config, ... }:
     let
+      inherit (config.axon) sso;
+      inherit (config.axon.services.photos) route;
+      client = sso.clients.immich;
       data = config.axon.spaces.immich.path;
       port = 2283;
       generated = lib.optionals (config.axon.volumes ? state && config.axon.spaces.immich.onVolume) [
@@ -25,6 +30,33 @@
         host = "127.0.0.1";
         inherit port;
         mediaLocation = data;
+        settings = {
+          server.externalDomain = route.url;
+          storageTemplate = {
+            enabled = true;
+            template = "{{y}}/{{MM}}/{{dd}}/{{filename}}";
+          };
+          oauth = lib.mkIf (sso.provider != null) {
+            enabled = true;
+            issuerUrl = client.issuer;
+            clientId = client.id;
+            clientSecret._secret = client.secret;
+            # Kanidm signs ID tokens with ES256
+            signingAlgorithm = "ES256";
+            buttonText = "Login with Kanidm";
+          };
+        };
+      };
+
+      axon.sso.clients.immich = {
+        displayName = "Immich";
+        landing = route.url;
+        redirects = [
+          "${route.url}/auth/login"
+          "${route.url}/user-settings"
+          "app.immich:///oauth-callback"
+        ];
+        inherit (config.axon.services.photos.dashboard) icon;
       };
 
       axon.spaces.immich = {
@@ -72,7 +104,6 @@
       axon.services.photos = {
         route = {
           inherit port;
-          access = "open"; # Immich's own login
           public = true;
         };
         dashboard = {

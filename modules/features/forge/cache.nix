@@ -30,9 +30,6 @@ in
         settings.bind = "127.0.0.1:${toString port}";
       };
 
-      axon.services.cache.route = {
-        inherit port;
-        access = "open"; # Nix can't log in; it checks the signature instead
-      };
+      axon.services.cache.route.port = port;
     };
 }

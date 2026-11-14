@@ -43,7 +43,6 @@
       axon.services.jellyfin = {
         route = {
           port = 8096;
-          access = "open";
           public = true;
         };
         dashboard = {

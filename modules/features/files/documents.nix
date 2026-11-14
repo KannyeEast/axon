@@ -54,10 +54,7 @@
       ];
 
       axon.services.docs = {
-        route = {
-          inherit port;
-          access = "open"; # Paperless's own login
-        };
+        route.port = port;
         dashboard = {
           name = "Paperless";
           group = "Files";

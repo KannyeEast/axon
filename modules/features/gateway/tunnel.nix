@@ -23,11 +23,6 @@ in
       public = lib.filterAttrs (_: service: service.route.public) routes;
     in
     {
-      assertions = lib.mapAttrsToList (name: service: {
-        assertion = service.route.access == "open";
-        message = "axon.services.${name}: a public service must bring its own login (access = \"open\"); the gateway login only guards the tailnet";
-      }) public;
-
       warnings =
         lib.optional (public != { } && gateway.tunnel == null)
           "hosts/${host.name}/host.toml: ${lib.concatStringsSep ", " (lib.attrNames public)} would be public, but [gateway] has no tunnel yet";
@@ -40,7 +35,11 @@ in
           credentialsFile = config.sops.secrets.cloudflare-tunnel.path;
           default = "http_status:404";
           ingress = lib.mapAttrs' (
-            _: service: lib.nameValuePair service.route.host "http://${service.route.endpoint}"
+            _: service:
+            lib.nameValuePair service.route.host {
+              service = service.route.internal;
+              originRequest.originServerName = lib.mkIf service.route.tls service.route.host;
+            }
           ) public;
         };
       };

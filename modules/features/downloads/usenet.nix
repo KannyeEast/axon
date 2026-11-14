@@ -25,7 +25,7 @@
         settings = {
           misc = {
             inherit port;
-            # the gateway login guards the UI; SABnzbd only checks the name it's reached by. It
+            # only the tailnet reaches the UI; SABnzbd only checks the name it's reached by. It
             # listens on loopback, so the forwarded address (tailnet, not local to it) adds nothing
             host_whitelist = lib.optionalString routed services.usenet.route.host;
             verify_xff_header = false;

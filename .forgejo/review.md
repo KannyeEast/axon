@@ -62,8 +62,9 @@ You report findings; you never edit, commit or push.
 
 ### A new or changed service
 
-- **Route** through `axon.services.<name>.route`: `access = "login"` unless the service has its own
-  login, `public = true` only then (core asserts it).
+- **Route** through `axon.services.<name>.route`; nothing gates a route, so `public = true` only
+  for a service with its own login. A service that has a login registers in `axon.sso` and logs
+  in there when `axon.sso.provider` isn't null.
 - **Listening**: on `127.0.0.1` or inside the VPN namespace; the gateway proxies. Ports for other
   machines only through `axon.overlay`, never `networking.firewall` directly.
 - **State**: every directory the service writes survives the reboot, listed in the same file

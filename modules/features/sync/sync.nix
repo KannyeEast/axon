@@ -62,7 +62,7 @@ in
             urAccepted = -1;
           };
           # behind the gateway the UI is asked for as sync.<domain>, which its host check
-          # rejects; it still only listens on localhost, and the gateway login is in front.
+          # rejects; it still only listens on localhost, and only the tailnet reaches the gateway.
           # Elsewhere the check stays: it keeps websites out of the local UI (DNS rebinding).
           gui.insecureSkipHostcheck = config.axon.routed;
           devices = lib.genAttrs peers device;

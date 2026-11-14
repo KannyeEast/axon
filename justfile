@@ -67,7 +67,7 @@ fmt:
     [[ "$reply" =~ ^[Yy]$ ]] && nix run nixpkgs#deadnix -- --edit .
   fi
 
-# The host.toml / cluster.toml fields, or those under TABLE
+# The host.toml / cluster.toml reference
 [group("flake")]
 docs:
   nix build {{flake}}#options --no-link --print-out-paths | xargs cat \

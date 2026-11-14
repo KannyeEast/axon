@@ -1,9 +1,8 @@
 # Prometheus: scrapes the exporters on every host listing the metrics feature and keeps 90 days.
 # Grafana reads it; it has no route of its own. The blackbox exporter checks every route:
 # "service" asks the service directly (any answer below 500 means it runs). Where this host runs
-# the gateway, https://<name>.<domain> is also called the way clients do (DNS, Caddy, certificate,
-# the tunnel for public ones): "route" (own login) must answer, "guarded" (behind the gateway
-# login) must refuse with 401.
+# the gateway, "route" also calls https://<name>.<domain> the way clients do (DNS, Caddy,
+# certificate, the tunnel for public ones), which must answer.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -17,9 +16,6 @@
         ;
       exporters = config.services.prometheus.exporters;
       scraped = lib.filterAttrs (_: data: lib.elem "metrics" data.host.features) cluster.hosts;
-      open = lib.filterAttrs (_: service: service.route.access == "open") routes;
-      guarded = lib.filterAttrs (_: service: service.route.access != "open") routes;
-      external = route: route.url;
 
       # every series carries the host it's about, and its class: alerts that a machine is off
       # only make sense for servers
@@ -79,19 +75,13 @@
                 follow_redirects = false;
                 valid_status_codes = lib.range 200 499;
                 preferred_ip_protocol = "ip4";
+                # a service with its own TLS has a certificate for its route, not for 127.0.0.1
+                tls_config.insecure_skip_verify = true;
               };
             };
             route = {
               prober = "http";
               http.preferred_ip_protocol = "ip4";
-            };
-            # the gateway login refuses requests that aren't from a browser instead of redirecting
-            guarded = {
-              prober = "http";
-              http = {
-                valid_status_codes = [ 401 ];
-                preferred_ip_protocol = "ip4";
-              };
             };
           };
         }
@@ -112,12 +102,9 @@
         scrapeConfigs = [
           (job "node" exporters.node.port)
           (job "smartctl" exporters.smartctl.port)
-          (probe "service" (route: "http://${route.endpoint}") routes)
+          (probe "service" (route: route.internal) routes)
         ]
-        ++ lib.optionals routed [
-          (probe "route" external open)
-          (probe "guarded" external guarded)
-        ];
+        ++ lib.optional routed (probe "route" (route: route.url) routes);
       };
 
       axon.persist.state.directories = [

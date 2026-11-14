@@ -58,10 +58,7 @@
       };
 
       axon.services.git = {
-        route = {
-          inherit port;
-          access = "open"; # Forgejo's own login
-        };
+        route.port = port;
         dashboard = {
           name = "Forgejo";
           group = "Code";

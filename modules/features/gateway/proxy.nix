@@ -1,5 +1,5 @@
-# Consumer of axon.services: every routed service gets <service>.<domain> on the tailnet,
-# behind the gateway login unless it has its own. Public ones are on the tunnel as well.
+# Consumer of axon.services: every routed service gets <service>.<domain> on the tailnet, proxied
+# as is; a login is the service's own. Public ones are on the tunnel as well.
 # One wildcard certificate from Let's Encrypt via a Cloudflare DNS challenge covers them all.
 { lib, ... }:
 {
@@ -65,16 +65,15 @@
           lib.nameValuePair service.route.host {
             extraConfig = ''
               ${tls}
-              ${lib.optionalString (service.route.access != "open") ''
-                forward_auth ${routes.auth.route.endpoint} {
-                  uri /api/authz/forward-auth
-                  copy_headers Remote-User
-                }
-              ''}
               # services that trust Cloudflare's client-address header must not take it from a
               # tailnet client; the tunnel bypasses Caddy, so here it is always the real peer
-              reverse_proxy ${service.route.endpoint} {
+              reverse_proxy ${service.route.internal} {
                 header_up Cf-Connecting-IP {remote_host}
+                ${lib.optionalString service.route.tls ''
+                  transport http {
+                    tls_server_name ${service.route.host}
+                  }
+                ''}
               }
             '';
           }
