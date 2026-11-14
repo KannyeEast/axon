@@ -85,6 +85,9 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   to `axon.persist.directories` (the boot disk). `DynamicUser` services keep state in
   `/var/lib/private/<name>`.
 - **Name files for what they do** (`passwords.nix`, not `keepassxc.nix`).
+- **Secrets are `<area>/<name>`** in `secrets.json`: area is what the secret belongs to (`user`,
+  `cloudflare`, `kanidm`, `forge`, `sso`, `dashboard`, `backup`), name says what it is, in
+  kebab-case; never a flat key.
 - **Formatting**: `nix fmt`. Never align `=` or values with extra spaces, in any file type.
 - **lib**: modules write `lib.<function>`; only `mkOption` and `types` may be inherited.
 - **Errors** read `<file or option>: <what is wrong>`, and say what to do where possible.

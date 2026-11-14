@@ -1,7 +1,7 @@
 # Public services (route.public) are reachable from the internet through a Cloudflare Tunnel:
 # this host dials out, so no router port is opened and the home IP stays hidden. The tunnel is
 # created once by hand (cloudflared tunnel create); its id goes in host.toml [gateway], its
-# credentials file in secrets.json as cloudflare-tunnel. Each public route needs a DNS record at
+# credentials file in secrets.json as cloudflare/tunnel. Each public route needs a DNS record at
 # Cloudflare, made by hand (cloudflared tunnel route dns); tailnet-only routes need none.
 { lib, ... }:
 let
@@ -27,12 +27,12 @@ in
         lib.optional (public != { } && gateway.tunnel == null)
           "hosts/${host.name}/host.toml: ${lib.concatStringsSep ", " (lib.attrNames public)} would be public, but [gateway] has no tunnel yet";
 
-      sops.secrets.cloudflare-tunnel = lib.mkIf (gateway.tunnel != null) { };
+      sops.secrets."cloudflare/tunnel" = lib.mkIf (gateway.tunnel != null) { };
 
       services.cloudflared = lib.mkIf (gateway.tunnel != null && public != { }) {
         enable = true;
         tunnels.${gateway.tunnel} = {
-          credentialsFile = config.sops.secrets.cloudflare-tunnel.path;
+          credentialsFile = config.sops.secrets."cloudflare/tunnel".path;
           default = "http_status:404";
           ingress = lib.mapAttrs' (
             _: service:

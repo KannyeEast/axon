@@ -31,9 +31,9 @@
         }
       ];
 
-      sops.secrets.cloudflare-token = { };
+      sops.secrets."cloudflare/dns-token" = { };
       sops.templates."cloudflare.env".content = ''
-        CF_DNS_API_TOKEN=${ph.cloudflare-token}
+        CF_DNS_API_TOKEN=${ph."cloudflare/dns-token"}
       '';
 
       security.acme = {

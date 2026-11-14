@@ -995,7 +995,7 @@ generate() {
     export SOPS_AGE_KEY
 
     sops --decrypt "$FLAKE/hosts/$HOSTNAME/secrets.json" \
-      | jq -j '.["user-privatekey"]' > "$TEMP_DIR/id_ed25519"
+      | jq -je '.user["private-key"]' > "$TEMP_DIR/id_ed25519"
     chmod 600 "$TEMP_DIR/id_ed25519"
 
     printf '%s %s@%s\n' "$(ssh-keygen -y -f "$TEMP_DIR/id_ed25519")" "$USERNAME" "$HOSTNAME" \
@@ -1082,8 +1082,8 @@ writeSecrets() {
     --arg pw "$hash" \
     --rawfile key "$TEMP_DIR/id_ed25519" \
     --arg tailscale "$tailscale" \
-    '{"user-password": $pw, "user-privatekey": $key}
-      + if $tailscale == "" then {} else {"tailscale-authkey": $tailscale} end' \
+    '{"user": {"password": $pw, "private-key": $key}}
+      + if $tailscale == "" then {} else {"tailscale": {"authkey": $tailscale}} end' \
     > "$FLAKE/hosts/$HOSTNAME/secrets.json"
 
   run sops --encrypt --in-place "$FLAKE/hosts/$HOSTNAME/secrets.json"
