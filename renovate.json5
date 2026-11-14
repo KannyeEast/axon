@@ -30,6 +30,11 @@
       allowedVersions: "/^\\d+\\.\\d+\\.\\d+$/",
     },
     {
+      // it releases almost daily; one pull request a week
+      matchPackageNames: ["ghcr.io/ulsklyc/yuvomi"],
+      schedule: ["before 6am on monday"],
+    },
+    {
       // FerretDB and the Postgres it runs on move together
       matchPackageNames: ["ghcr.io/ferretdb/ferretdb", "ghcr.io/ferretdb/postgres-documentdb"],
       groupName: "ferretdb",
