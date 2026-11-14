@@ -43,11 +43,8 @@
         clean.extraArgs = "--keep-since 4d --keep 5";
       };
 
-      # what a host needs to rebuild itself from the checkout: `just switch`
-      environment.systemPackages = [
-        pkgs.git
-        pkgs.just
-      ];
+      # with git (remotes.nix), what a host needs to rebuild itself from the checkout: `just switch`
+      environment.systemPackages = [ pkgs.just ];
 
       nixpkgs.config.allowUnfree = true;
 

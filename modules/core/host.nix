@@ -195,7 +195,7 @@ in
         remotes = mkOption {
           type = types.attrsOf types.str;
           default = { };
-          description = "Remote name to git URL for this repository; `just remotes` sets them up.";
+          description = "Remote name to git URL for this repository; the system git config gives the checkout these remotes.";
         };
         origin = mkOption {
           type = types.nullOr types.str;

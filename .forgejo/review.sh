@@ -30,6 +30,18 @@ schema='{
   }
 }'
 
+get() { curl --silent --show-error --fail-with-body -H "Authorization: token $FORGEJO_TOKEN" "$API/pulls/$PR/$1"; }
+
+# the previous run's findings are checked again (it carried over the ones before it); its blocking
+# reviews are dismissed afterwards, so only this run's findings stay open
+reviews=$(get reviews | jq '[.[] | select(.user.login == "forgejo-actions")]')
+previous=""
+last=$(jq '.[-1].id // empty' <<<"$reviews")
+if [ -n "$last" ]; then
+  previous=$(jq -r '.[-1].body' <<<"$reviews")$'\n\n'
+  previous+=$(get "reviews/$last/comments" | jq -r '.[] | "\(.path):\(.original_position)\n\(.body)\n"')
+fi
+
 prompt="You are the reviewer (AGENTS.md, Roles). Review pull request #$PR, which merges into $BASE,
 following .forgejo/review.md. Its diff: git diff origin/$BASE...HEAD
 
@@ -44,7 +56,11 @@ ${DESCRIPTION:-}
 Answer with the review's summary and its findings. For each finding: the path from the
 repository's root; the line it is about in the new file (side new), or in the old one for a
 removed line (side old), or 0 for a finding about the whole pull request; its severity; and the
-comment, written as the guide says."
+comment, written as the guide says.
+${previous:+
+Findings of the earlier reviews, made on an older commit. Check each against the current code and
+report it again if it still holds; leave out the ones that are fixed:
+$previous}"
 
 # reading is allowed in the checkout and the store (nixpkgs' module sources); dontAsk denies
 # everything not listed instead of waiting for an approval nobody can give. The project's
@@ -71,6 +87,16 @@ if ! review=$(jq --exit-status '.structured_output' <<<"$answer"); then
     '{commit_id: $sha, event: "COMMENT", body: "The review didn'"'"'t finish; see the review job'"'"'s log."}')"
   jq . <<<"$answer" >&2 || echo "$answer" >&2
   exit 1
+fi
+
+# superseded by this run; Forgejo dismisses only blocking reviews, and only with the owner's token
+if [ -n "${MERGE_TOKEN:-}" ]; then
+  for id in $(jq '.[] | select(.state == "REQUEST_CHANGES" and (.dismissed | not)) | .id' <<<"$reviews"); do
+    curl --silent --show-error --fail-with-body -X POST -o /dev/null \
+      -H "Authorization: token $MERGE_TOKEN" -H "Content-Type: application/json" \
+      "$API/pulls/$PR/reviews/$id/dismissals" --data '{"message": "Superseded by the review of the current commit."}' \
+      || echo "Dismissing review $id failed." >&2
+  done
 fi
 
 merge() {
