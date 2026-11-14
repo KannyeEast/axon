@@ -48,8 +48,13 @@
             bindaddress = "127.0.0.1:${toString port}";
             tls_chain = "${cert}/fullchain.pem";
             tls_key = "${cert}/key.pem";
-            # restic keeps the history
-            online_backup.versions = 1;
+            online_backup = {
+              # beside the state, not in it: inside, the first switch creates it before the state's
+              # mount, which then hides it, and kanidm's sandbox fails to start
+              path = "/var/lib/kanidm-backups";
+              # restic keeps the history
+              versions = 1;
+            };
           };
         };
         client = {
@@ -93,14 +98,18 @@
       # Kanidm reads its certificate only when it starts
       security.acme.certs.${domain}.reloadServices = [ "kanidm.service" ];
 
-      axon.persist.state.directories = [
-        {
-          directory = "/var/lib/kanidm";
-          user = "kanidm";
-          group = "kanidm";
-          mode = "0700";
-        }
-      ];
+      axon.persist.state.directories =
+        map
+          (directory: {
+            inherit directory;
+            user = "kanidm";
+            group = "kanidm";
+            mode = "0700";
+          })
+          [
+            "/var/lib/kanidm"
+            online_backup.path
+          ];
 
       axon.services.auth = {
         route = {
