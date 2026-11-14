@@ -12,7 +12,7 @@ vault = ["tower", "node1", "phone"]
 [external.phone]
 sync = "FEHJ4VH-KTUCWO7-FLWTHY4-KNLHYMZ-ABVK3EP-RRD54NG-6PSKTPB-SWIWSQW"
 
-# where this repository lives: every host's checkout gets these remotes, and origin push-mirrors to the others
+# where this repository lives: every host's checkout gets these remotes; origin is the one pulled from and pushed to
 [repo]
 origin = "forgejo"
 
