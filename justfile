@@ -67,10 +67,11 @@ fmt:
     [[ "$reply" =~ ^[Yy]$ ]] && nix run nixpkgs#deadnix -- --edit .
   fi
 
-# The host.toml / cluster.toml reference
+# The host.toml / cluster.toml fields, or those under TABLE
 [group("flake")]
 docs:
-  nix build {{flake}}#options --no-link --print-out-paths | xargs cat
+  nix build {{flake}}#options --no-link --print-out-paths | xargs cat \
+    | if command -v bat >/dev/null; then bat -l toml --style=plain; else cat; fi
 
 # ── secrets ────────
 # Edit a host's secrets (this one by default)
