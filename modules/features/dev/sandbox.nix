@@ -1,4 +1,4 @@
-# `sandbox` opens a rootless podman container that sees the current folder, read-only copies of
+# `sandbox` opens a rootless Docker container that sees the current folder, read-only copies of
 # its tools' dotfiles and the keys in ~/.config/sandbox/secrets.env; not ~, not the SSH keys.
 # `sandbox claude` runs Claude Code in it; bare `sandbox` is a shell for trying untrusted code.
 # Its home (Claude's login, shell history) persists in ~/.local/share/sandbox.
@@ -61,14 +61,17 @@
         runtimeInputs = [
           pkgs.coreutils
           pkgs.findutils
-          config.virtualisation.podman.package
+          config.virtualisation.docker.rootless.package
         ];
         text = ''
           name="sandbox:${image.imageTag}"
 
+          # the user's rootless daemon; DOCKER_HOST is only set where a shell started this
+          export DOCKER_HOST="''${DOCKER_HOST:-unix://''${XDG_RUNTIME_DIR:-/run/user/$UID}/docker.sock}"
+
           # the image is built by Nix; load it the first time this version is used
-          if ! podman image exists "$name"; then
-            ${image} | podman load >/dev/null
+          if ! docker image inspect "$name" >/dev/null 2>&1; then
+            ${image} | docker load >/dev/null
           fi
 
           state="''${XDG_DATA_HOME:-$HOME/.local/share}/sandbox"
@@ -108,9 +111,9 @@
           fi
 
           # the host's store, read-only, and its daemon: builds share the host's cache. The store
-          # is world-readable on the host anyway; secrets never enter it.
-          exec podman run --rm -it \
-            --userns=keep-id \
+          # is world-readable on the host anyway; secrets never enter it. Root in here is the user
+          # outside, so what it writes to $PWD is the user's and the nix daemon sees the user's uid.
+          exec docker run --rm -it \
             --volume /nix/store:/nix/store:ro \
             --volume /nix/var/nix/daemon-socket:/nix/var/nix/daemon-socket \
             --volume "$PWD:$PWD" \
