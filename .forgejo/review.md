@@ -62,8 +62,9 @@ You report findings; you never edit, commit or push.
 
 ### A new or changed service
 
-- **Route** through `axon.services.<name>.route`: `access = "login"` unless the service has its own
-  login, `public = true` only then (core asserts it).
+- **Route** through `axon.services.<name>.route`; nothing gates a route, so `public = true` only
+  for a service with its own login. A service that has a login registers in `axon.sso` and logs
+  in there when `axon.sso.provider` isn't null.
 - **Listening**: on `127.0.0.1` or inside the VPN namespace; the gateway proxies. Ports for other
   machines only through `axon.overlay`, never `networking.firewall` directly.
 - **State**: every directory the service writes survives the reboot, listed in the same file
@@ -83,6 +84,12 @@ You report findings; you never edit, commit or push.
 - **Mail and other contracts are extras**: the service works when `axon.mail` is null or the
   host has no gateway (`axon.routed` false).
 - **Class**: parts for only one class check `config.axon.host.class` inside the feature.
+- **Containers** (`virtualisation.oci-containers`, Docker on servers): the image fully qualified
+  and pinned on one `image = "<registry>/<name>:<tag>@sha256:<digest>"` line, which Renovate
+  updates; never `latest` or a tag alone. Ports published on `127.0.0.1` only, or host networking
+  with the service itself bound to `127.0.0.1`. Every host path it writes persisted (and backed
+  up where it can't be rebuilt). Secrets only through sops templates in `environmentFiles`,
+  never in `environment`. Route and tile through `axon.services`.
 
 ### host.toml and cluster.toml
 

@@ -69,7 +69,7 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   loads what needs a store path; settings live in dotfiles.
 - **Contracts are declared in core**: `axon.services` (routes, backup paths), `axon.persist`,
   `axon.volumes`, `axon.spaces` (a service's own subvolume, capped by `[limits]`), `axon.mail`,
-  `axon.vpn`, `axon.overlay`, `axon.browser`. Add one for two or more consumers or a realistic swap. Producers set them unconditionally; consumers handle an empty set or null.
+  `axon.sso` (single sign-on), `axon.vpn`, `axon.overlay`, `axon.browser`. Add one for two or more consumers or a realistic swap. Producers set them unconditionally; consumers handle an empty set or null.
 - **One way per thing.** Modules that produce the same result do it the same way. A shared helper
   only when many modules use it.
 - **Only what changes something.** Don't restate an upstream default (read the module's source),
@@ -85,6 +85,9 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   to `axon.persist.directories` (the boot disk). `DynamicUser` services keep state in
   `/var/lib/private/<name>`.
 - **Name files for what they do** (`passwords.nix`, not `keepassxc.nix`).
+- **Secrets are `<area>/<name>`** in `secrets.json`: area is what the secret belongs to (`user`,
+  `cloudflare`, `kanidm`, `forge`, `sso`, `dashboard`, `backup`), name says what it is, in
+  kebab-case; never a flat key.
 - **Formatting**: `nix fmt`. Never align `=` or values with extra spaces, in any file type.
 - **lib**: modules write `lib.<function>`; only `mkOption` and `types` may be inherited.
 - **Errors** read `<file or option>: <what is wrong>`, and say what to do where possible.

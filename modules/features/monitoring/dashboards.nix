@@ -1,7 +1,7 @@
 # Grafana at grafana.<domain>: graphs over Prometheus, data source and dashboards provisioned from
-# here. Behind the gateway login, which Grafana trusts: the user it names is signed in; the
-# host.toml user is the admin, with monitoring/password for the API. Without a gateway on this host
-# it stays on localhost, with only its own login. Its secret key is made on first start in its
+# here. With a login provider (axon.sso) its admins group logs in there as Admin; the host.toml
+# user stays the local admin, with monitoring/password, for the API. Without a gateway on this
+# host it stays on localhost, with only its own login. Its secret key is made on first start in its
 # persisted state folder. The "Start page" dashboard: two tables on top, each embedded on the
 # gateway's start page (every host's CPU, GPU, memory and temperature; every disk's use), graphs
 # of the last day below.
@@ -12,10 +12,11 @@
     let
       inherit (config.axon)
         cluster
-        routed
         services
+        sso
         user
         ;
+      client = sso.clients.grafana;
       port = 3001;
       state = "/var/lib/grafana";
       inherit (services.grafana.route) name origin;
@@ -283,11 +284,24 @@
             admin_password = "$__file{${config.sops.secrets."monitoring/password".path}}";
             secret_key = "$__file{${state}/secret_key}";
           };
-          # Caddy, on this host, passes the gateway login's user
-          "auth.proxy" = {
-            enabled = routed;
-            header_name = "Remote-User";
-            whitelist = "127.0.0.1";
+          # read-only without a login, like the other tailnet-only tools; the start page's frames
+          # need it
+          "auth.anonymous".enabled = true;
+          # endpoints and claims as Kanidm names them; with no login attribute the login is the
+          # mail address, so it can't collide with the local admin's name
+          "auth.generic_oauth" = lib.mkIf (sso.provider != null) {
+            enabled = true;
+            name = "Kanidm";
+            client_id = client.id;
+            client_secret = "$__file{${client.secret}}";
+            scopes = "openid profile email groups";
+            auth_url = "${sso.provider}/ui/oauth2";
+            token_url = "${sso.provider}/oauth2/token";
+            api_url = "${client.issuer}/userinfo";
+            use_pkce = true;
+            use_refresh_token = true;
+            # Kanidm lists groups as <name>@<its domain>
+            role_attribute_path = "contains(groups[*], '${client.group}@${lib.removePrefix "https://" sso.provider}') && 'Admin' || 'Viewer'";
           };
         };
         provision = {
@@ -324,6 +338,14 @@
           mode = "0700";
         }
       ];
+
+      axon.sso.clients.grafana = {
+        displayName = "Grafana";
+        landing = "${origin}/login/generic_oauth";
+        redirects = [ "${origin}/login/generic_oauth" ];
+        group = "admins";
+        inherit (services.grafana.dashboard) icon;
+      };
 
       axon.services.grafana = {
         route.port = port;

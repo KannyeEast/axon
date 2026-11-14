@@ -101,11 +101,10 @@
                   (rule "ServiceDown" ''probe_success{job="service"} == 0'' "2m"
                     "{{ $labels.service }} doesn't answer"
                   )
-                  (rule "RouteDown" ''probe_success{job=~"route|guarded"} == 0'' "5m"
+                  (rule "RouteDown" ''probe_success{job="route"} == 0'' "5m"
                     "{{ $labels.instance }} is not reachable as it should be"
                   )
-                  (rule "CertificateExpiring"
-                    ''probe_ssl_earliest_cert_expiry{job=~"route|guarded"} - time() < 14 * 86400''
+                  (rule "CertificateExpiring" ''probe_ssl_earliest_cert_expiry{job="route"} - time() < 14 * 86400''
                     "0m"
                     "the certificate of {{ $labels.instance }} expires in {{ $value | humanizeDuration }}"
                   )

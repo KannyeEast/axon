@@ -38,7 +38,8 @@
             TempPathEnabled = true;
             TempPath = incomplete;
           };
-          # the gateway login guards the UI; inside the namespace nothing else can reach it
+          # no password: the UI is reached only from the tailnet, through the gateway, and nothing
+          # else inside the namespace can reach it
           WebUI = {
             AuthSubnetWhitelistEnabled = true;
             AuthSubnetWhitelist = "${vpn.network.subnet}, 127.0.0.1/32";

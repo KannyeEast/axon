@@ -12,10 +12,17 @@ To change one, change it here in the same commit, with the new reason.
 |---|---|
 | `PasswordAuthentication = true` | a lost key must not lock you out of a machine you can't walk to |
 | No LUKS | chosen; hibernation into a plain swap partition |
-| podman only, `docker` as an alias | rootless by design; a docker group is root-equivalent |
+| Docker, rootful, on servers for their services; desktops still run rootless podman (dev/containers.nix, the sandbox) until they move to rootless Docker | servers run their services as containers, all the same way. No person's account joins the docker group, which is root by another name (Komodo's agent, a service, does), and published ports bind 127.0.0.1 only, as Docker's rules pass the firewall |
+| No Watchtower or Portainer: container images change only through Renovate's pull requests | every image is pinned to a digest, so what runs is what the repository says, reviewed like any other change |
 | JetBrains IDEs trust every project (`idea.trust.all.projects`) | chosen by the owner; there is no per-path setting |
 | The KeeShare key in `hosts/tower/home/.config/keepassxc/keepassxc.ini` | KeeShare is unused; KeePassXC generates the key itself |
 | Hardcoded domain, user and machine names inside `hosts/<name>/` | that folder belongs to exactly one host; only modules and `home/` must stay generic |
+| Kanidm (gateway/accounts.nix) is the one login for every service that has a login; there is no other identity provider | one account and one passkey per person for everything |
+| No login in front of the tailnet-only apps (the *arr apps, SABnzbd, qBittorrent, Homepage, Prometheus and the like) | the tailnet is the owner's alone; family devices aren't on it |
+| Jellyfin keeps its own login, and Seerr, which logs in with Jellyfin accounts, follows it | TV and native apps can't do OpenID Connect; they sign in with Quick Connect |
+| Vaultwarden's master password stays separate from Kanidm | it encrypts the vault; a login elsewhere can't replace it |
+| People and their group memberships are made with the kanidm CLI, never in the repository | names and mail addresses of the family stay private |
+| The second factor (passkey or TOTP) for `admins` is a Kanidm account policy set once by hand | Kanidm's provisioning has no account policies |
 
 ## Repository
 
@@ -36,7 +43,7 @@ To change one, change it here in the same commit, with the new reason.
 
 | Decision | Why |
 |---|---|
-| Jellyfin, Seerr, Immich, Nextcloud and Vaultwarden are public through the Cloudflare tunnel | family devices have no Tailscale; the risk under Cloudflare's terms (video streaming) is accepted |
+| Kanidm, Jellyfin, Seerr, Immich, Nextcloud and Vaultwarden are public through the Cloudflare tunnel | family devices have no Tailscale; the risk under Cloudflare's terms (video streaming) is accepted |
 | DNS records for public routes are made by hand at Cloudflare | not managed from this repo; a new public route needs its tunnel record (`cloudflared tunnel route dns`), a tailnet-only one none |
 | Vaultwarden's admin page exists only while `secrets.json` holds `vaultwarden/admin-token` (passwords/vault.nix) | it is needed only to invite the family; off otherwise, so the public route has no admin login to attack |
 | Radarr, Sonarr and Prowlarr settings (quality profiles, indexers) live in their UIs, not in Nix | they are per-host choices |

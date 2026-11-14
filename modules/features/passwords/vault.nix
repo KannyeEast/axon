@@ -3,13 +3,17 @@
 # the admin page, on only while secrets.json holds vaultwarden/admin-token (an argon2 hash). With
 # axon.mail it sends invitations and account mail. Its 23:00 copy is what gets backed up, on the
 # data volume where a host has one.
+# With a login provider (axon.sso) the family can log in there instead of with mail address and
+# master password; the account with the provider's mail address is the one logged into, and only
+# accounts that exist or are invited can. The master password still unlocks the vault.
 { lib, ... }:
 {
   flake.modules.nixos.passwords =
     { config, ... }:
     let
-      inherit (config.axon) mail volumes;
+      inherit (config.axon) mail sso volumes;
       inherit (config.axon.services.vault) route;
+      client = sso.clients.vaultwarden;
       ph = config.sops.placeholder;
       port = 8222;
       backups = "${volumes.data or "/var/backup"}/vaultwarden";
@@ -20,7 +24,8 @@
           SMTP_USERNAME = mail.address;
           SMTP_PASSWORD = mail.token;
         }
-        // lib.optionalAttrs hasAdmin { ADMIN_TOKEN = ph."vaultwarden/admin-token"; };
+        // lib.optionalAttrs hasAdmin { ADMIN_TOKEN = ph."vaultwarden/admin-token"; }
+        // lib.optionalAttrs (sso.provider != null) { SSO_CLIENT_SECRET = ph."sso/${client.id}"; };
     in
     lib.mkIf (config.axon.host.class == "server") {
       services.vaultwarden = {
@@ -40,6 +45,13 @@
         // lib.optionalAttrs (mail != null) {
           SMTP_HOST = mail.host;
           SMTP_PORT = mail.port;
+        }
+        // lib.optionalAttrs (sso.provider != null) {
+          SSO_ENABLED = true;
+          SSO_AUTHORITY = client.issuer;
+          SSO_CLIENT_ID = client.id;
+          # its default lets the provider make accounts, past SIGNUPS_ALLOWED
+          SSO_SIGNUPS_ALLOWED = false;
         };
         environmentFile = lib.mkIf (env != { }) config.sops.templates."vaultwarden.env".path;
       };
@@ -55,6 +67,13 @@
       # the copy lives on a data disk that may be missing at boot (nofail): never write to root instead
       systemd.services.backup-vaultwarden.unitConfig.RequiresMountsFor = [ backups ];
 
+      axon.sso.clients.vaultwarden = {
+        displayName = "Vaultwarden";
+        landing = route.url;
+        redirects = [ "${route.url}/identity/connect/oidc-signin" ];
+        inherit (config.axon.services.vault.dashboard) icon;
+      };
+
       axon.persist.state.directories = [
         {
           directory = "/var/lib/vaultwarden";
@@ -68,7 +87,6 @@
       axon.services.vault = {
         route = {
           inherit port;
-          access = "open"; # Vaultwarden's own login
           public = true;
         };
         dashboard = {
