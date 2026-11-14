@@ -4,19 +4,49 @@
 {
   flake.modules.nixos.downloads =
     { config, ... }:
+    let
+      port = 5055;
+      state = "/var/lib/seerr";
+      id = 400;
+    in
     lib.mkIf (config.axon.volumes ? media) {
-      services.seerr.enable = true;
+      users.users.seerr = {
+        isSystemUser = true;
+        group = "seerr";
+        uid = id;
+      };
+      users.groups.seerr.gid = id;
+
+      virtualisation.oci-containers.containers.seerr = {
+        image = "ghcr.io/seerr-team/seerr:v3.5.1@sha256:d8fab675b55ad293ded98fd71efcfd46054cbad9746534ae1cc4794a88c0b3be";
+        user = "${toString id}:${toString id}";
+        # reaches Jellyfin, Radarr and Sonarr on 127.0.0.1
+        networks = [ "host" ];
+        # node directly: npm wants a writable home, which this user hasn't
+        cmd = [
+          "node"
+          "dist/index.js"
+        ];
+        environment = {
+          HOST = "127.0.0.1";
+          PORT = toString port;
+          TZ = config.axon.locale.timezone;
+        };
+        volumes = [ "${state}:/app/config" ];
+      };
 
       axon.persist.state.directories = [
         {
-          directory = "/var/lib/private/seerr";
+          directory = state;
+          user = "seerr";
+          group = "seerr";
           mode = "0700";
         }
       ];
 
       axon.services.requests = {
         route = {
-          port = 5055;
+          inherit port;
           public = true;
         };
         dashboard = {
@@ -28,7 +58,7 @@
           widget.type = "seerr";
           key = true;
         };
-        backup.paths = [ "/var/lib/private/seerr" ];
+        backup.paths = [ state ];
       };
     };
 }
