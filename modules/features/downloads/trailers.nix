@@ -30,6 +30,8 @@
           PGID = toString config.users.groups.media.gid;
           WEBUI_DISABLE_AUTH = "true"; # the gateway login guards it
           UPDATE_YTDLP = "true"; # YouTube breaks a pinned yt-dlp within weeks
+          # stable yt-dlp gets only the 360p format while YouTube forces SABR streaming (trailarr#706)
+          YTDLP_NIGHTLY = "true";
         };
         # group-writable for the *arr apps where Trailarr copies instead of moving, or makes parents
         extraOptions = [ "--umask=0002" ];
