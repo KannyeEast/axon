@@ -131,23 +131,7 @@ in
       # Homepage shows groups in the order of their layout entries, and Nix writes attribute sets
       # sorted, so the layout is written out by hand, one entry per line in row order
       layout = map layoutOf rows;
-      settingsFile = pkgs.writeText "settings.yaml" (
-        lib.concatStrings (
-          lib.mapAttrsToList (
-            key: value: "${key}: ${lib.toJSON value}\n"
-          ) config.services.homepage-dashboard.settings
-        )
-        + "layout:\n"
-        + lib.concatMapStrings (entry: "  ${lib.toJSON entry.name}: ${lib.toJSON entry.value}\n") layout
-      );
-    in
-    {
-      services.homepage-dashboard = {
-        enable = true;
-        listenPort = port;
-        allowedHosts = routes.home.route.host;
-        environmentFiles = [ config.sops.templates."homepage.env".path ];
-
+      page = {
         # the reload button, which Homepage puts in the footer, stays in the top right corner, with
         # "up/all" next to it: services whose status dot is green, out of all with a dot
         customCSS = ''
@@ -212,6 +196,47 @@ in
         }) linkGroups;
       };
 
+      settingsFile = pkgs.writeText "settings.yaml" (
+        lib.concatStrings (lib.mapAttrsToList (key: value: "${key}: ${lib.toJSON value}\n") page.settings)
+        + "layout:\n"
+        + lib.concatMapStrings (entry: "  ${lib.toJSON entry.name}: ${lib.toJSON entry.value}\n") layout
+      );
+
+      yaml = pkgs.formats.yaml { };
+      # copies, not links: the container doesn't see the store. Homepage fills in a file that's
+      # missing, which the read-only mount refuses, so every file it reads is here
+      files = pkgs.runCommandLocal "homepage-config" { } (
+        "mkdir $out\n"
+        + lib.concatStrings (
+          lib.mapAttrsToList (name: path: "cp ${path} $out/${name}\n") {
+            "settings.yaml" = settingsFile;
+            "services.yaml" = yaml.generate "services.yaml" page.services;
+            "bookmarks.yaml" = yaml.generate "bookmarks.yaml" page.bookmarks;
+            "widgets.yaml" = yaml.generate "widgets.yaml" [ ];
+            "docker.yaml" = yaml.generate "docker.yaml" { };
+            "kubernetes.yaml" = yaml.generate "kubernetes.yaml" { };
+            "proxmox.yaml" = yaml.generate "proxmox.yaml" { };
+            "custom.css" = pkgs.writeText "custom.css" page.customCSS;
+            "custom.js" = pkgs.writeText "custom.js" page.customJS;
+          }
+        )
+      );
+    in
+    {
+      virtualisation.oci-containers.containers.homepage = {
+        image = "ghcr.io/gethomepage/homepage:v2.7.0@sha256:19c5c09184458a41b7b5915e71463a39f36cd33540f41bdbed008791b8182d5f";
+        # widgets ask the services on 127.0.0.1, which only the host's network reaches
+        networks = [ "host" ];
+        environment = {
+          HOSTNAME = "127.0.0.1";
+          PORT = toString port;
+          HOMEPAGE_ALLOWED_HOSTS = routes.home.route.host;
+          LOG_TARGETS = "stdout";
+        };
+        environmentFiles = [ config.sops.templates."homepage.env".path ];
+        volumes = [ "${files}:/app/config:ro" ];
+      };
+
       axon.links = gateway.links;
 
       warnings =
@@ -219,15 +244,13 @@ in
           "hosts/${host.name}/secrets.json: no widget key yet for ${lib.concatStringsSep ", " waiting}, so those tiles show no numbers; add the keys with `just secrets ${host.name}`";
 
       # Node exits with 143 on SIGTERM; without this every restart counts as a failure and mails
-      systemd.services.homepage-dashboard.serviceConfig.SuccessExitStatus = [ 143 ];
-
-      environment.etc."homepage-dashboard/settings.yaml".source = lib.mkForce settingsFile;
+      systemd.services.docker-homepage.serviceConfig.SuccessExitStatus = [ 143 ];
 
       sops.secrets = lib.genAttrs secrets (_: { });
       sops.templates."homepage.env" = {
         content = lib.concatStrings (map (secret: "${envName secret}=${ph.${secret}}\n") secrets);
         # a running Homepage keeps the variables it started with
-        restartUnits = [ "homepage-dashboard.service" ];
+        restartUnits = [ "docker-homepage.service" ];
       };
 
       axon.services.home.route.port = port;
