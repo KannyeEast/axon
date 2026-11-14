@@ -12,7 +12,8 @@ To change one, change it here in the same commit, with the new reason.
 |---|---|
 | `PasswordAuthentication = true` | a lost key must not lock you out of a machine you can't walk to |
 | No LUKS | chosen; hibernation into a plain swap partition |
-| podman only, `docker` as an alias | rootless by design; a docker group is root-equivalent |
+| Docker, rootful, on servers for their services; desktops still run rootless podman (dev/containers.nix, the sandbox) until they move to rootless Docker | servers run their services as containers, all the same way. No person's account joins the docker group, which is root by another name (Komodo's agent, a service, does), and published ports bind 127.0.0.1 only, as Docker's rules pass the firewall |
+| No Watchtower or Portainer: container images change only through Renovate's pull requests | every image is pinned to a digest, so what runs is what the repository says, reviewed like any other change |
 | JetBrains IDEs trust every project (`idea.trust.all.projects`) | chosen by the owner; there is no per-path setting |
 | The KeeShare key in `hosts/tower/home/.config/keepassxc/keepassxc.ini` | KeeShare is unused; KeePassXC generates the key itself |
 | Hardcoded domain, user and machine names inside `hosts/<name>/` | that folder belongs to exactly one host; only modules and `home/` must stay generic |

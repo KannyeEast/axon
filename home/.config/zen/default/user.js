@@ -21,7 +21,6 @@ user_pref("browser.urlbar.suggest.trending", false);
 user_pref("browser.urlbar.suggest.weather", false);
 user_pref("browser.urlbar.suggest.yelp", false);
 
-user_pref("general.smoothScroll", false);
 user_pref("general.autoScroll", true);
 
 // ── zen ────────

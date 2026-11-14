@@ -84,6 +84,12 @@ You report findings; you never edit, commit or push.
 - **Mail and other contracts are extras**: the service works when `axon.mail` is null or the
   host has no gateway (`axon.routed` false).
 - **Class**: parts for only one class check `config.axon.host.class` inside the feature.
+- **Containers** (`virtualisation.oci-containers`, Docker on servers): the image fully qualified
+  and pinned on one `image = "<registry>/<name>:<tag>@sha256:<digest>"` line, which Renovate
+  updates; never `latest` or a tag alone. Ports published on `127.0.0.1` only, or host networking
+  with the service itself bound to `127.0.0.1`. Every host path it writes persisted (and backed
+  up where it can't be rebuilt). Secrets only through sops templates in `environmentFiles`,
+  never in `environment`. Route and tile through `axon.services`.
 
 ### host.toml and cluster.toml
 
