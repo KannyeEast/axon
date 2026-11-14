@@ -15,11 +15,16 @@ let
 in
 {
   flake.modules.nixos.core =
-    { config, ... }:
+    { config, pkgs, ... }:
     let
       inherit (config.axon) cluster remotes;
       inherit (cluster) domain repo;
       own = remote: domain != null && lib.hasSuffix domain remote.host;
+      urls =
+        repo.remotes
+        // lib.optionalAttrs (repo.origin != null && repo.remotes ? ${repo.origin}) {
+          origin = repo.remotes.${repo.origin};
+        };
     in
     {
       options.axon.remotes = mkOption {
@@ -56,10 +61,24 @@ in
       };
 
       config = {
+        # the checkout's remotes live here alone: a clone keeps none of its own, as a second url
+        # on a remote makes git push to both
+        programs.git.enable = true;
+        programs.git.config = lib.mkIf (repo.remotes != { }) {
+          includeIf."gitdir:${config.axon.repo}/".path = "${pkgs.writeText "axon-remotes" (
+            lib.generators.toGitINI {
+              remote = lib.mapAttrs (name: url: {
+                inherit url;
+                fetch = "+refs/heads/*:refs/remotes/${name}/*";
+              }) urls;
+            }
+          )}";
+        };
+
         assertions = [
           {
-            assertion = repo.origin == null || repo.remotes ? ${repo.origin};
-            message = "cluster.toml: [repo] origin '${toString repo.origin}' is not under [repo.remotes] (${lib.concatStringsSep ", " (lib.attrNames repo.remotes)})";
+            assertion = repo.remotes == { } || (repo.origin != null && repo.remotes ? ${repo.origin});
+            message = "cluster.toml: [repo] origin must be one of the names under [repo.remotes] (${lib.concatStringsSep ", " (lib.attrNames repo.remotes)})";
           }
         ];
 
