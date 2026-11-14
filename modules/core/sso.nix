@@ -19,6 +19,12 @@ in
           description = "The login provider's base URL, set by the provider. Consumers must work with null.";
         };
 
+        unit = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+          description = "The provider's systemd unit on this host, started once its clients exist; for consumers that reach it while starting.";
+        };
+
         clients = mkOption {
           default = { };
           description = "Services that log users in at the provider, by client id.";

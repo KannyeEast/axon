@@ -23,6 +23,8 @@
     in
     {
       axon.sso.provider = url;
+      # provisioning runs in the unit's start, so clients exist once it's up
+      axon.sso.unit = "kanidm.service";
 
       sops.secrets = {
         "kanidm/admin-password".owner = "kanidm";
