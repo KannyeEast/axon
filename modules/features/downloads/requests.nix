@@ -17,7 +17,6 @@
       axon.services.requests = {
         route = {
           port = 5055;
-          access = "open";
           public = true;
         };
         dashboard = {

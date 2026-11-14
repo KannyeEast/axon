@@ -93,22 +93,26 @@ in
                         origin = mkOption {
                           type = types.str;
                           readOnly = true;
-                          default = if config.axon.routed then route.config.url else "http://${route.config.endpoint}";
-                          defaultText = "url behind the gateway, else http://<endpoint>";
+                          default = if config.axon.routed then route.config.url else route.config.internal;
+                          defaultText = "url behind the gateway, else internal";
                           description = "Where the service links to itself, for its own settings.";
                         };
-                        access = mkOption {
-                          type = types.enum [
-                            "open" # no gateway login: public, or the service authenticates itself
-                            "login" # gateway login
-                            "2fa" # gateway login with a second factor
-                          ];
-                          default = "login";
+                        tls = mkOption {
+                          type = types.bool;
+                          default = false;
+                          description = "The service itself speaks HTTPS, with the gateway's certificate for host.";
+                        };
+                        internal = mkOption {
+                          type = types.str;
+                          readOnly = true;
+                          default = "${if route.config.tls then "https" else "http"}://${route.config.endpoint}";
+                          defaultText = "http://<endpoint>, https:// with tls";
+                          description = "The service's own address, for callers on this host.";
                         };
                         public = mkOption {
                           type = types.bool;
                           default = false;
-                          description = "Also reachable from the internet through the gateway's tunnel; on the tailnet either way. Only for services with their own login.";
+                          description = "Also reachable from the internet through the gateway's tunnel; on the tailnet either way. Only for services with their own login: nothing gates a route.";
                         };
                       };
                     })

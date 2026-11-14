@@ -51,7 +51,7 @@
           defaultSopsFormat = "yaml";
           validateSopsFiles = false;
 
-          secrets.user-privatekey = {
+          secrets."user/private-key" = {
             path = "${home}/.ssh/id_ed25519";
             owner = user.name;
             mode = "0600";

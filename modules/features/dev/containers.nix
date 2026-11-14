@@ -1,4 +1,4 @@
-# One container engine: rootless podman, with `docker` and `docker compose` as aliases so
+# Desktops' container engine: rootless podman, with `docker` and `docker compose` as aliases so
 # projects written for Docker run unchanged. The sandbox (sandbox.nix) runs on it too.
 { lib, ... }:
 {

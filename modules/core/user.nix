@@ -29,13 +29,13 @@
           "wheel"
           "networkmanager"
         ];
-        hashedPasswordFile = config.sops.secrets.user-password.path;
+        hashedPasswordFile = config.sops.secrets."user/password".path;
         openssh.authorizedKeys.keys = keys;
       };
 
       users.users.root.openssh.authorizedKeys.keys = keys;
 
-      sops.secrets.user-password.neededForUsers = true;
+      sops.secrets."user/password".neededForUsers = true;
       security.sudo.extraConfig = "Defaults lecture=never";
     };
 }

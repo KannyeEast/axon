@@ -1,6 +1,6 @@
 # Finding things: Prowlarr manages the indexers for Radarr (movies) and Sonarr (shows),
-# Bazarr fetches subtitles. All behind the gateway login. They fill the movies/ and shows/ folders
-# on the media volume, so they only run on a host that has one.
+# Bazarr fetches subtitles. All tailnet-only, without a login. They fill the movies/ and shows/
+# folders on the media volume, so they only run on a host that has one.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =

@@ -63,12 +63,12 @@ in
           resolver = "100.100.100.100";
         };
 
-        sops.secrets.tailscale-authkey = { };
+        sops.secrets."tailscale/authkey" = { };
 
         services.tailscale = {
           enable = true;
           openFirewall = true;
-          authKeyFile = config.sops.secrets.tailscale-authkey.path;
+          authKeyFile = config.sops.secrets."tailscale/authkey".path;
         };
         services.resolved.enable = true; # MagicDNS
 
