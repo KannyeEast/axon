@@ -3,14 +3,21 @@
 # share links work without Tailscale; its own login guards it. Without a gateway on this host it
 # stays on localhost. First account by hand after install, then two-factor in the web UI:
 #   nextcloud-occ user:add <you> && nextcloud-occ group:adduser admin <you>
+# With a login provider (axon.sso) the family logs in there too; the password form stays.
 # Major versions upgrade one at a time: bump the package by one, switch, repeat.
 { lib, ... }:
 {
   flake.modules.nixos.files =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) mail routed services;
+      inherit (config.axon)
+        mail
+        routed
+        services
+        sso
+        ;
       inherit (services.cloud) route;
+      client = sso.clients.nextcloud;
       data = config.axon.spaces.nextcloud.path;
       port = 8090;
     in
@@ -54,6 +61,13 @@
             inherit port;
           }
         ];
+
+        axon.sso.clients.nextcloud = {
+          displayName = "Nextcloud";
+          landing = route.url;
+          redirects = [ "${route.url}/apps/user_oidc/code" ];
+          inherit (services.cloud.dashboard) icon;
+        };
 
         axon.spaces.nextcloud = {
           user = "nextcloud";
@@ -108,6 +122,28 @@
             exclude = [ "${data}/data/appdata_*/preview" ];
           };
         };
+      })
+
+      (lib.mkIf (config.axon.host.class == "server" && sso.provider != null) {
+        services.nextcloud = {
+          # this also closes the app store, which file storage alone doesn't need
+          extraApps = { inherit (config.services.nextcloud.package.packages.apps) user_oidc; };
+          # the provider answers on this host (127.0.0.1); Nextcloud refuses local addresses without it
+          settings.allow_local_remote_servers = true;
+        };
+
+        # the provider as user_oidc stores it, updated on every setup run. The login is the short
+        # name (preferred_username), as is, so it lands in the account of that name, made on the
+        # first login where none exists; each login copies display name and mail address from the
+        # provider, and Nextcloud's own second factor is asked only on the password form
+        systemd.services.nextcloud-setup.script = lib.mkAfter ''
+          nextcloud-occ user_oidc:provider Kanidm \
+            --clientid=${client.id} \
+            --clientsecret-file=${client.secret} \
+            --discoveryuri=${client.issuer}/.well-known/openid-configuration \
+            --mapping-uid=preferred_username \
+            --unique-uid=0
+        '';
       })
 
       # without an account Nextcloud runs the same, but invites and password resets fail

@@ -17,7 +17,6 @@ To change one, change it here in the same commit, with the new reason.
 | The KeeShare key in `hosts/tower/home/.config/keepassxc/keepassxc.ini` | KeeShare is unused; KeePassXC generates the key itself |
 | Hardcoded domain, user and machine names inside `hosts/<name>/` | that folder belongs to exactly one host; only modules and `home/` must stay generic |
 | Kanidm (gateway/accounts.nix) is the one login for every service that has a login; there is no other identity provider | one account and one passkey per person for everything |
-| Nextcloud, Paperless and Forgejo keep their own login until each is moved to Kanidm | one service at a time, each tested before the next |
 | No login in front of the tailnet-only apps (the *arr apps, SABnzbd, qBittorrent, Homepage, Prometheus and the like) | the tailnet is the owner's alone; family devices aren't on it |
 | Jellyfin keeps its own login, and Seerr, which logs in with Jellyfin accounts, follows it | TV and native apps can't do OpenID Connect; they sign in with Quick Connect |
 | Vaultwarden's master password stays separate from Kanidm | it encrypts the vault; a login elsewhere can't replace it |
