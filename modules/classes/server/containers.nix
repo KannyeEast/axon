@@ -2,6 +2,8 @@
 # No person's account joins the docker group: it is root by another name. A published port opens
 # on 127.0.0.1 only, since Docker's own iptables rules come before the host firewall; the gateway
 # proxies. Every image is pinned to a digest, so it changes only through a Renovate pull request.
+# A container that keeps data runs as its own system user, with a fixed id from 400 up declared
+# next to it, so its files on the host belong to that user; NixOS refuses a duplicate id.
 { lib, ... }:
 {
   flake.modules.nixos.server =

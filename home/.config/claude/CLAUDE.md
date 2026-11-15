@@ -2,7 +2,7 @@
 
 ## Where you run
 
-- You run in a rootless podman sandbox on the user's machine (`sandbox claude`), not on the
+- You run in a rootless Docker sandbox on the user's machine (`sandbox claude`), not on the
   machine itself. You see the current folder (at the same path as on the machine), the host's
   nix store and daemon, and nothing else.
 - `!` commands run in the sandbox too. Anything that needs the machine (niri, systemctl, sudo,

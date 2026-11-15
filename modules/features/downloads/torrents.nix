@@ -51,9 +51,14 @@
       # make the folders once they're mounted (tmpfiles may run before that)
       systemd.services.qbittorrent = {
         unitConfig.RequiresMountsFor = folders;
-        serviceConfig.ExecStartPre = map (
-          dir: "+${lib.getExe' pkgs.coreutils "install"} -d -o root -g media -m 2775 ${dir}"
-        ) folders;
+        serviceConfig = {
+          ExecStartPre = map (
+            dir: "+${lib.getExe' pkgs.coreutils "install"} -d -o root -g media -m 2775 ${dir}"
+          ) folders;
+          # downloads group-writable: Radarr and Sonarr may only hardlink, move or delete what they
+          # can write (fs.protected_hardlinks); read-only, the import fails
+          UMask = "0002";
+        };
       };
 
       axon.persist.state.directories = [
@@ -73,7 +78,7 @@
         # the subnet whitelist above lets the widget in without a login
         dashboard = {
           name = "qBittorrent";
-          order = 2;
+          order = 3;
           group = "Media";
           description = "Downloads through the VPN";
           icon = "qbittorrent.svg";

@@ -47,7 +47,7 @@
         };
         dashboard = {
           name = "Jellyfin";
-          order = 5;
+          order = 1;
           group = "Media";
           description = "Movies and shows";
           icon = "jellyfin.svg";
