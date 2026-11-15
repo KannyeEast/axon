@@ -1,5 +1,5 @@
-# Home Assistant at ha.<domain>, tailnet only: the household's hub, with the Companion app on the
-# phones. The official container on the host's network, listening on 127.0.0.1. Its configuration
+# Home Assistant at ha.<domain>, public: the household's hub, with the Companion app on the
+# phones. Its own login guards it (TOTP per user, a ban after failed logins). The official container on the host's network, listening on 127.0.0.1. Its configuration
 # is HA's own, made in its UI; a first one is seeded only when none exists, with what the gateway
 # needs. The image runs as root inside: its process supervisor requires it.
 {
@@ -25,6 +25,8 @@
           use_x_forwarded_for: true
           trusted_proxies:
             - 127.0.0.1
+          ip_ban_enabled: true
+          login_attempts_threshold: 5
       '';
       seeding = pkgs.writeShellScript "home-assistant-seed" ''
         cd ${state}
@@ -55,7 +57,10 @@
       ];
 
       axon.services.ha = {
-        route.port = port;
+        route = {
+          inherit port;
+          public = true;
+        };
         dashboard = {
           name = "Home Assistant";
           group = "Files";
