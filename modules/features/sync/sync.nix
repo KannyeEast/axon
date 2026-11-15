@@ -108,7 +108,22 @@ in
           group = "Files";
           description = "Folders between machines";
           icon = "syncthing.svg";
-          widget.type = "syncthing";
+          widget = {
+            type = "syncthing";
+            highlight = {
+              # "1 / 2", devices connected out of all: amber while the two differ
+              connected.string = {
+                level = "warn";
+                when = "regex";
+                value = "^(\\d+) / (?!\\1$)";
+              };
+              errors.numeric = {
+                level = "warn";
+                when = "gt";
+                value = 0;
+              };
+            };
+          };
           key = true;
         };
         backup.paths = [ "/var/lib/syncthing" ] ++ map pathOf onVolumes;
