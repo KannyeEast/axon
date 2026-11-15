@@ -20,11 +20,7 @@
         autosuggestions.enable = true;
         syntaxHighlighting.enable = true;
 
-        # fzf-tab has to load after compinit, and NixOS would otherwise run compinit after this block
-        enableGlobalCompInit = false;
         interactiveShellInit = ''
-          autoload -U compinit && compinit
-
           source ${omz}/lib/clipboard.zsh
           source ${omz}/plugins/copyfile/copyfile.plugin.zsh
           source ${omz}/plugins/copypath/copypath.plugin.zsh
