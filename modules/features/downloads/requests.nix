@@ -51,7 +51,7 @@
         };
         dashboard = {
           name = "Seerr";
-          order = 1;
+          order = 2;
           group = "Media";
           description = "Requests";
           icon = "jellyseerr.svg";

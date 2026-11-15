@@ -78,7 +78,7 @@
         # the subnet whitelist above lets the widget in without a login
         dashboard = {
           name = "qBittorrent";
-          order = 2;
+          order = 3;
           group = "Media";
           description = "Downloads through the VPN";
           icon = "qbittorrent.svg";

@@ -13,14 +13,14 @@
       apps = {
         radarr = {
           port = 7878;
-          order = 3;
+          order = 5;
           description = "Movies";
           # wanted: monitored, released and not there; missing also counts films still to come
           attention = [ "wanted" ];
         };
         sonarr = {
           port = 8989;
-          order = 4;
+          order = 6;
           description = "Shows";
           attention = [ "wanted" ];
         };
