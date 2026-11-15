@@ -32,6 +32,9 @@
   const setText = (element, text) => {
     if (element.textContent !== text) element.textContent = text;
   };
+  const setShown = (element, shown) => {
+    if (element.hidden === shown) element.hidden = !shown;
+  };
   const setAttribute = (element, name, value) => {
     if (element.getAttribute(name) !== value) element.setAttribute(name, value);
   };
@@ -115,7 +118,7 @@
     setText(root.querySelector(".start-title h1"), document.title);
     const subtitle = root.querySelector(".start-subtitle");
     setText(subtitle, document.querySelector('meta[name="description"]')?.content ?? "");
-    subtitle.hidden = !subtitle.textContent;
+    setShown(subtitle, !!subtitle.textContent);
     // Homepage's reload button, with the up count, from the footer to the end of the header.
     // React leaves it where it is put: nothing in the footer is ever inserted before it
     const reload = document.getElementById("revalidate");
@@ -185,7 +188,7 @@
       setHidden(group, !group.querySelector("li.service:not([data-start-hidden])"));
     }
     chips(root.querySelector(".start-chips"), groups, counts, selected);
-    root.querySelector(".start-empty").hidden = groups.length === 0 || counts.get(selected) > 0;
+    setShown(root.querySelector(".start-empty"), groups.length > 0 && !(counts.get(selected) > 0));
   }
 
   // ── view ────────
@@ -236,7 +239,7 @@
       list.dataset.items = signature;
     }
     setText(bar.querySelector(".start-attention-count"), `${items.length} need attention`);
-    bar.hidden = items.length === 0;
+    setShown(bar, items.length > 0);
   }
 
   // ── updates ────────

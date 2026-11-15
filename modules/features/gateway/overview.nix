@@ -28,7 +28,6 @@ in
     { config, pkgs, ... }:
     let
       inherit (config.axon)
-        domain
         gateway
         host
         links
@@ -144,14 +143,13 @@ in
         customJS = lib.readFile ./_start-page.js;
 
         settings = {
-          title = domain;
+          title = "Homelab";
           # the subtitle under the title in _start-page.js's header
           description = "${toString serviceCount} services, ${toString hostCount} host${
             lib.optionalString (hostCount != 1) "s"
           }";
           theme = "dark";
           color = "neutral";
-          headerStyle = "clean";
           statusStyle = "dot";
           hideVersion = true;
           fullWidth = true;

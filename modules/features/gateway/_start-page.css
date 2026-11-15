@@ -11,6 +11,9 @@ div:has(> #layout-groups) {
 #bookmarks {
   margin: 0;
 }
+#layout-groups > .services-group:not(:last-child) {
+  margin-bottom: 20px;
+}
 /* widgets.yaml is empty, so Homepage's header is an empty box */
 #information-widgets {
   display: none;
