@@ -45,6 +45,7 @@ To change one, change it here in the same commit, with the new reason.
 |---|---|
 | Kanidm, Jellyfin, Seerr, Immich, Nextcloud, Vaultwarden and Home Assistant are public through the Cloudflare tunnel | family devices have no Tailscale; the risk under Cloudflare's terms (video streaming) is accepted |
 | Home Assistant (family/hub.nix) runs as root in its container, against the rule of one user per container | the official image's process supervisor needs root; the NixOS module would run it as a user but can't install HACS, which the household cards come from |
+| Home Assistant (family/hub.nix) has no Kanidm login (axon.sso), only its own accounts with TOTP | the only add-on (hass-oidc-auth) can't log in inside the Companion app (a code entered in the browser instead), its button fails on HA 2026.10+ (issue #446), and roles follow Kanidm only at first login |
 | DNS records for public routes are made by hand at Cloudflare | not managed from this repo; a new public route needs its tunnel record (`cloudflared tunnel route dns`), a tailnet-only one none |
 | Vaultwarden's admin page exists only while `secrets.json` holds `vaultwarden/admin-token` (passwords/vault.nix) | it is needed only to invite the family; off otherwise, so the public route has no admin login to attack |
 | Radarr, Sonarr and Prowlarr settings (quality profiles, indexers) live in their UIs, not in Nix | they are per-host choices |
