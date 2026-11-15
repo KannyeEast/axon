@@ -2,7 +2,7 @@
 # login and is public. Needs the library the arr stack fills, so it runs where that does.
 # A friend sees in Jellyfin only what they requested or put on their watchlist here: the owner adds
 # the tag `friend` to that user's "Allow items with tags" in Jellyfin, and _friend-tags.py tags
-# those titles for them every 15 minutes. It hides titles in Jellyfin; it is not access control.
+# those titles for them every 2 minutes. It hides titles in Jellyfin; it is not access control.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
@@ -99,7 +99,7 @@
             timerConfig = {
               # a switch that adds the timer runs it at once: boot plus 5m is past by then
               OnBootSec = "5m";
-              OnUnitActiveSec = "15m";
+              OnUnitActiveSec = "2m";
             };
           };
         })
