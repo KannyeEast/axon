@@ -1,7 +1,8 @@
-// The start page's own parts on top of Homepage: the up count, a bar listing the values its
-// highlights mark, a search, group chips and a compact view. Homepage renders in the browser and
-// again on every refresh, so each part is redone on every change of the page, writing only what
-// differs; a part whose element is missing is left out, and the page works without this file.
+// The start page's own parts on top of Homepage: a header with the title, a search, a compact
+// view, the up count and the reload button, a bar listing the values its highlights mark, and
+// group chips. Homepage renders in the browser and again on every refresh, so each part is redone
+// on every change of the page, writing only what differs; a part whose element is missing is left
+// out, and the page works without this file.
 // The up count polls every 2 s instead: the status dots change only their class, which the
 // observer doesn't watch.
 (() => {
@@ -54,29 +55,43 @@
     if (count.hasAttribute("data-down") !== (up < all)) count.toggleAttribute("data-down", up < all);
   }, 2000);
 
-  // ── controls ────────
-  // one bar right above the groups, made once and moved back if Homepage replaces them
+  // ── header and controls ────────
+  // one block right above the groups, made once and moved back if Homepage replaces them: the
+  // title and subtitle (settings title and description) with the search, the view toggle and the
+  // reload button, then the attention bar, then the chips
+  const arrow =
+    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>';
+
   function controls(layout) {
     let root = document.getElementById("start-page");
     if (!root) {
       root = document.createElement("div");
       root.id = "start-page";
       root.innerHTML = `
-        <div class="start-attention" hidden>
+        <header class="start-header">
+          <div class="start-title">
+            <h1></h1>
+            <span class="start-subtitle"></span>
+          </div>
+          <div class="start-tools">
+            <label class="start-search">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input type="search" placeholder="Search services" aria-label="Search services">
+            </label>
+            <div class="start-view" role="group" aria-label="View">
+              <button type="button" data-view="compact">Compact</button>
+              <button type="button" data-view="detailed">Detailed</button>
+            </div>
+          </div>
+        </header>
+        <section class="start-attention" hidden>
           <span class="start-attention-count"></span>
           <span class="start-attention-items"></span>
-        </div>
-        <div class="start-controls">
-          <input type="search" class="start-search" placeholder="Search" aria-label="Search services">
-          <div class="start-chips" role="group" aria-label="Groups"></div>
-          <div class="start-view" role="group" aria-label="View">
-            <button type="button" data-view="compact">Compact</button>
-            <button type="button" data-view="detailed">Detailed</button>
-          </div>
-        </div>
+        </section>
+        <div class="start-chips" role="group" aria-label="Groups"></div>
         <p class="start-empty" hidden>No services match this search.</p>
       `;
-      root.querySelector(".start-search").addEventListener("input", (event) => {
+      root.querySelector(".start-search input").addEventListener("input", (event) => {
         state.query = event.target.value;
         update();
       });
@@ -96,6 +111,16 @@
       });
     }
     if (root.nextElementSibling !== layout) layout.before(root);
+
+    setText(root.querySelector(".start-title h1"), document.title);
+    const subtitle = root.querySelector(".start-subtitle");
+    setText(subtitle, document.querySelector('meta[name="description"]')?.content ?? "");
+    subtitle.hidden = !subtitle.textContent;
+    // Homepage's reload button, with the up count, from the footer to the end of the header.
+    // React leaves it where it is put: nothing in the footer is ever inserted before it
+    const reload = document.getElementById("revalidate");
+    const tools = root.querySelector(".start-tools");
+    if (reload && reload.parentElement !== tools) tools.append(reload);
     return root;
   }
 
@@ -198,7 +223,8 @@
       list.replaceChildren(
         ...items.map((item) => {
           const entry = document.createElement(item.href ? "a" : "span");
-          entry.textContent = item.text;
+          entry.innerHTML = arrow;
+          entry.prepend(item.text);
           if (item.href) {
             entry.href = item.href;
             entry.rel = "noreferrer";

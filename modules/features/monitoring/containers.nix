@@ -150,7 +150,7 @@
         route.port = port;
         dashboard = {
           name = "Komodo";
-          group = "System";
+          group = "Containers";
           description = "Containers";
           icon = "komodo.svg";
           widget = {

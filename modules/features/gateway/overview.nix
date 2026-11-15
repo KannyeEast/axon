@@ -3,8 +3,8 @@
 # numbers where it sets a widget, amber where its widget's highlight marks one, one tile per
 # instance where it lists several. Widget keys come from secrets.json, and a service makes its
 # key only once it runs, so its tile shows no numbers until then. Below the tiles, axon.links and
-# this host's [gateway] links. _start-page.js adds a search, group chips, a compact view and a
-# bar listing what is marked amber.
+# this host's [gateway] links. _start-page.js adds a header (title, search, compact view, reload),
+# a bar listing what is marked amber and group chips.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -94,9 +94,9 @@ in
           )
         );
 
-      # Every tile has the same width on a grid of four: a group takes a column per tile (all four
-      # and wraps when it has more) and shares a row with the groups before it while they fit.
-      # The groups named here come first, the rest alphabetically
+      # Each group has its own rows, except groups of one tile: those share a row at the bottom,
+      # above the groups of graphs. The groups named here come first, the rest alphabetically.
+      # _start-page.css sets how many tiles fit a row; Homepage's columns only apply without it
       columns = 4;
       first = [
         "Media"
@@ -107,17 +107,16 @@ in
       ];
       # groups of graphs: last, two per row, so they get the width
       wide = [ "System" ];
-      span = group: lib.min columns (lib.length (inGroup group));
       narrow = lib.subtractLists wide groups;
-      used = row: lib.foldl' (sum: group: sum + span group) 0 row;
+      ordered = lib.filter (group: lib.elem group narrow) first ++ lib.subtractLists first narrow;
+      # for the subtitle: tiles that aren't graphs, and the machines this repository builds
+      serviceCount = lib.length (lib.concatMap inGroup narrow);
+      hostCount = lib.length (lib.attrNames config.axon.cluster.hosts);
+      single = group: lib.length (inGroup group) == 1;
+      singles = lib.filter single ordered;
       rows =
-        lib.foldl' (
-          rows: group:
-          if rows != [ ] && used (lib.last rows) + span group <= columns then
-            lib.init rows ++ [ (lib.last rows ++ [ group ]) ]
-          else
-            rows ++ [ [ group ] ]
-        ) [ ] (lib.filter (group: lib.elem group narrow) first ++ lib.subtractLists first narrow)
+        map (group: [ group ]) (lib.filter (group: !single group) ordered)
+        ++ lib.optional (singles != [ ]) singles
         ++ map (group: [ group ]) (lib.intersectLists wide groups);
       rowName = lib.concatStringsSep " and ";
       grid = count: {
@@ -134,36 +133,28 @@ in
             // {
               header = false;
             }
-            // lib.genAttrs row (group: grid (span group))
+            // lib.genAttrs row (_: grid 1)
           );
-      # Homepage gives each group of a shared row an equal part of it; spanning a column per tile
-      # keeps the tiles one width (two columns from md, all from lg, as Homepage's grids have)
-      spans = ''
-        @media (min-width: 48rem) {
-          .subgroup:has(.services-list.md\:grid-cols-2) { grid-column: span 2; }
-        }
-        @media (min-width: 64rem) {
-      ''
-      + lib.concatMapStrings (
-        count:
-        "  .subgroup:has(.services-list.lg\\:grid-cols-${toString count}) { grid-column: span ${toString count}; }\n"
-      ) (lib.range 2 columns)
-      + "}\n";
 
       # Homepage shows groups in the order of their layout entries, and Nix writes attribute sets
       # sorted, so the layout is written out by hand, one entry per line in row order
       layout = map layoutOf rows;
       page = {
-        customCSS = lib.readFile ./_start-page.css + spans;
+        customCSS = lib.readFile ./_start-page.css;
         customJS = lib.readFile ./_start-page.js;
 
         settings = {
           title = domain;
+          # the subtitle under the title in _start-page.js's header
+          description = "${toString serviceCount} services, ${toString hostCount} host${
+            lib.optionalString (hostCount != 1) "s"
+          }";
           theme = "dark";
           color = "neutral";
           headerStyle = "clean";
           statusStyle = "dot";
           hideVersion = true;
+          fullWidth = true;
           useEqualHeights = true;
         };
 

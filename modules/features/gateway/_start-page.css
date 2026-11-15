@@ -1,15 +1,158 @@
+/* ── page ──────── */
+/* settings.yaml sets fullWidth; the page is 1840px at most, centred */
+div:has(> #layout-groups) {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: calc(1840px + 2 * clamp(16px, 2.5vw, 48px));
+  margin: 0 auto;
+  padding: 32px clamp(16px, 2.5vw, 48px) 56px;
+}
+#layout-groups,
+#bookmarks {
+  margin: 0;
+}
+/* widgets.yaml is empty, so Homepage's header is an empty box */
+#information-widgets {
+  display: none;
+}
+
+/* ── tiles ──────── */
+/* Every tile has one width, in a group's own grid and in the row of one-tile groups alike, and as
+   many fit as the page is wide; graphs get two per row. The gap is Homepage's (gap-x-2) */
+:root {
+  --start-tile: 320px;
+}
+html[data-start-view="compact"] {
+  --start-tile: 230px;
+}
+#layout-groups .services-list,
+#layout-groups div:has(> .subgroup) {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--start-tile)), 1fr));
+}
+#layout-groups .subgroup .services-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+#layout-groups .services-list:has(iframe) {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr));
+}
+/* compact: icon, name and description; graphs stay */
+html[data-start-view="compact"] #layout-groups .service-container:not(:has(iframe)) {
+  display: none;
+}
+#layout-groups [data-start-hidden] {
+  display: none !important;
+}
+
+/* ── header ──────── */
+/* lined up with the groups below, which have a padding of 0.25rem */
+#start-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  margin-bottom: 22px;
+  padding: 0 0.25rem;
+  color: #ececec;
+}
+#start-page [hidden] {
+  display: none !important;
+}
+#start-page .start-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+#start-page .start-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#start-page h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 500;
+}
+#start-page .start-subtitle {
+  font-size: 13px;
+  color: #a8a8a8;
+}
+#start-page .start-tools {
+  display: flex;
+  flex: 0 1 760px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+#start-page .start-search {
+  display: flex;
+  flex: 1 1 260px;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 8px;
+  background: #2e2e2e;
+  color: #a8a8a8;
+}
+/* the forms plugin styles every search field */
+#start-page .start-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+  color: #ececec;
+  font-size: 14px;
+}
+#start-page .start-search input::placeholder {
+  color: #a8a8a8;
+}
+#start-page .start-view {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 8px;
+  background: #2e2e2e;
+}
+#start-page .start-view button {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 6px;
+  color: #a8a8a8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#start-page .start-view button[aria-pressed="true"] {
+  background: #4a4a4a;
+  color: #ffffff;
+}
+
 /* ── reload button ──────── */
-/* Homepage puts it in the footer; it stays in the top right corner, with "up/all" next to it:
-   services whose status dot is green, out of all with a dot */
-#revalidate {
-  position: fixed;
-  top: 1.5rem;
-  right: 1.5rem;
-  z-index: 20;
+/* Homepage's, moved into the header; "up/all" before it: services whose status dot is green, out
+   of all with a dot */
+#start-page #revalidate {
+  display: flex;
+  align-items: center;
+  margin: 0;
+}
+#start-page #revalidate svg {
+  box-sizing: content-box;
+  width: 20px;
+  height: 20px;
+  padding: 12px;
+  color: #ececec;
 }
 #services-up {
-  margin-right: 0.75rem;
-  font-size: 0.875rem;
+  padding: 0 8px 0 12px;
+  font-size: 15px;
+  letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
   color: #10b981;
 }
@@ -17,112 +160,87 @@
   color: #f43f5e;
 }
 
-/* ── controls ──────── */
-/* lined up with the groups below: the same margins as #layout-groups, the padding of a group */
-#start-page {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin: 1rem 1rem 0;
-  padding: 0 0.25rem;
-  font-size: 0.875rem;
-  color: rgb(var(--color-300));
-}
-@media (min-width: 40rem) {
-  #start-page {
-    margin: 1rem 2rem 0;
-  }
-}
-#start-page [hidden] {
-  display: none !important;
-}
-#start-page .start-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-}
-/* the forms plugin styles every search field; this one looks like a tile */
-#start-page .start-search {
-  flex: 1 1 12rem;
-  max-width: 20rem;
-  padding: 0.375rem 0.75rem;
-  border: 1px solid transparent;
-  border-radius: 0.375rem;
-  background: rgb(255 255 255 / 0.05);
-  color: rgb(var(--color-200));
-  font-size: 0.875rem;
-  box-shadow: none;
-}
-#start-page .start-search:focus {
-  border-color: rgb(var(--color-600));
-  outline: none;
-  box-shadow: none;
-}
-#start-page .start-search::placeholder {
-  color: rgb(var(--color-500));
-}
-#start-page .start-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
-}
-#start-page button {
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  background: rgb(255 255 255 / 0.05);
-  color: rgb(var(--color-300));
-  cursor: pointer;
-}
-#start-page button:hover {
-  background: rgb(255 255 255 / 0.1);
-}
-#start-page button[aria-pressed="true"] {
-  background: rgb(255 255 255 / 0.15);
-  color: rgb(var(--color-100));
-}
-#start-page .start-count {
-  margin-left: 0.375rem;
-  opacity: 0.6;
-  font-variant-numeric: tabular-nums;
-}
-#start-page .start-view {
-  display: flex;
-  gap: 0.25rem;
-  margin-left: auto;
-}
-#start-page .start-empty {
-  padding: 1rem 0;
-  color: rgb(var(--color-400));
-}
-
 /* ── attention ──────── */
-/* the colours of Homepage's warn highlight */
 #start-page .start-attention {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem 1rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
-  background: rgb(120 53 15 / 0.3);
-  color: rgb(253 230 138);
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #2e2a22;
 }
 #start-page .start-attention-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px;
+  font-size: 13px;
   font-weight: 600;
+  color: #f0b23e;
 }
-#start-page .start-attention a {
-  color: inherit;
+#start-page .start-attention-count::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f0b23e;
 }
-#start-page .start-attention a:hover {
-  text-decoration: underline;
+#start-page .start-attention-items {
+  display: contents;
+}
+#start-page .start-attention-items > * {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 6px;
+  background: #3a3326;
+  color: #ececec;
+  font-size: 13px;
+}
+#start-page .start-attention-items > a:hover {
+  color: #ffffff;
 }
 
-/* ── filtering ──────── */
-#layout-groups [data-start-hidden] {
-  display: none !important;
+/* ── chips ──────── */
+#start-page .start-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
-/* compact: icon, name and description; graphs stay */
-html[data-start-view="compact"] #layout-groups .service-container:not(:has(iframe)) {
-  display: none;
+#start-page .start-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #2e2e2e;
+  color: #d4d4d4;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#start-page .start-chips button[aria-pressed="true"] {
+  background: #ececec;
+  color: #1e1e1e;
+}
+#start-page .start-count {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: #a8a8a8;
+}
+#start-page .start-chips button[aria-pressed="true"] .start-count {
+  color: #555555;
+}
+#start-page .start-empty {
+  margin: 0;
+  padding: 24px;
+  border-radius: 6px;
+  background: #2e2e2e;
+  color: #a8a8a8;
+  font-size: 14px;
+  text-align: center;
 }
