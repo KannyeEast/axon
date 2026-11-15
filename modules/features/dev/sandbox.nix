@@ -61,6 +61,7 @@
         runtimeInputs = [
           pkgs.coreutils
           pkgs.findutils
+          pkgs.gnugrep
           config.virtualisation.docker.rootless.package
         ];
         text = ''
@@ -69,9 +70,12 @@
           # the user's rootless daemon; DOCKER_HOST is only set where a shell started this
           export DOCKER_HOST="''${DOCKER_HOST:-unix://''${XDG_RUNTIME_DIR:-/run/user/$UID}/docker.sock}"
 
-          # the image is built by Nix; load it the first time this version is used
+          # the image is built by Nix; load it the first time this version is used and drop the
+          # older ones, except one a running sandbox still holds (docker refuses those)
           if ! docker image inspect "$name" >/dev/null 2>&1; then
             ${image} | docker load >/dev/null
+            docker image ls sandbox --format '{{.Repository}}:{{.Tag}}' | grep -vxF "$name" \
+              | xargs -r docker image rm >/dev/null 2>&1 || true
           fi
 
           state="''${XDG_DATA_HOME:-$HOME/.local/share}/sandbox"
