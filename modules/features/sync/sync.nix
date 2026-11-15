@@ -1,7 +1,6 @@
-# Syncthing between cluster members. Its settings table is [sync] in host.toml, which only
-# exists where the sync feature is listed, so a stray [sync] table is an error.
-# Who shares what is a relation, declared once in cluster.toml [sync]. A folder named like
-# one of this host's volumes lives on that volume, everywhere else in ~/<folder>.
+# Syncthing between cluster members. Who shares what is a relation, declared once in cluster.toml
+# [sync]. A folder named like one of this host's volumes lives on that volume, everywhere else in
+# ~/<folder>.
 { lib, ... }:
 let
   inherit (lib) mkOption types;

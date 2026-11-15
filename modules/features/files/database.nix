@@ -1,6 +1,6 @@
 # The Postgres that Nextcloud, Immich and Paperless share; each creates its own database in it.
-# It runs on the system SSD, so Nextcloud's nightly dump goes on the data volume, where a host has
-# one: a dump next to its database is lost with it. Immich and Paperless write their own.
+# Its files sit with the host's state, so Nextcloud's nightly dump goes on the data volume, where a
+# host has one: a dump next to its database is lost with it. Immich and Paperless write their own.
 { lib, ... }:
 {
   flake.modules.nixos.files =

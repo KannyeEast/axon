@@ -1,13 +1,8 @@
-# Immich at photos.<domain> on servers: phone photo backup with face and place search.
-# Originals on the data volume (or in the state folder without one), database in the shared
-# Postgres, machine learning on the CPU. Each account is its own library, shared through albums
-# or partner sharing; the first one made in the web UI is the admin.
-# Uploads through the tunnel are capped at 100 MB per file; the gateway's DNS sends tailnet
-# devices past the tunnel, so the cap only applies from outside.
-# Thumbnails and transcoded videos, which the timeline loads by the hundred, live in Immich's
-# state on a host with a state volume, bind-mounted into the photo folder.
-# Its settings come from here, read-only in the UI. With a login provider (axon.sso) the family
-# logs in there, matched to accounts by mail address, new ones made on first login.
+# Immich at photos.<domain> on servers: phone photo backup with face and place search. Originals
+# on the data volume (or in the state folder without one), database in the shared Postgres,
+# machine learning on the CPU. Each account is its own library, shared through albums or partner
+# sharing; the first one made in the web UI is the admin. Settings come from here, read-only in
+# the UI. With a login provider (axon.sso) the family logs in there, matched by mail address.
 { lib, ... }:
 {
   flake.modules.nixos.files =
@@ -65,6 +60,8 @@
         units = [ "immich-server" ];
       };
 
+      # thumbnails and transcoded videos, which the timeline loads by the hundred,
+      # stay on the state volume
       fileSystems = lib.listToAttrs (
         map (dir: {
           name = "${data}/${dir}";

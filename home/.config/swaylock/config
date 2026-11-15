@@ -1,4 +1,5 @@
-# Colours only, from the shared palette (alacritty.toml); swaylock's own default is light grey.
+# Colours only, from the shared palette (alacritty.toml) and niri's colors.kdl;
+# swaylock's own default is light grey.
 color=0c0c12
 inside-color=1c1e27
 inside-clear-color=1c1e27

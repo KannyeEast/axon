@@ -1,10 +1,8 @@
-# The start page (Homepage) at home.<domain>: a tile for every service with a dashboard entry,
-# grouped on a grid of tiles of one width, linked to its route and with a status dot; live
-# numbers where it sets a widget, amber where its widget's highlight marks one, one tile per
-# instance where it lists several. Widget keys come from secrets.json, and a service makes its
-# key only once it runs, so its tile shows no numbers until then. Below the tiles, axon.links and
-# this host's [gateway] links. _start-page.js adds a header (title, search, compact view, reload),
-# a bar listing what is marked amber and group chips.
+# The start page (Homepage) at home.<domain>: a tile per service with a dashboard entry, grouped,
+# linked to its route, with a status dot and, where it sets a widget, live numbers (amber where the
+# widget's highlight marks one). A service makes its widget key only once it runs, so its tile
+# shows no numbers until the key is in secrets.json. Below the tiles, axon.links and [gateway]
+# links; _start-page.js adds the header, attention bar and group chips.
 { lib, ... }:
 let
   inherit (lib) mkOption types;

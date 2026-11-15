@@ -1,4 +1,4 @@
-# The terminal: zsh with its plugins, tmux with its plugins, and the everyday CLI tools.
+# The terminal: zsh, tmux and neovim with their plugins, and the everyday CLI tools.
 # Nix installs them and loads the plugins (they need store paths); every setting is a
 # dotfile (.zshrc, .config/tmux/tmux.conf, .config/starship.toml, .config/nvim/init.lua).
 {

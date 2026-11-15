@@ -3,24 +3,22 @@
 # install.sh: put a machine into the repo and install it
 #
 #   ./install.sh        this machine, booted from the NixOS installer USB
-#   ./install.sh -r     another machine over SSH, through nixos-anywhere. It may run the
-#                       installer or any Linux: a running system is switched into the
-#                       installer in RAM first. Needs key login as root.
+#   ./install.sh -r     another machine over SSH, key login as root. NixOS on this config's
+#                       partitions can be replaced in place; otherwise nixos-anywhere installs
+#                       it, switching any other Linux into the installer in RAM first.
 #
 # It asks a few questions, writes hosts/<name>/ (host.toml, facter.json, secrets.json) and the
 # machine's keys into .sops.yaml, lets you add what the questions don't cover (the features'
-# tables and secrets), checks that the config evaluates, and only then wipes and
-# installs. An existing hosts/<name> is reinstalled with its settings, and keeps its keys when
-# the old system still has them.
+# tables and secrets), checks that the config evaluates, commits the host's files, and only then
+# wipes and installs. An existing hosts/<name> is reinstalled with its settings, and keeps its
+# keys when the old system still has them.
 
 set -Eeuo pipefail
 
 # ── script variables ────────
-# == flags ==
 VERBOSE=false
 REMOTE=false
 
-# == host ==
 HOSTNAME=""
 HOST_KEY=""
 EXISTING=false
@@ -38,7 +36,6 @@ KEYBOARD=""
 KEYBOARD_VARIANT=""
 SYNC_ID=""
 
-# == disk ==
 DISK=""
 DISK_NAME=""
 SWAP=""
@@ -46,17 +43,15 @@ RESERVE=0
 WIPE_EXTRA=false
 INPLACE=false
 
-# == data disks: one entry per [disk.<label>] ==
+# data disks: one entry per [disk.<label>]
 DATA_LABELS=()
 DATA_DEVICES=()
 DATA_PROFILES=()
 DATA_MOUNTS=()
 
-# == secrets ==
 HOST_AGE=""
 USER_AGE=""
 
-# == temp ==
 FLAKE=""
 TEMP_DIR=""
 DOTFILES_METHOD=""
@@ -68,14 +63,12 @@ TARGET_NET=""
 REGISTRY=""
 
 # ── theme ────────
-# == palette ==
 FG="#c6c8d1"
 MUTED="#6c7086"
 CURSOR="#7aa2f7"
 ACCENT="#9ece6a"
 BASE="#1a1b26"
 
-# == gum ==
 export GUM_INPUT_PROMPT="  "
 export GUM_INPUT_WIDTH="60"
 export GUM_INPUT_CURSOR_FOREGROUND="$CURSOR"
@@ -110,7 +103,7 @@ logDebug() { gum log --level debug "$*"; }
 
 die() { logError "$1"; exit "${2:-1}"; }
 
-# == wrap command in gum styling ==
+# wrap command in gum styling
 run() {
   if [[ $VERBOSE == true ]]; then
     logDebug "\$ $*"
@@ -122,7 +115,6 @@ run() {
 
 nixx() { nix --extra-experimental-features "nix-command flakes" "$@"; }
 
-# == multiplexing ==
 sshInit() {
   SSH_OPTS=(
     -o ControlMaster=auto
@@ -134,7 +126,7 @@ sshInit() {
   )
 }
 
-# == decide where to execute command; local commands run as root, like remote ones ==
+# decide where to execute command; local commands run as root, like remote ones
 probe() {
   if [[ $REMOTE == true ]]; then
     ssh "${SSH_OPTS[@]}" "$TARGET" "$(printf '%q ' "$@")"
@@ -143,17 +135,17 @@ probe() {
   fi
 }
 
-# == the target runs the NixOS installer (USB or nixos-anywhere's kexec), not an installed system ==
+# the target runs the NixOS installer (USB or nixos-anywhere's kexec), not an installed system
 isInstaller() {
   # the same test nixos-anywhere makes
   probe grep -Eq 'VARIANT_ID="?installer"?' /etc/os-release
 }
 
-# == the keys of an install that hasn't finished yet; a rerun after a failure picks them up ==
+# the keys of an install that hasn't finished yet; a rerun after a failure picks them up
 keepDir() { printf '%s' "${XDG_CACHE_HOME:-$HOME/.cache}/axon-install/$HOSTNAME"; }
 
-# == every IPv4 address the card with this MAC has on this machine's network. Each address of
-# == the /24 is pinged once so the neighbour table fills; a host that drops pings still answers ARP.
+# every IPv4 address the card with this MAC has on this machine's network. Each address of
+# the /24 is pinged once so the neighbour table fills; a host that drops pings still answers ARP.
 findByMac() {
   local mac="$1" base i
   base="${2%/*}"
@@ -325,7 +317,7 @@ formFilter() {
   gum style --foreground="$MUTED" "$label: $selected"
 }
 
-# == the host name typed back: the last stop before anything is wiped ==
+# the host name typed back: the last stop before anything is wiped
 formTypeName() {
   local label="$1" reply
   reply=$(gum input --header="$label" --placeholder="type $HOSTNAME") || die "Cancelled"
@@ -335,7 +327,7 @@ formTypeName() {
 # ── toml ────────
 tomlJson() { yq -p toml -o json '.' "$1"; }
 
-# == set KEY in [SECTION] to a raw TOML value, adding the key or the section if missing ==
+# set KEY in [SECTION] to a raw TOML value, adding the key or the section if missing
 tomlSet() {
   local file="$1" section="$2" key="$3" value="$4"
   awk -v s="[$section]" -v k="$key" -v v="$value" '
@@ -412,7 +404,7 @@ listDisks() {
   probe lsblk -dno NAME,SIZE,MODEL -e 7,11 | awk 'NF'
 }
 
-# == a disk's by-id path, which survives disks being renumbered ==
+# a disk's by-id path, which survives disks being renumbered
 diskId() {
   local name="$1" byid
   byid="$(probe ls -l /dev/disk/by-id/ | awk -v d="$name" \
@@ -492,7 +484,7 @@ gatherIdentity() {
   done
 }
 
-# == reuse an existing host ==
+# reuse an existing host
 loadHost() {
   local dir="$FLAKE/hosts/$HOSTNAME" json missing=()
 
@@ -540,7 +532,7 @@ loadHost() {
   return 0
 }
 
-# == class and features, as the flake declares them ==
+# class and features, as the flake declares them
 gatherRole() {
   formHeader "Role"
   CLASS=""
@@ -578,7 +570,7 @@ gatherRole() {
   done
 }
 
-# == identity of an existing host, from the old system ==
+# identity of an existing host, from the old system
 preserveIdentity() {
   formHeader "Keys"
   PRESERVE=false
@@ -692,7 +684,7 @@ gatherLocale() {
   fi
 }
 
-# == hardware: facter detects the rest ==
+# hardware: facter detects the rest
 gatherHardware() {
   formHeader "Hardware"
   QUIRKS=()
@@ -727,7 +719,7 @@ gatherDisk() {
   logInfo "Disk: $DISK"
 }
 
-# == data disks: each [disk.<label>] is one btrfs filesystem, on one disk or an array ==
+# data disks: each [disk.<label>] is one btrfs filesystem, on one disk or an array
 gatherData() {
   formHeader "Data disks"
   DATA_LABELS=()
@@ -837,7 +829,7 @@ gatherSwap() {
   done
 }
 
-# == room for another OS ==
+# room for another OS
 gatherLayout() {
   formHeader "Layout"
   RESERVE=0
@@ -974,7 +966,7 @@ gather() {
 generate() {
   formHeader "Generating keys"
 
-  # == host keys ==
+  # host keys
   if [[ $PRESERVE == true ]]; then
     # ssh-keygen -y prints no comment, so it is put back to keep host.toml stable
     printf '%s root@%s\n' "$(ssh-keygen -y -f "$TEMP_DIR/ssh_host_ed25519_key")" "$HOSTNAME" \
@@ -988,7 +980,7 @@ generate() {
 
   logInfo "Host fingerprint: $(ssh-keygen -lf "$TEMP_DIR/ssh_host_ed25519_key.pub")"
 
-  # == user keys ==
+  # user keys
   if [[ $PRESERVE == true ]]; then
     # the user key is itself a secret, so the host key is enough to recover it
     SOPS_AGE_KEY="$(ssh-to-age -private-key -i "$TEMP_DIR/ssh_host_ed25519_key")"
@@ -1013,7 +1005,7 @@ generate() {
   SOPS_AGE_KEY="$(ssh-to-age -private-key -i "$TEMP_DIR/id_ed25519")"
   export SOPS_AGE_KEY
 
-  # == syncthing: the device id is its certificate's ==
+  # syncthing: the device id is its certificate's
   if printf '%s\n' "${FEATURES[@]}" | grep -qx sync; then
     local sync="$TEMP_DIR/syncthing"
     mkdir -p "$sync"
@@ -1280,8 +1272,8 @@ wipeExtra() {
   logInfo "Wiped the data disks"
 }
 
-# == a FAT backup boot sector survives disko's wipefs: blkid still sees vfat, disko skips
-# == mkfs.vfat and mounting /boot fails. Zero the start of the disk first.
+# a FAT backup boot sector survives disko's wipefs: blkid still sees vfat, disko skips
+# mkfs.vfat and mounting /boot fails. Zero the start of the disk first.
 zeroBootDisk() {
   probe umount -R /mnt 2>/dev/null || true
   run probe dd if=/dev/zero of="$DISK" bs=1M count=1100 conv=fsync status=none
@@ -1341,7 +1333,7 @@ kexecTarget() {
   logInfo "$TARGET runs the installer"
 }
 
-# == Everything the machine needs on disk before first boot ==
+# Everything the machine needs on disk before first boot
 stageFiles() {
   local root="$1"
   local ssh="$root/persist/etc/ssh" home="$root/home/$USERNAME" sync="$TEMP_DIR/syncthing"
@@ -1424,7 +1416,7 @@ installSystem() {
   fi
 }
 
-# == in place: the target runs NixOS on the partitions disko would create, by the same names ==
+# in place: the target runs NixOS on the partitions disko would create, by the same names
 canInPlace() {
   local p
   probe test -e /etc/NIXOS 2>/dev/null || return 1
@@ -1439,7 +1431,7 @@ canInPlace() {
     == "$(probe readlink -f "$DISK" 2>/dev/null | xargs -r basename)" ]]
 }
 
-# == Install in place, over SSH, while the old system runs ==
+# Install in place, over SSH, while the old system runs
 # The partitions stay; /persist and /home start empty, / is emptied on every boot anyway.
 # The new system is built here, copied over and set to boot once (EFI BootNext): the old
 # boot entry stays the default until the new system has answered.
@@ -1520,7 +1512,7 @@ EOF
   finish
 }
 
-# == the data disks as modules/core/storage.nix lays them out, made on the running new system ==
+# the data disks as modules/core/storage.nix lays them out, made on the running new system
 formatData() {
   local json label profile meta
   local -a devices subvolumes
@@ -1561,7 +1553,7 @@ EOF
   done < <(jq -r '.disk | keys[] | select(. != "boot")' <<< "$json")
 }
 
-# == install via nixos-install ==
+# install via nixos-install
 installLocal() {
   local stage="$TEMP_DIR/stage"
   mkdir -p "$stage"
@@ -1590,7 +1582,7 @@ installLocal() {
   sudo reboot
 }
 
-# == Install via nixos-anywhere ==
+# Install via nixos-anywhere
 installRemote() {
   local stage="$TEMP_DIR/stage"
   mkdir -p "$stage"
