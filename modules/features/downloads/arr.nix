@@ -9,22 +9,29 @@
       inherit (config.axon) vpn;
       inherit (config.axon.volumes) media;
       # order: the Media tiles fill rows of four; Seerr and Jellyfin take the first column, the
-      # downloaders the second, these four the rest
+      # downloaders the second, these four the rest. attention: widget values marked amber above 0
       apps = {
         radarr = {
           port = 7878;
           order = 3;
           description = "Movies";
+          # wanted: monitored, released and not there; missing also counts films still to come
+          attention = [ "wanted" ];
         };
         sonarr = {
           port = 8989;
           order = 4;
           description = "Shows";
+          attention = [ "wanted" ];
         };
         bazarr = {
           port = 6767;
           order = 8;
           description = "Subtitles";
+          attention = [
+            "missingEpisodes"
+            "missingMovies"
+          ];
         };
       };
       prowlarr = {
@@ -47,7 +54,16 @@
         widget = {
           type = name;
         }
-        // lib.optionalAttrs (app ? fields) { inherit (app) fields; };
+        // lib.optionalAttrs (app ? fields) { inherit (app) fields; }
+        // lib.optionalAttrs (app ? attention) {
+          highlight = lib.genAttrs app.attention (_: {
+            numeric = {
+              level = "warn";
+              when = "gt";
+              value = 0;
+            };
+          });
+        };
         key = true;
       };
     in

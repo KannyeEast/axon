@@ -1,8 +1,10 @@
 # The start page (Homepage) at home.<domain>: a tile for every service with a dashboard entry,
-# grouped, linked to its route and with a status dot; live numbers where it sets a widget, one
-# tile per instance where it lists several. Widget keys come from secrets.json, and a service
-# makes its key only once it runs, so its tile shows no numbers until then. Below the tiles,
-# axon.links and this host's [gateway] links.
+# grouped on a grid of tiles of one width, linked to its route and with a status dot; live
+# numbers where it sets a widget, amber where its widget's highlight marks one, one tile per
+# instance where it lists several. Widget keys come from secrets.json, and a service makes its
+# key only once it runs, so its tile shows no numbers until then. Below the tiles, axon.links and
+# this host's [gateway] links. _start-page.js adds a search, group chips, a compact view and a
+# bar listing what is marked amber.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -92,24 +94,31 @@ in
           )
         );
 
-      # top to bottom on a grid of four; groups in one row share it, each with an equal part.
-      # Groups not named here follow, alphabetically.
-      rowsWanted = [
-        [ "Media" ]
-        [
-          "Files"
-          "Network"
-        ]
-        [ "Code" ]
-        [ "System" ]
-      ];
+      # Every tile has the same width on a grid of four: a group takes a column per tile (all four
+      # and wraps when it has more) and shares a row with the groups before it while they fit.
+      # The groups named here come first, the rest alphabetically
       columns = 4;
-      # groups of graphs: two per row, so they get the width
+      first = [
+        "Media"
+        "Files"
+        "Home"
+        "Network"
+        "Code"
+      ];
+      # groups of graphs: last, two per row, so they get the width
       wide = [ "System" ];
-      rows = lib.filter (row: row != [ ]) (
-        map (lib.filter (group: lib.elem group groups)) rowsWanted
-        ++ map (group: [ group ]) (lib.subtractLists (lib.concatLists rowsWanted) groups)
-      );
+      span = group: lib.min columns (lib.length (inGroup group));
+      narrow = lib.subtractLists wide groups;
+      used = row: lib.foldl' (sum: group: sum + span group) 0 row;
+      rows =
+        lib.foldl' (
+          rows: group:
+          if rows != [ ] && used (lib.last rows) + span group <= columns then
+            lib.init rows ++ [ (lib.last rows ++ [ group ]) ]
+          else
+            rows ++ [ [ group ] ]
+        ) [ ] (lib.filter (group: lib.elem group narrow) first ++ lib.subtractLists first narrow)
+        ++ map (group: [ group ]) (lib.intersectLists wide groups);
       rowName = lib.concatStringsSep " and ";
       grid = count: {
         style = "row";
@@ -121,48 +130,32 @@ in
           lib.nameValuePair (lib.head row) (grid (if lib.elem (lib.head row) wide then 2 else columns))
         else
           lib.nameValuePair (rowName row) (
-            grid (lib.length row)
+            grid columns
             // {
               header = false;
             }
-            // lib.genAttrs row (_: grid (columns / lib.length row))
+            // lib.genAttrs row (group: grid (span group))
           );
+      # Homepage gives each group of a shared row an equal part of it; spanning a column per tile
+      # keeps the tiles one width (two columns from md, all from lg, as Homepage's grids have)
+      spans = ''
+        @media (min-width: 48rem) {
+          .subgroup:has(.services-list.md\:grid-cols-2) { grid-column: span 2; }
+        }
+        @media (min-width: 64rem) {
+      ''
+      + lib.concatMapStrings (
+        count:
+        "  .subgroup:has(.services-list.lg\\:grid-cols-${toString count}) { grid-column: span ${toString count}; }\n"
+      ) (lib.range 2 columns)
+      + "}\n";
 
       # Homepage shows groups in the order of their layout entries, and Nix writes attribute sets
       # sorted, so the layout is written out by hand, one entry per line in row order
       layout = map layoutOf rows;
       page = {
-        # the reload button, which Homepage puts in the footer, stays in the top right corner, with
-        # "up/all" next to it: services whose status dot is green, out of all with a dot
-        customCSS = ''
-          #revalidate {
-            position: fixed;
-            top: 1.5rem;
-            right: 1.5rem;
-            z-index: 20;
-          }
-          #services-up {
-            margin-right: 0.75rem;
-            font-size: 0.875rem;
-            font-variant-numeric: tabular-nums;
-          }
-        '';
-        customJS = ''
-          setInterval(() => {
-            const button = document.getElementById("revalidate");
-            if (!button) return;
-            const all = document.querySelectorAll(".site-monitor-status").length;
-            const up = document.querySelectorAll(".site-monitor-status .bg-emerald-500").length;
-            let count = document.getElementById("services-up");
-            if (!count) {
-              count = document.createElement("span");
-              count.id = "services-up";
-              button.prepend(count);
-            }
-            count.textContent = `''${up}/''${all}`;
-            count.style.color = up === all ? "#10b981" : "#f43f5e";
-          }, 2000);
-        '';
+        customCSS = lib.readFile ./_start-page.css + spans;
+        customJS = lib.readFile ./_start-page.js;
 
         settings = {
           title = domain;

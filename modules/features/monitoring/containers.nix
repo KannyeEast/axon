@@ -153,7 +153,21 @@
           group = "System";
           description = "Containers";
           icon = "komodo.svg";
-          widget.type = "komodo";
+          widget = {
+            type = "komodo";
+            highlight = {
+              stopped.numeric = {
+                level = "warn";
+                when = "gt";
+                value = 0;
+              };
+              unhealthy.numeric = {
+                level = "warn";
+                when = "gt";
+                value = 0;
+              };
+            };
+          };
           secrets = {
             key = "dashboard/komodo/key";
             secret = "dashboard/komodo/secret";
