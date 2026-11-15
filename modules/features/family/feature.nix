@@ -1,6 +1,6 @@
 {
   axon.features.family = {
-    description = "The household's organiser: Yuvomi for the family calendar, tasks, shopping lists and meal plans; Home Assistant as its hub";
+    description = "The household's hub: Home Assistant";
     classes = [ "server" ];
   };
 }

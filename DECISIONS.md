@@ -44,7 +44,6 @@ To change one, change it here in the same commit, with the new reason.
 | Decision | Why |
 |---|---|
 | Kanidm, Jellyfin, Seerr, Immich, Nextcloud, Vaultwarden and Home Assistant are public through the Cloudflare tunnel | family devices have no Tailscale; the risk under Cloudflare's terms (video streaming) is accepted |
-| Yuvomi (family/planner.nix) is tailnet only, though it is for the family and has its own login | under test; its SECURITY.md assumes a private network, so whether it goes public is decided after the test |
 | Home Assistant (family/hub.nix) runs as root in its container, against the rule of one user per container | the official image's process supervisor needs root; the NixOS module would run it as a user but can't install HACS, which the household cards come from |
 | DNS records for public routes are made by hand at Cloudflare | not managed from this repo; a new public route needs its tunnel record (`cloudflared tunnel route dns`), a tailnet-only one none |
 | Vaultwarden's admin page exists only while `secrets.json` holds `vaultwarden/admin-token` (passwords/vault.nix) | it is needed only to invite the family; off otherwise, so the public route has no admin login to attack |
