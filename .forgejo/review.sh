@@ -105,9 +105,12 @@ merge() {
     "$API/pulls/$PR/merge" "${@:2}"
 }
 
-# no findings: no review, the pull request merges once this job passes. MERGE_TOKEN is the owner's:
-# a merge with the job's own token is forgejo-actions', whose push to stable starts no workflow
+# no findings: the summary is posted as a comment, so a clean review leaves a trace, and the pull
+# request merges once this job passes. MERGE_TOKEN is the owner's: a merge with the job's own token
+# is forgejo-actions', whose push to stable starts no workflow
 if jq --exit-status '.findings == []' <<<"$review" >/dev/null && [ "$CHECK" = success ]; then
+  post "$(jq --arg sha "$HEAD_SHA" '{commit_id: $sha, event: "COMMENT", body: ("No findings. " + .summary)}' <<<"$review")" \
+    >/dev/null || echo "Posting the summary failed." >&2
   if [ -z "${MERGE_TOKEN:-}" ]; then
     echo "No findings; without MERGE_TOKEN the merge is the owner's." >&2
     exit 0
