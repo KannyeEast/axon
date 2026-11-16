@@ -2,7 +2,8 @@
 # login and is public. Needs the library the arr stack fills, so it runs where that does.
 # A friend sees in Jellyfin only what they requested or put on their watchlist here: the owner adds
 # the tag `friend` to that user's "Allow items with tags" in Jellyfin, and _friend-tags.py tags
-# those titles for them every 2 minutes. It hides titles in Jellyfin; it is not access control.
+# those titles for them: on a call to 127.0.0.1:8097 (Jellyfin's Webhook plugin, Item Added) and
+# every 2 minutes for watchlist stars, which call nothing. It hides titles; it is not access control.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
@@ -10,6 +11,7 @@
     let
       inherit (config.axon) host routes;
       port = 5055;
+      hook = 8097;
       state = "/var/lib/seerr";
       id = 400;
       keys = {
@@ -93,6 +95,11 @@
               ) keys;
               ExecStart = "${lib.getExe' pkgs.python3 "python3"} ${./_friend-tags.py} ${routes.requests.route.internal} ${routes.jellyfin.route.internal}";
             };
+          };
+          # a call here starts friend-tags.service, which answers it before it syncs
+          systemd.sockets.friend-tags = {
+            wantedBy = [ "sockets.target" ];
+            listenStreams = [ "127.0.0.1:${toString hook}" ];
           };
           systemd.timers.friend-tags = {
             wantedBy = [ "timers.target" ];

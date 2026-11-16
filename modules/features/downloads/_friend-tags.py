@@ -2,6 +2,9 @@
 
 friend-tags.py <seerr url> <jellyfin url> [--dry-run]
 
+Started by a timer, or by a call on its systemd socket (Jellyfin's webhook on an added item): the
+calls are answered first, and a burst of them (a season's episodes) makes one run.
+
 The API keys come from the unit's credentials, seerr and jellyfin. A person's tag is
 f-<first 8 hex of their Jellyfin user id>; it goes on every movie and series they asked for and on
 the collections those are in. Tags of that shape belong to this script, every other tag stays. A
@@ -11,6 +14,7 @@ sets everything anew; --dry-run prints the changes and makes none.
 import json
 import os
 import re
+import socket
 import sys
 import urllib.parse
 import urllib.request
@@ -22,6 +26,8 @@ OURS = re.compile(r"f-[0-9a-f]{8}", re.IGNORECASE)
 DECLINED = 3
 PAGE = 100
 TIMEOUT = 120
+# a burst of webhook calls is over once none came for this long
+QUIET = 10
 # The fields POST /Items/{id} reads (Jellyfin's ItemUpdateController.UpdateItem). It overwrites each
 # scalar with what it is sent, null too, and fails on the whole item as GET returns it (trickplay),
 # so these go back as they came. People stays out: sent, it rewrites the cast and crew.
@@ -93,28 +99,90 @@ def watchlist(seerr, user_id):
 
 
 def wanted(seerr):
-    """Jellyfin item id -> the tags of the people who requested it or have it on their watchlist."""
-    wanted = {}
+    """(tag, entry) for every title each person requested or has on their watchlist."""
     for user in pages(seerr, "/api/v1/user", {}):
         if not user.get("jellyfinUserId"):
             continue
         tag = tag_of(user["jellyfinUserId"])
         requests = pages(seerr, "/api/v1/request", {"filter": "all", "requestedBy": user["id"]})
-        entries = [r for r in requests if r.get("status") != DECLINED]
-        entries += watchlist(seerr, user["id"])
-        for entry in entries:
-            media = entry.get("media") or {}
-            # without a Jellyfin id it isn't in the library yet; for a show the id is the series
-            for key in ("jellyfinMediaId", "jellyfinMediaId4k"):
-                if media.get(key):
-                    wanted.setdefault(plain(media[key]), set()).add(tag)
-    return wanted
+        for request in requests:
+            if request.get("status") != DECLINED:
+                yield tag, request
+        for entry in watchlist(seerr, user["id"]):
+            yield tag, entry
+
+
+def provider_index(library):
+    """(kind, provider, id) -> Jellyfin item id, from the ids Jellyfin keeps for each title."""
+    index = {}
+    for item in library:
+        kind = "movie" if item.get("Type") == "Movie" else "tv"
+        for provider, value in (item.get("ProviderIds") or {}).items():
+            index[(kind, provider.lower(), str(value))] = plain(item["Id"])
+    return index
+
+
+def resolve(entry, index):
+    """The Jellyfin items a Seerr request or watchlist entry stands for: Seerr's link, and the
+    title's TMDb/TVDB ids found in Jellyfin, so an item counts before Seerr's scan links it."""
+    media = entry.get("media") or {}
+    kind = media.get("mediaType") or entry.get("mediaType")
+    ids = {plain(media[key]) for key in ("jellyfinMediaId", "jellyfinMediaId4k") if media.get(key)}
+    for provider in ("tmdb", "tvdb"):
+        value = media.get(f"{provider}Id") or entry.get(f"{provider}Id")
+        if value and (kind, provider, str(value)) in index:
+            ids.add(index[(kind, provider, str(value))])
+    return ids
+
+
+def answer_calls():
+    """Answers the calls queued on the socket systemd passes (fd 3), until none came for QUIET s.
+    Started by the timer, nothing is queued and this returns at once."""
+    if os.environ.get("LISTEN_FDS") != "1":
+        return
+    server = socket.socket(fileno=3)
+    server.setblocking(False)
+    try:
+        connection, _ = server.accept()
+    except BlockingIOError:
+        return
+    server.settimeout(QUIET)
+    while True:
+        with connection:
+            connection.settimeout(5)
+            try:
+                read_request(connection)
+                connection.sendall(b"HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n")
+            except OSError:
+                pass
+        try:
+            connection, _ = server.accept()
+        except TimeoutError:
+            return
+
+
+def read_request(connection):
+    """Reads the HTTP request to its end, so the caller gets an answer, not a reset."""
+    data = b""
+    while b"\r\n\r\n" not in data:
+        chunk = connection.recv(4096)
+        if not chunk:
+            return
+        data += chunk
+    head, _, body = data.partition(b"\r\n\r\n")
+    length = re.search(rb"(?im)^content-length:\s*(\d+)", head)
+    remaining = int(length.group(1)) - len(body) if length else 0
+    while remaining > 0:
+        chunk = connection.recv(min(remaining, 65536))
+        if not chunk:
+            return
+        remaining -= len(chunk)
 
 
 def items(jellyfin, admin, query):
     query = {
         "userId": admin,
-        "fields": "Tags",
+        "fields": "Tags,ProviderIds",
         "enableImages": "false",
         "enableUserData": "false",
         **query,
@@ -147,6 +215,7 @@ def main():
             "friend-tags.py: no credentials; run it as friend-tags.service,"
             " or with systemd-run and LoadCredential=seerr: and jellyfin:"
         )
+    answer_calls()
     key = {name: (Path(credentials) / name).read_text().strip() for name in ("seerr", "jellyfin")}
     seerr = Api(args[0], {"X-Api-Key": key["seerr"]})
     jellyfin = Api(args[1], {"Authorization": f'MediaBrowser Token="{key["jellyfin"]}"'})
@@ -156,8 +225,12 @@ def main():
     if admin is None:
         sys.exit("friend-tags.py: Jellyfin has no administrator to read the library as")
 
-    asked = wanted(seerr)
     library = items(jellyfin, admin, {"includeItemTypes": "Movie,Series", "recursive": "true"})
+    index = provider_index(library)
+    asked = {}
+    for tag, entry in wanted(seerr):
+        for item_id in resolve(entry, index):
+            asked.setdefault(item_id, set()).add(tag)
     collections = items(jellyfin, admin, {"includeItemTypes": "BoxSet", "recursive": "true"})
     desired = {plain(item["Id"]): asked.get(plain(item["Id"]), set()) for item in library}
     for collection in collections:
