@@ -6,7 +6,10 @@ Listens on 127.0.0.1:<port> and hands every request to Seerr and every answer ba
 except a JSON answer to a GET whose `mediaInfo` names Jellyfin items: those the person (found by
 their Seerr session cookie) can't see in Jellyfin lose their id and link, and a movie among them is
 marked unknown again, so the app offers a request instead of a Jellyfin page that fails. Series keep
-their status. If anything in that goes wrong, the answer goes back unchanged.
+their status. If anything in that goes wrong, the answer goes back unchanged. A request from a
+friend (a Jellyfin user whose "Allow items with tags" holds `friend`) also puts the title on their
+Seerr watchlist: Seerr stores no request for a series whose seasons it already knows, and the
+watchlist is what friend-tags then shows them.
 
 The Jellyfin API key comes from the unit's credential `jellyfin`.
 """
@@ -16,6 +19,7 @@ import os
 import sys
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -33,6 +37,7 @@ DROPPED = {
     "transfer-encoding", "upgrade", "host", "content-length", "accept-encoding", "expect",
 }
 SESSION = "connect.sid"
+MARKER = "friend"
 CACHED = 300
 TIMEOUT = 60
 LOOKUP_TIMEOUT = 5
@@ -63,6 +68,7 @@ class Filter:
         self.jellyfin = jellyfin.rstrip("/")
         self.key = key
         self.users = {}
+        self.marked = {}
         self.lock = threading.Lock()
 
     def lookup(self, url, headers):
@@ -83,6 +89,43 @@ class Filter:
             self.users = {k: v for k, v in self.users.items() if v[1] > now}
             self.users[cookie] = (user, now + CACHED)
         return user
+
+    def is_friend(self, user):
+        """Whether the Jellyfin user carries the friend marker; remembered for CACHED s."""
+        now = time.monotonic()
+        with self.lock:
+            friend, until = self.marked.get(user, (False, 0))
+        if until > now:
+            return friend
+        auth = {"Authorization": f'MediaBrowser Token="{self.key}"'}
+        policy = self.lookup(f"{self.jellyfin}/Users/{user}", auth)["Policy"]
+        friend = MARKER in {tag.lower() for tag in policy.get("AllowedTags") or []}
+        with self.lock:
+            self.marked = {k: v for k, v in self.marked.items() if v[1] > now}
+            self.marked[user] = (friend, now + CACHED)
+        return friend
+
+    def claim(self, body, headers, cookie):
+        """Puts a friend's requested title on their watchlist, with their own session; a title
+        already there (409) is fine."""
+        user = self.jellyfin_user(cookie)
+        if not user or not self.is_friend(user):
+            return
+        asked = json.loads(body)
+        watch = {"tmdbId": asked["mediaId"], "mediaType": asked["mediaType"]}
+        # their whole cookie and CSRF header, as Seerr checks the token against its cookie
+        sent = {"Cookie": headers["Cookie"], "Content-Type": "application/json"}
+        if headers.get("X-XSRF-TOKEN"):
+            sent["X-XSRF-TOKEN"] = headers["X-XSRF-TOKEN"]
+        request = urllib.request.Request(
+            f"{self.seerr}/api/v1/watchlist", data=json.dumps(watch).encode(), headers=sent,
+            method="POST",
+        )
+        try:
+            urllib.request.urlopen(request, timeout=LOOKUP_TIMEOUT).close()
+        except urllib.error.HTTPError as error:
+            if error.code != 409:
+                raise
 
     def visible(self, user, ids):
         """Which of ids the user can see: Jellyfin's /Items with ids answers only those."""
@@ -170,6 +213,19 @@ class Proxy(BaseHTTPRequestHandler):
             return
         finally:
             connection.close()
+
+        if (
+            self.command == "POST"
+            and urllib.parse.urlsplit(self.path).path.rstrip("/") == "/api/v1/request"
+            and response.status in (201, 202)
+            and body
+        ):
+            try:
+                cookie = self.cookies().get(SESSION)
+                if cookie:
+                    self.friends.claim(body, self.headers, cookie)
+            except Exception as error:
+                print(f"friend-filter: {self.path}: no watchlist entry: {error!r}", flush=True)
 
         if (
             self.command == "GET"
