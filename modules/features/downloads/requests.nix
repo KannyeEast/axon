@@ -4,6 +4,8 @@
 # the tag `friend` to that user's "Allow items with tags" in Jellyfin, and _friend-tags.py tags
 # those titles for them: on a call to 127.0.0.1:8097 (Jellyfin's Webhook plugin, Item Added) and
 # every 2 minutes for watchlist stars, which call nothing. It hides titles; it is not access control.
+# Moonbase's Seerr URL is 127.0.0.1:8098, _friend-filter.py in front of Seerr: it drops the link to a
+# Jellyfin item the person can't see (a movie becomes requestable), so Moonfin opens Seerr's page.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
@@ -12,6 +14,7 @@
       inherit (config.axon) host routes;
       port = 5055;
       hook = 8097;
+      filter = 8098;
       state = "/var/lib/seerr";
       id = 400;
       keys = {
@@ -78,7 +81,7 @@
 
         (lib.mkIf (routes ? jellyfin && missing != [ ]) {
           warnings = [
-            "hosts/${host.name}/secrets.json: no ${lib.concatStringsSep ", " missing}, so friend-tags doesn't run and Jellyfin users marked friend see nothing; add them with `just secrets ${host.name}`"
+            "hosts/${host.name}/secrets.json: no ${lib.concatStringsSep ", " missing}, so friend-tags and friend-filter don't run and Jellyfin users marked friend see nothing; add them with `just secrets ${host.name}`"
           ];
         })
 
@@ -107,6 +110,16 @@
               # a switch that adds the timer runs it at once: boot plus 5m is past by then
               OnBootSec = "5m";
               OnUnitActiveSec = "2m";
+            };
+          };
+          systemd.services.friend-filter = {
+            description = "Seerr for Moonbase, without links to Jellyfin items the person can't see";
+            wantedBy = [ "multi-user.target" ];
+            serviceConfig = {
+              DynamicUser = true;
+              Restart = "on-failure";
+              LoadCredential = "jellyfin:${config.sops.secrets.${keys.jellyfin}.path}";
+              ExecStart = "${lib.getExe' pkgs.python3 "python3"} ${./_friend-filter.py} ${toString filter} ${routes.requests.route.internal} ${routes.jellyfin.route.internal}";
             };
           };
         })
