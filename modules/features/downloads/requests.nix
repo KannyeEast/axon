@@ -2,8 +2,9 @@
 # login and is public. Needs the library the arr stack fills, so it runs where that does.
 # A friend sees in Jellyfin only what they requested or put on their watchlist here: the owner adds
 # the tag `friend` to that user's "Allow items with tags" in Jellyfin, and _friend-tags.py tags
-# those titles for them: on a call to 127.0.0.1:8097 (Jellyfin's Webhook plugin, Item Added) and
-# every 2 minutes for watchlist stars, which call nothing. It hides titles; it is not access control.
+# those titles for them. It runs on a call to 127.0.0.1:8097 (Jellyfin's Webhook plugin on Item
+# Added, and the filter below on a request or watchlist change) and every 2 minutes for what calls
+# nothing (stars in Seerr's web UI). It hides titles; it is not access control.
 # Moonbase's Seerr URL is 127.0.0.1:8098, _friend-filter.py in front of Seerr: it drops the link to a
 # Jellyfin item the person can't see (a movie becomes requestable), so Moonfin opens Seerr's page.
 { lib, ... }:
@@ -119,7 +120,7 @@
               DynamicUser = true;
               Restart = "on-failure";
               LoadCredential = "jellyfin:${config.sops.secrets.${keys.jellyfin}.path}";
-              ExecStart = "${lib.getExe' pkgs.python3 "python3"} ${./_friend-filter.py} ${toString filter} ${routes.requests.route.internal} ${routes.jellyfin.route.internal}";
+              ExecStart = "${lib.getExe' pkgs.python3 "python3"} ${./_friend-filter.py} ${toString filter} ${routes.requests.route.internal} ${routes.jellyfin.route.internal} ${toString hook}";
             };
           };
         })

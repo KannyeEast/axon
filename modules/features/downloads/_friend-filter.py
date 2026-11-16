@@ -1,6 +1,6 @@
 """Passes Seerr through, minus the Jellyfin links to items the asking person can't see.
 
-friend-filter.py <port> <seerr url> <jellyfin url>
+friend-filter.py <port> <seerr url> <jellyfin url> <friend-tags port>
 
 Listens on 127.0.0.1:<port> and hands every request to Seerr and every answer back as it came,
 except a JSON answer to a GET whose `mediaInfo` names Jellyfin items: those the person (found by
@@ -9,13 +9,15 @@ marked unknown again, so the app offers a request instead of a Jellyfin page tha
 their status. If anything in that goes wrong, the answer goes back unchanged. A request from a
 friend (a Jellyfin user whose "Allow items with tags" holds `friend`) also puts the title on their
 Seerr watchlist: Seerr stores no request for a series whose seasons it already knows, and the
-watchlist is what friend-tags then shows them.
+watchlist is what friend-tags then shows them. After any request or watchlist change it calls
+friend-tags' socket, so the title shows up within seconds rather than at the next timer run.
 
 The Jellyfin API key comes from the unit's credential `jellyfin`.
 """
 import http.client
 import json
 import os
+import socket
 import sys
 import threading
 import time
@@ -165,9 +167,24 @@ class Filter:
         return json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode()
 
 
+# a successful change here makes friend-tags run
+CLAIMS = ("/api/v1/request", "/api/v1/watchlist")
+
+
+def poke(port):
+    """Calls friend-tags' socket; systemd starts the sync, which answers and runs."""
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=LOOKUP_TIMEOUT) as connection:
+            connection.sendall(b"POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n")
+            connection.recv(64)
+    except OSError as error:
+        print(f"friend-filter: friend-tags not called: {error!r}", flush=True)
+
+
 class Proxy(BaseHTTPRequestHandler):
     friends = None
     upstream = None
+    hook = None
 
     def log_request(self, code="-", size="-"):
         pass
@@ -228,6 +245,13 @@ class Proxy(BaseHTTPRequestHandler):
                 print(f"friend-filter: {self.path}: no watchlist entry: {error!r}", flush=True)
 
         if (
+            self.command in ("POST", "DELETE")
+            and urllib.parse.urlsplit(self.path).path.startswith(CLAIMS)
+            and 200 <= response.status < 300
+        ):
+            threading.Thread(target=poke, args=(self.hook,), daemon=True).start()
+
+        if (
             self.command == "GET"
             and response.status == 200
             and "json" in (response.getheader("Content-Type") or "").lower()
@@ -272,15 +296,16 @@ class Proxy(BaseHTTPRequestHandler):
 
 
 def main():
-    if len(sys.argv) != 4:
-        sys.exit("usage: friend-filter.py <port> <seerr url> <jellyfin url>")
-    port, seerr, jellyfin = sys.argv[1:]
+    if len(sys.argv) != 5:
+        sys.exit("usage: friend-filter.py <port> <seerr url> <jellyfin url> <friend-tags port>")
+    port, seerr, jellyfin, hook = sys.argv[1:]
     credentials = os.environ.get("CREDENTIALS_DIRECTORY")
     if not credentials:
         sys.exit("friend-filter.py: no credentials; run it as friend-filter.service")
     key = (Path(credentials) / "jellyfin").read_text().strip()
     target = urllib.parse.urlsplit(seerr)
     Proxy.upstream = (target.scheme, target.netloc)
+    Proxy.hook = int(hook)
     Proxy.friends = Filter(seerr, jellyfin, key)
     server = ThreadingHTTPServer(("127.0.0.1", int(port)), Proxy)
     server.daemon_threads = True
