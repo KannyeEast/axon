@@ -8,8 +8,8 @@
     let
       inherit (config.axon) vpn;
       inherit (config.axon.volumes) media;
-      # order: the Media tiles fill rows of four; Seerr and Jellyfin take the first column, the
-      # downloaders the second, these four the rest. attention: widget values marked amber above 0
+      # order: Jellyfin and Seerr first, then the downloaders, then these four (Media fills rows
+      # left to right). attention: widget values marked amber above 0
       apps = {
         radarr = {
           port = 7878;

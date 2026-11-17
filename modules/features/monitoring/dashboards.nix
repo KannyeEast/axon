@@ -1,10 +1,8 @@
 # Grafana at grafana.<domain>: graphs over Prometheus, data source and dashboards provisioned from
 # here. With a login provider (axon.sso) its admins group logs in there as Admin; the host.toml
 # user stays the local admin, with monitoring/password, for the API. Without a gateway on this
-# host it stays on localhost, with only its own login. Its secret key is made on first start in its
-# persisted state folder. The "Start page" dashboard: two tables on top, each embedded on the
-# gateway's start page (every host's CPU, GPU, memory and temperature; every disk's use), graphs
-# of the last day below.
+# host it stays on localhost, with only its own login. The "Start page" dashboard: two tables the
+# gateway's start page embeds, graphs of the last day below.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
