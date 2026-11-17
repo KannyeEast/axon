@@ -3,8 +3,6 @@
 // group chips. Homepage renders in the browser and again on every refresh, so each part is redone
 // on every change of the page, writing only what differs; a part whose element is missing is left
 // out, and the page works without this file.
-// The up count polls every 2 s instead: the status dots change only their class, which the
-// observer doesn't watch.
 (() => {
   const store = {
     get(key) {
@@ -43,6 +41,7 @@
   };
 
   // ── up count ────────
+  // polled every 2 s: the status dots change only their class, which the observer doesn't watch
   setInterval(() => {
     const button = document.getElementById("revalidate");
     if (!button) return;
@@ -59,9 +58,7 @@
   }, 2000);
 
   // ── header and controls ────────
-  // one block right above the groups, made once and moved back if Homepage replaces them: the
-  // title and subtitle (settings title and description) with the search, the view toggle and the
-  // reload button, then the attention bar, then the chips
+  // one block right above the groups, made once and moved back if Homepage replaces them
   const arrow =
     '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>';
 

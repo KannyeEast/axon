@@ -1,4 +1,4 @@
-# The terminal: zsh with its plugins, tmux with its plugins, and the everyday CLI tools.
+# The terminal: zsh, tmux and neovim with their plugins, and the everyday CLI tools.
 # Nix installs them and loads the plugins (they need store paths); every setting is a
 # dotfile (.zshrc, .config/tmux/tmux.conf, .config/starship.toml, .config/nvim/init.lua).
 {
@@ -20,11 +20,7 @@
         autosuggestions.enable = true;
         syntaxHighlighting.enable = true;
 
-        # fzf-tab has to load after compinit, and NixOS would otherwise run compinit after this block
-        enableGlobalCompInit = false;
         interactiveShellInit = ''
-          autoload -U compinit && compinit
-
           source ${omz}/lib/clipboard.zsh
           source ${omz}/plugins/copyfile/copyfile.plugin.zsh
           source ${omz}/plugins/copypath/copypath.plugin.zsh

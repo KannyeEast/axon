@@ -1,5 +1,5 @@
-# `sandbox` opens a rootless Docker container that sees the current folder, read-only copies of
-# its tools' dotfiles and the keys in ~/.config/sandbox/secrets.env; not ~, not the SSH keys.
+# `sandbox` opens a rootless Docker container that sees the current folder, its tools' dotfiles
+# (read-only) and the keys in ~/.config/sandbox/secrets.env; not ~, not the SSH keys.
 # `sandbox claude` runs Claude Code in it; bare `sandbox` is a shell for trying untrusted code.
 # Its home (Claude's login, shell history) persists in ~/.local/share/sandbox.
 { lib, ... }:

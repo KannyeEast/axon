@@ -26,6 +26,18 @@
       # two secret stores fight over the same D-Bus name; niri turns gnome-keyring on
       services.gnome.gnome-keyring.enable = false;
 
+      # KeePassXC ships no activation file for the secret store's name, so an app that asks before
+      # KeePassXC is up finds no store and drops its saved login (Nextcloud at login). With this,
+      # D-Bus holds the call until the service below owns the name
+      services.dbus.packages = [
+        (pkgs.writeTextDir "share/dbus-1/services/org.freedesktop.secrets.service" ''
+          [D-BUS Service]
+          Name=org.freedesktop.secrets
+          Exec=${lib.getExe pkgs.keepassxc} --minimized
+          SystemdService=keepassxc.service
+        '')
+      ];
+
       systemd.user.services.keepassxc = {
         description = "KeePassXC";
         wantedBy = [ "graphical-session.target" ];

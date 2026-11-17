@@ -16,6 +16,7 @@ output "GIGA-BYTE TECHNOLOGY CO., LTD. Gigabyte M32U 24081B002226" {
         preset-column-widths {
             proportion 0.5
             proportion 0.66667
+            proportion 1.0
         }
     }
 }
@@ -31,7 +32,5 @@ output "PNP(BNQ) ZOWIE XL LCD EBLAL01265SL0" {
         preset-window-heights {
             proportion 0.5
         }
-
-        default-column-width { proportion 1.0; }
     }
 }

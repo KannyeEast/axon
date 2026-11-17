@@ -1,6 +1,8 @@
 layout {
     gaps 4
     default-column-display "tabbed"
+    // new windows fill the screen; narrowed with the width presets when needed
+    default-column-width { proportion 1.0; }
 
     border {
         on

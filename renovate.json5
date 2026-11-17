@@ -5,6 +5,8 @@
   baseBranchPatterns: ["dev"],
   enabledManagers: ["nix", "custom.regex"],
   nix: { enabled: true },
+  // the flake inputs follow branches, which only lock file maintenance (nix flake update) moves
+  lockFileMaintenance: { enabled: true, schedule: ["before 6am on monday"] },
   prConcurrentLimit: 5,
   customManagers: [
     {

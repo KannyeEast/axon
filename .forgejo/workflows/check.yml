@@ -1,5 +1,5 @@
 # Every pull request: the flake evaluates, every host's system builds, then the reviewer posts its
-# review, or merges it when there is nothing to report.
+# review, and merges it when there is nothing to report.
 on:
   pull_request:
 

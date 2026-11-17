@@ -1,6 +1,6 @@
 # Contract: axon.sso. Single sign-on: the login provider sets provider, and a service with a
-# login registers a client here. The provider registers only its own host's clients; today all of
-# them are on the gateway host. With provider null a service keeps just its own login.
+# login registers a client here. The provider registers only its own host's clients; with
+# provider null a service keeps just its own login.
 { lib, ... }:
 let
   inherit (lib) mkOption types;

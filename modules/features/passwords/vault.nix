@@ -1,7 +1,7 @@
 # Vaultwarden at vault.<domain> on servers: the family's password manager for the Bitwarden apps.
 # Public through the tunnel, guarded by its own login. Nobody signs up; accounts are invited from
 # the admin page, on only while secrets.json holds vaultwarden/admin-token (an argon2 hash). With
-# axon.mail it sends invitations and account mail. Its 23:00 copy is what gets backed up, on the
+# axon.mail it sends invitations and account mail. Its nightly copy is what gets backed up, on the
 # data volume where a host has one.
 # With a login provider (axon.sso) the family can log in there instead of with mail address and
 # master password; the account with the provider's mail address is the one logged into, and only
