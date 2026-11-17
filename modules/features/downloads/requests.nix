@@ -1,5 +1,6 @@
 # Seerr takes requests and hands them to Radarr (movies) and Sonarr (shows). It brings its own
-# login and is public. Needs the library the arr stack fills, so it runs where that does.
+# login and is tailnet only: the family requests from Moonfin, which reaches it through Moonbase on
+# this host. Needs the library the arr stack fills, so it runs where that does.
 # A friend sees in Jellyfin only what they requested or put on their watchlist here: the owner adds
 # the tag `friend` to that user's "Allow items with tags" in Jellyfin, and _friend-tags.py tags
 # those titles for them. It runs on a call to 127.0.0.1:8097 (Jellyfin's Webhook plugin on Item
@@ -63,10 +64,7 @@
           ];
 
           axon.services.requests = {
-            route = {
-              inherit port;
-              public = true;
-            };
+            route.port = port;
             dashboard = {
               name = "Seerr";
               order = 2;
