@@ -69,7 +69,9 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   loads what needs a store path; settings live in dotfiles.
 - **Contracts are declared in core**: `axon.services` (routes, backup paths), `axon.persist`,
   `axon.volumes`, `axon.spaces` (a service's own subvolume, capped by `[limits]`), `axon.mail`,
-  `axon.sso` (single sign-on), `axon.vpn`, `axon.overlay`, `axon.browser`. Add one for two or more consumers or a realistic swap. Producers set them unconditionally; consumers handle an empty set or null.
+  `axon.sso` (single sign-on), `axon.vpn`, `axon.overlay`, `axon.browser`, `axon.links` (admin
+  links on the start page). Add one for two or more consumers or a realistic swap. Producers set
+  them unconditionally; consumers handle an empty set or null.
 - **One way per thing.** Modules that produce the same result do it the same way. A shared helper
   only when many modules use it.
 - **Only what changes something.** Don't restate an upstream default (read the module's source),
@@ -110,6 +112,19 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   `open-floating` rule in the host's `windows.kdl`, in the same change.
 - **Dotfiles with several sections** separate them with a ruler: `# ── name ────────`
   (`--` in Lua, `//` in KDL and JavaScript).
+
+## Checking the whole config
+
+A sweep or audit checks the rules above and also whether the config does its job:
+
+- A fresh host of any class and any feature combination installs and builds without manual fixes
+  (first-switch ordering, missing secrets degrade with a warning, nothing assumes node1 or tower).
+- The split stays clean: Nix installs and wires, dotfiles hold runtime settings, `hosts/<name>` holds
+  the choices; nothing the framework on `main` needs lives outside `modules/`.
+- n hosts in any cluster shape work: relations come from `cluster.toml` and the contracts, never
+  from host names.
+- Server state that lives only in a service's UI is named, and backed up or reproducible.
+- A building block stays only while it is the plain, common choice for its job.
 
 ## Commands
 

@@ -1,21 +1,13 @@
-# Jellyfin plays what's on the media volume, shared through the media group. It brings its own
-# login and is public.
+# Jellyfin plays what's on the media volume, shared through the media group; without one it starts
+# with no library on disk. It brings its own login and is public.
 { lib, ... }:
 {
   flake.modules.nixos.media =
     { config, ... }:
     let
       inherit (config.axon) host volumes;
-      media = volumes.media;
     in
     lib.mkIf (host.class == "server") {
-      assertions = [
-        {
-          assertion = volumes ? media;
-          message = "hosts/${host.name}/host.toml: the media feature needs a volume called media; add it to the mounts of a [disk.<label>] table";
-        }
-      ];
-
       users.groups.media = { };
 
       services.jellyfin = {
@@ -24,7 +16,9 @@
       };
 
       # the library is on a data disk that may be missing at boot (nofail)
-      systemd.services.jellyfin.unitConfig.RequiresMountsFor = [ media ];
+      systemd.services.jellyfin.unitConfig.RequiresMountsFor = lib.optional (
+        volumes ? media
+      ) volumes.media;
 
       axon.persist.state.directories =
         map
@@ -32,7 +26,7 @@
             inherit directory;
             user = "jellyfin";
             group = "media";
-            mode = "0750";
+            mode = "0700";
           })
           [
             "/var/lib/jellyfin"

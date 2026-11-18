@@ -21,7 +21,6 @@
       # niri's startup.kdl decides what runs
       environment.systemPackages = [
         pkgs.alacritty
-        pkgs.xdg-terminal-exec # apps marked Terminal=true (nvim, …) open in alacritty from the file manager
         pkgs.fuzzel
         pkgs.waybar
         pkgs.swaybg
@@ -35,6 +34,12 @@
         pkgs.pavucontrol
         pkgs.bibata-cursors
       ];
+
+      # apps marked Terminal=true (nvim, …) open in alacritty from the file manager
+      xdg.terminal-exec = {
+        enable = true;
+        settings.default = [ "Alacritty.desktop" ];
+      };
 
       # mako starts on the first notification through D-Bus; nothing has to spawn it
       services.dbus.packages = [ pkgs.mako ];

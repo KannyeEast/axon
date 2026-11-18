@@ -39,8 +39,16 @@
           own=${lib.escapeShellArg own}
           shared=${lib.escapeShellArg shared}
           dst=${lib.escapeShellArg config.home.homeDirectory}
+          # every link the last run made, for those under a folder neither source has any more
+          list=${lib.escapeShellArg "${config.xdg.stateHome}/dotfiles/links"}
 
           # drop links into either source whose file is gone; ownership is read off the link target
+          if [ -f "$list" ]; then
+            while IFS= read -r link; do
+              [ -L "$link" ] && [ ! -e "$link" ] || continue
+              case "$(readlink -- "$link")" in "$own"/* | "$shared"/*) rm -f -- "$link" ;; esac
+            done <"$list"
+          fi
           for src in "$own" "$shared"; do
             # a file at the top of ~ has no folder left to be found through below
             find "$dst" -maxdepth 1 -xtype l -lname "$src/*" -delete
@@ -52,11 +60,14 @@
           done
 
           # link every file; the host's own file wins over the shared one
+          mkdir -p -- "$(dirname -- "$list")"
+          : >"$list.new"
           for src in "$own" "$shared"; do
             [ -d "$src" ] || continue
             while IFS= read -r rel; do
               [ "$src" = "$shared" ] && [ -e "$own/$rel" ] && continue
               link="$dst/$rel"
+              printf '%s\n' "$link" >>"$list.new"
 
               # already pointing at the right file
               [ "$(readlink -- "$link" 2>/dev/null)" = "$src/$rel" ] && continue
@@ -71,6 +82,7 @@
               ln -sfnT -- "$src/$rel" "$link"
             done < <(find "$src" -type f -printf '%P\n')
           done
+          mv -- "$list.new" "$list"
         '';
       };
 

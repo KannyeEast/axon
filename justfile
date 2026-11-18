@@ -64,7 +64,9 @@ fmt:
     echo "No dead code."
   else
     read -rp "Remove the above? [y/N] " reply
-    [[ "$reply" =~ ^[Yy]$ ]] && nix run nixpkgs#deadnix -- --edit .
+    if [[ "$reply" =~ ^[Yy]$ ]]; then
+      nix run nixpkgs#deadnix -- --edit .
+    fi
   fi
 
 # The host.toml / cluster.toml reference

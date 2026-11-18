@@ -13,13 +13,9 @@ user_pref("font.size.monospace.x-western", 13);
 
 user_pref("browser.display.document_color_use", 0);
 user_pref("browser.urlbar.clipboard.featureGate", false);
-user_pref("browser.urlbar.suggest.addons", false);
 user_pref("browser.urlbar.suggest.engines", false);
-user_pref("browser.urlbar.suggest.mdn", false);
 user_pref("browser.urlbar.suggest.topsites", false);
 user_pref("browser.urlbar.suggest.trending", false);
-user_pref("browser.urlbar.suggest.weather", false);
-user_pref("browser.urlbar.suggest.yelp", false);
 
 user_pref("general.autoScroll", true);
 // the default, written out: profiles that once had it off keep that in prefs.js otherwise

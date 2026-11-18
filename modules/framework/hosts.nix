@@ -24,8 +24,10 @@ let
   isHost =
     name: type:
     type == "directory" && !lib.hasPrefix "_" name && lib.pathExists (hostsDir + "/${name}/host.toml");
-  raw = lib.genAttrs (lib.attrNames (lib.filterAttrs isHost (lib.readDir hostsDir))) (
-    name: lib.importTOML (hostsDir + "/${name}/host.toml")
+  raw = lib.optionalAttrs (lib.pathExists hostsDir) (
+    lib.genAttrs (lib.attrNames (lib.filterAttrs isHost (lib.readDir hostsDir))) (
+      name: lib.importTOML (hostsDir + "/${name}/host.toml")
+    )
   );
 
   list = lib.concatStringsSep ", ";

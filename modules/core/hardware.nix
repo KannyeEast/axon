@@ -66,7 +66,6 @@ in
             pkgs.intel-media-driver
             pkgs.vpl-gpu-rt
           ];
-          environment.sessionVariables.LIBVA_DRIVER_NAME = "iHD";
         })
 
         (lib.mkIf nvidia {

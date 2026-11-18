@@ -68,7 +68,7 @@ To change one, change it here in the same commit, with the new reason.
 
 | Decision | Why |
 |---|---|
-| waybar, fuzzel and mako only get colours, nothing more | a shell of its own (separate repo) will replace them |
+| fuzzel and mako only get colours, nothing more, and waybar runs its stock config (no dotfile) | a shell of its own (separate repo) will replace them |
 | tower has no swap (`swap = 0`), so it can't hibernate, though the desktop class would resume from swap | chosen; it stays on or shuts down |
 | Plain numbered niri workspaces, none bound to a purpose | the owner finds fixed workspaces restrictive |
 | `kanshi` is installed on every desktop, though tower doesn't use it | for laptops and other hosts whose displays change; tower's fixed layout is in niri's own output config |

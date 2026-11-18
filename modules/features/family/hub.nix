@@ -74,7 +74,7 @@
         volumes = [ "${state}:/config" ];
       };
 
-      systemd.services.docker-home-assistant.serviceConfig.ExecStartPre = [ "+${seeding}" ];
+      systemd.services.docker-home-assistant.serviceConfig.ExecStartPre = [ "${seeding}" ];
 
       axon.persist.state.directories = [
         {

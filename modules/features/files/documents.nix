@@ -70,16 +70,13 @@
           PAPERLESS_PORT = toString port;
           PAPERLESS_TIME_ZONE = config.axon.locale.timezone;
           PAPERLESS_REDIS = "unix://${redis}";
-          PAPERLESS_DBENGINE = "postgresql";
-          # peer login as the paperless user
+          # Postgres, peer login as the paperless user
           PAPERLESS_DBHOST = "/run/postgresql";
-          PAPERLESS_DBNAME = "paperless";
-          PAPERLESS_DBUSER = "paperless";
           # the image has German; PAPERLESS_OCR_LANGUAGES would install languages at start
           PAPERLESS_OCR_LANGUAGE = "deu+eng";
           PAPERLESS_FILENAME_FORMAT = "{{ correspondent }}/{{ created_year }}/{{ title }}";
         }
-        // lib.optionalAttrs routed { PAPERLESS_URL = "https://${route.host}"; }
+        // lib.optionalAttrs routed { PAPERLESS_URL = route.url; }
         // lib.optionalAttrs (sso.provider != null) {
           PAPERLESS_APPS = "allauth.socialaccount.providers.openid_connect";
           # a login the provider knows but no account here is linked to ends at "sign up closed"

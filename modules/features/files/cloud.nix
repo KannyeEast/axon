@@ -31,7 +31,6 @@
           https = routed;
           datadir = data;
           database.createLocally = true;
-          configureRedis = true;
           maxUploadSize = "16G";
           config.dbtype = "pgsql";
           settings = {

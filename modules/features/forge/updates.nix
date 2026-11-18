@@ -39,7 +39,7 @@
           # a repository without its renovate.json5 is left alone, not sent a pull request adding one
           onboarding = false;
           # the repository's schedules read in this host's time
-          timezone = config.time.timeZone;
+          timezone = config.axon.locale.timezone;
         };
       };
     };

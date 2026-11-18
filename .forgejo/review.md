@@ -27,7 +27,7 @@ You report findings; you never edit, commit or push.
    derivation must equal the base branch's.
 
    ```sh
-   nix eval --raw "git+file://$PWD?ref=<base>#nixosConfigurations.<host>.config.system.build.toplevel.drvPath"
+   nix eval --raw "git+file://$PWD?ref=refs/remotes/origin/<base>#nixosConfigurations.<host>.config.system.build.toplevel.drvPath"
    nix eval --raw ".#nixosConfigurations.<host>.config.system.build.toplevel.drvPath"
    ```
 

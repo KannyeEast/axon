@@ -71,32 +71,34 @@
             options = [
               "bind"
               "nofail"
-              "x-systemd.requires-mounts-for=/var/lib/immich"
+              "x-systemd.requires-mounts-for=/var/lib/immich/${dir}"
               "x-systemd.requires=storage-immich.service"
               "x-systemd.after=storage-immich.service"
             ];
           };
         }) generated
       );
-      systemd.tmpfiles.rules = map (dir: "d /var/lib/immich/${dir} 0750 immich immich -") generated;
       systemd.services.immich-server.unitConfig.RequiresMountsFor = map (dir: "${data}/${dir}") generated;
 
-      axon.persist.state.directories = [
-        {
-          directory = "/var/lib/immich";
-          user = "immich";
-          group = "immich";
-          mode = "0700";
-        }
-        # the machine-learning models, so they aren't downloaded again on every boot
-        {
-          directory = "/var/cache/immich";
-          user = "immich";
-          group = "immich";
-          mode = "0700";
-        }
-        "/var/lib/redis-immich"
-      ];
+      # the models in /var/cache/immich, so they aren't downloaded on every boot; the generated
+      # folders as entries of their own, as a tmpfiles rule inside /var/lib/immich runs before its
+      # mount on a switch and ends up hidden under it
+      axon.persist.state.directories =
+        map
+          (directory: {
+            inherit directory;
+            user = "immich";
+            group = "immich";
+            mode = "0700";
+          })
+          (
+            [
+              "/var/lib/immich"
+              "/var/cache/immich"
+            ]
+            ++ map (dir: "/var/lib/immich/${dir}") generated
+          )
+        ++ [ "/var/lib/redis-immich" ];
 
       axon.services.photos = {
         route = {

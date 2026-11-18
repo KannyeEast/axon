@@ -14,7 +14,6 @@
 # subagent, from the files the sandbox's hooks write under signal. {project} in press is the
 # session's project folder name.
 
-brightness = 60
 signal = "~/.local/share/sandbox/.claude/signal"
 
 # ── Claude ────────
