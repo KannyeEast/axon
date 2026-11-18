@@ -108,6 +108,8 @@ alias lls='eza --icons -a -lT -L 1 --git --header'
 
 alias grep='grep --color=auto'
 alias c='clear'
+# the shell's own keys, searchable
+alias keys='bindkey -L | fzf'
 alias debug_zsh='time ZSH_DEBUGRC=1 zsh -i -c exit'
 
 # ── functions ────────

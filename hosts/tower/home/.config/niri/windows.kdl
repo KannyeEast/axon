@@ -10,19 +10,18 @@ window-rule {
 }
 
 window-rule {
-    match app-id=r#"^org\.gnome\.Nautilus$"# title=r#"^(Open|Save|Rename)"#
+    match app-id=r#"^org\.gnome\.Nautilus$"# title=r#"^(Open|Save)"#
     open-floating true
 }
 
-// Small or short-lived windows: players, previews, utilities, an IDE's project picker
+// Small or short-lived windows: players, utilities, an IDE's project picker
 window-rule {
     match app-id=r#"^mpv$"#
     match app-id=r#"^com\.github\.iwalton3\.jellyfin-mpv-shim$"#
-    match app-id=r#"^org\.gnome\.NautilusPreviewer$"#
+    match app-id=r#"^zen-beta$"# title=r#"^Picture-in-Picture$"#
     match app-id=r#"^org\.gnome\.Calculator$"#
     match app-id=r#"^org\.pulseaudio\.pavucontrol$"#
     match app-id=r#"^jetbrains-"# title=r#"^Welcome to "#
-    match app-id=r#"^org\.gnome\.Nautilus$"# title=r#"Properties$"#
     open-floating true
 }
 
@@ -34,7 +33,7 @@ window-rule {
 }
 
 // KeePassXC's prompts (passkeys, browser access, unlock) answer another app's request, so
-// niri wouldn't focus them by itself; they open next to the main window on the side screen
+// niri wouldn't focus them by itself
 window-rule {
     match app-id=r#"^org\.keepassxc\.KeePassXC$"# title=r#"^(KeePassXC - |Unlock Database - KeePassXC$)"#
     open-floating true

@@ -22,6 +22,8 @@ user_pref("browser.urlbar.suggest.weather", false);
 user_pref("browser.urlbar.suggest.yelp", false);
 
 user_pref("general.autoScroll", true);
+// the default, written out: profiles that once had it off keep that in prefs.js otherwise
+user_pref("general.smoothScroll", true);
 
 // ── zen ────────
 user_pref("zen.pinned-tab-manager.restore-pinned-tabs-to-pinned-url", true);
