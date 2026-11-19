@@ -1,32 +1,52 @@
 # Profile files Zen rewrites itself, kept as dotfiles in <profile>/declared/ and applied while Zen
-# is closed: at activation and at login, before the session starts. A missing file leaves Zen's
-# alone. Each holds the shape of the Zen file it goes into:
-#   containers.json     containers.json, replaces it
+# is closed: at activation, at login before the session starts, and when one changes in the
+# checkout (then as soon as Zen is closed). A missing file leaves Zen's alone; a listed set is
+# the whole set. Each holds the shape of the Zen file it goes into:
+#   containers.json     containers.json, replaces it (lastUserContextId raised to the highest id)
 #   search.json         search.json without the default engines' hashes, which it gets here;
 #                       replaces search.json.mozlz4
 #   sessions.json       {spaces, tabs, folders, groups}: rows of zen-sessions.jsonlz4, merged by
-#                       uuid, zenSyncId and id. With spaces, the ones not listed go; with tabs,
-#                       pinned tabs not listed become normal tabs after the listed ones. Only into
-#                       a file Zen has made
-#   live-folders.json   rows of zen-live-folders.jsonlz4, merged by id; Zen keeps its own state.
-#                       Only once the sessions file exists
+#                       uuid, zenSyncId and id. Spaces and folders not listed go; pinned tabs not
+#                       listed become normal tabs after the listed ones. Only into a file Zen has
+#                       made
+#   live-folders.json   rows of zen-live-folders.jsonlz4, merged by id, the rest go; Zen keeps its
+#                       own state. Only once the sessions file exists
 #   space-routing.json  {routes, defaultRouteExternal} of zen-space-routing.jsonlz4, routes merged
-#                       by id
+#                       by id, the rest go
 #   storage-sync/<extension id>.json
 #                       merged over that extension's blob in storage-sync-v2.sqlite (storage.sync);
 #                       DeArrow's licenseKey there is its free key, not a secret
-# The last two become Zen's file as they are where it has none. The merges are the zen-browser
-# flake's (hm-module/session) without split views, reading these files instead of its options.
+# live-folders.json and space-routing.json become Zen's file as they are where it has none. The
+# merges follow the zen-browser flake's (hm-module/session), without split views.
 { lib, ... }:
 {
   flake.modules.homeManager.browser =
-    { config, pkgs, ... }:
+    {
+      config,
+      osConfig,
+      pkgs,
+      ...
+    }:
     let
       inherit (config.programs.zen-browser) profilesPath;
+      inherit (osConfig.axon) host repo;
+      # the checkout's declared folders, shared and this host's, for every profile
+      watched = lib.concatMap (
+        profile:
+        lib.concatMap
+          (home: [
+            "${home}/.config/zen/${profile}/declared"
+            "${home}/.config/zen/${profile}/declared/storage-sync"
+          ])
+          [
+            "${repo}/home"
+            "${repo}/hosts/${host.name}/home"
+          ]
+      ) (lib.attrNames config.programs.zen-browser.profiles);
 
       # jq filters for merge below; each reads the declared file as $d. upsert keeps the rows of .
       # in their order, puts a declared row's fields (f over [row, declared]) over the row with its
-      # key, then appends the declared rows that are new
+      # key, then appends the declared rows that are new; only drops the rows $decl doesn't list
       filter =
         name: body:
         pkgs.writeText "zen-${name}.jq" ''
@@ -35,6 +55,7 @@
             | map(. as $e | ([$decl[] | select(key == ($e | key))] | first) as $o
                 | if $o != null then [$e, $o] | f else . end)
             + [$decl[] | select(key as $k | $have | index($k) | not)];
+          def only($decl; key): map(select(key as $k | [$decl[] | key] | index($k) != null));
           $d[0] as $d
           | ${body}
         '';
@@ -71,23 +92,35 @@
             )
             | .tabs = [.tabs | to_entries[] | .value * {index: .key}]
           else . end
-        | .folders |= upsert($d.folders // []; .id; .[0] * .[1])
+        # with folders, the ones not listed go, with their group; their tabs stay, outside a folder.
+        # Split views are groups Zen makes itself and stay
+        | if $d.folders then
+            .folders |= (upsert($d.folders; .id; .[0] * .[1]) | only($d.folders; .id))
+            | ([$d.folders[].id] + [$d.groups[]?.id]) as $keep
+            | .groups |= map(select(.splitView == true or (.id as $g | $keep | index($g) != null)))
+            | [.groups[].id] as $groups
+            | .tabs |= map(if .groupId != null and (.groupId as $g | $groups | index($g) == null)
+                then .groupId = null else . end)
+          else . end
         | .groups |= upsert($d.groups // []; .id;
             (.[1].splitView == true) as $split | .[0] * .[1] | if $split then del(.index) else . end)
         | .folders |= sort_by(.index // 0)
         | .groups |= sort_by(.index // 0)
       '';
 
-      # Zen keeps a live folder's dismissed items and tab state
+      # Zen keeps a live folder's dismissed items and tab state; the ones not listed go
       liveFolders = filter "live-folders" ''
         (if type == "array" then . else [] end)
         | upsert($d; .id; .[0] * (.[1] | del(.dismissedItems, .tabsState)))
+        | only($d; .id)
       '';
 
       routing = filter "space-routing" ''
         (if type == "object" then . else {} end) as $existing
         | {
-            routes: (($existing.routes // []) | upsert($d.routes // []; .id; .[0] * .[1])),
+            # with routes, the ones not listed go
+            routes: (($existing.routes // [])
+              | if $d.routes then upsert($d.routes; .id; .[0] * .[1]) | only($d.routes; .id) else . end),
             defaultRouteExternal: (if $d | has("defaultRouteExternal") then $d.defaultRouteExternal
               else ($existing.defaultRouteExternal // "most-recent-space") end)
           }
@@ -156,7 +189,9 @@
             declared=$profile/declared
             [ -d "$declared" ] || continue
 
-            if lsof -- "$profile/.parentlock" >/dev/null 2>&1; then
+            if [ "''${2-}" = wait ]; then
+              while lsof -- "$profile/.parentlock" >/dev/null 2>&1; do sleep 5; done
+            elif lsof -- "$profile/.parentlock" >/dev/null 2>&1; then
               echo "zen: $profile is in use; close Zen, its declared files apply at the next login"
               continue
             fi
@@ -167,7 +202,8 @@
             if [ -f "$file" ]; then
               if jq -e . "$file" >/dev/null; then
                 tmp=$(mktemp "$profile/containers.json.XXXXXX")
-                cp -- "$file" "$tmp"
+                # Zen numbers a new container lastUserContextId + 1; never below a declared one
+                jq '.lastUserContextId = ([.lastUserContextId // 0, (.identities[] | select(.public) | .userContextId)] | max)' "$file" >"$tmp"
                 mv -f -- "$tmp" "$profile/containers.json"
               else
                 echo "zen: $file is not valid JSON, skipped" >&2
@@ -232,6 +268,20 @@
         Service = {
           Type = "oneshot";
           ExecStart = "${lib.getExe load} ${lib.escapeShellArg profilesPath}";
+        };
+      };
+
+      # an edit in the checkout applies once Zen is closed; a later edit while this waits is read too
+      systemd.user.paths.zen-declared-changed = {
+        Unit.Description = "Watch Zen's declared profile files";
+        Install.WantedBy = [ "default.target" ];
+        Path.PathChanged = watched;
+      };
+      systemd.user.services.zen-declared-changed = {
+        Unit.Description = "Copy Zen's changed profile files in once it is closed";
+        Service = {
+          Type = "oneshot";
+          ExecStart = "${lib.getExe load} ${lib.escapeShellArg profilesPath} wait";
         };
       };
     };
