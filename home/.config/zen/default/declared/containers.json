@@ -24,13 +24,6 @@
       "public": true
     },
     {
-      "userContextId": 4,
-      "name": "Testsdhfjgsdjhfsdhj",
-      "icon": "fingerprint",
-      "color": "purple",
-      "public": true
-    },
-    {
       "userContextId": 4294967294,
       "name": "userContextIdInternal.thumbnail",
       "icon": "",

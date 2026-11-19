@@ -76,7 +76,11 @@
           PAPERLESS_OCR_LANGUAGE = "deu+eng";
           PAPERLESS_FILENAME_FORMAT = "{{ correspondent }}/{{ created_year }}/{{ title }}";
         }
-        // lib.optionalAttrs routed { PAPERLESS_URL = route.url; }
+        // lib.optionalAttrs routed {
+          PAPERLESS_URL = route.url;
+          # with a URL it answers only that name and localhost; the start page asks by address
+          PAPERLESS_ALLOWED_HOSTS = "127.0.0.1";
+        }
         // lib.optionalAttrs (sso.provider != null) {
           PAPERLESS_APPS = "allauth.socialaccount.providers.openid_connect";
           # a login the provider knows but no account here is linked to ends at "sign up closed"
