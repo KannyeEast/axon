@@ -46,6 +46,15 @@
         ];
       };
 
+      # they insist on a login method; with it off for local addresses, and the tailnet's
+      # 100.64.0.0/10 counted as local (a setting config.xml has and the UI doesn't), there's no
+      # login over the tailnet. Settings here win over config.xml
+      settings.auth = {
+        method = "Forms";
+        required = "DisabledForLocalAddresses";
+        trustCgnatIpAddresses = true;
+      };
+
       dashboard = name: app: {
         name = lib.toSentenceCase name;
         group = "Media";
@@ -71,16 +80,21 @@
       services.radarr = {
         enable = true;
         group = "media";
+        inherit settings;
       };
       services.sonarr = {
         enable = true;
         group = "media";
+        inherit settings;
       };
       services.bazarr = {
         enable = true;
         group = "media";
       };
-      services.prowlarr.enable = true;
+      services.prowlarr = {
+        enable = true;
+        inherit settings;
+      };
 
       systemd.services = lib.mkMerge [
         (lib.genAttrs [ "radarr" "sonarr" "bazarr" ] (_: {
