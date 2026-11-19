@@ -6,7 +6,7 @@
 set -euo pipefail
 
 # what main carries; everything else in stable stays private
-keep='^(modules/|flake\.(nix|lock)$|install\.sh$|justfile$|README\.md$|AGENTS\.md$|DECISIONS\.md$)'
+keep='^(modules/|flake\.(nix|lock)$|install\.sh$|justfile$|README\.md$)'
 
 git fetch --quiet origin
 src=$(git rev-parse origin/stable)
