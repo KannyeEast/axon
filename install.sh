@@ -35,6 +35,12 @@ LOCALE=""
 KEYBOARD=""
 KEYBOARD_VARIANT=""
 SYNC_ID=""
+# where the config keeps Syncthing's keys (syncPlace), and where they were staged
+SYNC_DIR=""
+SYNC_ROOT=""
+SYNC_DEVICE=""
+SYNC_SUBVOL=""
+SYNC_PATH=""
 
 DISK=""
 DISK_NAME=""
@@ -143,6 +149,45 @@ isInstaller() {
 
 # the keys of an install that hasn't finished yet; a rerun after a failure picks them up
 keepDir() { printf '%s' "${XDG_CACHE_HOME:-$HOME/.cache}/axon-install/$HOSTNAME"; }
+
+# a root-owned file of the target, copied here; no file when it can't be read
+fetchRoot() { probe cat "$1" > "$2" 2>/dev/null || rm -f "$2"; }
+
+# Where the evaluated config keeps Syncthing's keys: its config dir, the persistence root holding
+# it (/persist, or the state volume when the host has one) and that root's filesystem.
+syncPlace() {
+  local json
+  json="$(nixx eval --json "$FLAKE#nixosConfigurations.$HOSTNAME.config" --apply '
+    c:
+    let
+      dir = c.services.syncthing.configDir;
+      persistence = c.environment.persistence;
+      root = builtins.head (
+        builtins.filter (
+          r: builtins.any (d: d.directory == dir) (builtins.getAttr r persistence).directories
+        ) (builtins.attrNames persistence)
+      );
+      fs = builtins.getAttr root c.fileSystems;
+    in
+    {
+      inherit dir root;
+      inherit (fs) device;
+      subvol = builtins.head (
+        builtins.concatMap (
+          o:
+          let
+            m = builtins.match "subvol=(.*)" o;
+          in
+          if m == null then [ ] else m
+        ) fs.options
+        ++ [ null ]
+      );
+    }' 2>/dev/null)" || return 1
+  SYNC_DIR="$(jq -r .dir <<< "$json")"
+  SYNC_ROOT="$(jq -r .root <<< "$json")"
+  SYNC_DEVICE="$(jq -r .device <<< "$json")"
+  SYNC_SUBVOL="$(jq -r '.subvol // empty' <<< "$json")"
+}
 
 # every IPv4 address the card with this MAC has on this machine's network. Each address of
 # the /24 is pinged once so the neighbour table fills; a host that drops pings still answers ARP.
@@ -295,7 +340,7 @@ formConfirm() {
   local label="$1" default="${2:-n}"
   case "$default" in
     y|yes|1) default=true ;;
-    *)       default=false ;;
+    *) default=false ;;
   esac
   if gum confirm --default="$default" "$label"; then
     gum style --foreground="$MUTED" "$label: yes"
@@ -488,8 +533,8 @@ gatherIdentity() {
 loadHost() {
   local dir="$FLAKE/hosts/$HOSTNAME" json missing=()
 
+  # a run that stopped after host.toml leaves no secrets.json; preserveIdentity starts those over
   [[ -f $dir/host.toml ]] || missing+=("host.toml")
-  [[ -f $dir/secrets.json ]] || missing+=("secrets.json")
 
   if (( ${#missing[@]} > 0 )); then
     logError "hosts/$HOSTNAME is incomplete, missing: ${missing[*]}"
@@ -576,7 +621,7 @@ preserveIdentity() {
   PRESERVE=false
 
   local key="$TEMP_DIR/ssh_host_ed25519_key" sync="$TEMP_DIR/syncthing"
-  local src part mnt="$TEMP_DIR/oldroot"
+  local part mnt="$TEMP_DIR/oldroot" syncing=false
 
   mkdir -p "$sync"
 
@@ -585,39 +630,60 @@ preserveIdentity() {
     cp "$(keepDir)/ssh_host_ed25519_key" "$key"
     cp -r "$(keepDir)/syncthing/." "$sync/" 2>/dev/null || true
     logInfo "Found the keys of an unfinished install"
-  elif [[ $REMOTE == true ]]; then
-    # the old system is still running: read its persist directly
-    if isInstaller; then
-      logWarn "The target already runs the installer; the old keys can't be read, they are regenerated"
-      return 0
-    fi
-    probe cat /persist/etc/ssh/ssh_host_ed25519_key > "$key" 2>/dev/null || { rm -f "$key"; }
-    probe cat /persist/var/lib/syncthing/cert.pem > "$sync/cert.pem" 2>/dev/null || rm -f "$sync/cert.pem"
-    probe cat /persist/var/lib/syncthing/key.pem > "$sync/key.pem" 2>/dev/null || rm -f "$sync/key.pem"
   else
-    if [[ -z $DISK || ! -e $DISK ]]; then
-      logWarn "Boot disk $DISK not found, keys are regenerated"
-      return 0
+    if printf '%s\n' "${FEATURES[@]}" | grep -qx sync; then
+      if syncPlace; then
+        syncing=true
+      else
+        logWarn "hosts/$HOSTNAME doesn't evaluate, so Syncthing's keys can't be found; they are regenerated"
+      fi
     fi
-    part="$(lsblk -lnpo PATH,FSTYPE "$DISK" | awk '$2 == "btrfs" { print $1; exit }')"
-    if [[ -z $part ]]; then
-      logWarn "No btrfs partition on $DISK, keys are regenerated"
-      return 0
+
+    if [[ $REMOTE == true ]]; then
+      # the old system is still running: read its keys directly
+      if isInstaller; then
+        logWarn "The target already runs the installer; the old keys can't be read, they are regenerated"
+        return 0
+      fi
+      fetchRoot /persist/etc/ssh/ssh_host_ed25519_key "$key"
+      if [[ $syncing == true ]]; then
+        # the running system has them at their own path, wherever it persists them
+        fetchRoot "$SYNC_DIR/cert.pem" "$sync/cert.pem"
+        fetchRoot "$SYNC_DIR/key.pem" "$sync/key.pem"
+      fi
+    else
+      mkdir -p "$mnt"
+      # on the state volume: mounted by itself, as the config mounts it
+      if [[ $syncing == true && $SYNC_ROOT != /persist ]]; then
+        if sudo mount -o "ro${SYNC_SUBVOL:+,subvol=$SYNC_SUBVOL}" "$SYNC_DEVICE" "$mnt" 2>/dev/null; then
+          fetchRoot "$mnt$SYNC_DIR/cert.pem" "$sync/cert.pem"
+          fetchRoot "$mnt$SYNC_DIR/key.pem" "$sync/key.pem"
+          sudo umount "$mnt"
+        else
+          logWarn "Could not mount $SYNC_DEVICE ($SYNC_ROOT), Syncthing's keys are regenerated"
+        fi
+      fi
+
+      if [[ -z $DISK || ! -e $DISK ]]; then
+        logWarn "Boot disk $DISK not found, keys are regenerated"
+        return 0
+      fi
+      part="$(lsblk -lnpo PATH,FSTYPE "$DISK" | awk '$2 == "btrfs" { print $1; exit }')"
+      if [[ -z $part ]]; then
+        logWarn "No btrfs partition on $DISK, keys are regenerated"
+        return 0
+      fi
+      if ! sudo mount -o subvol=/persist,ro "$part" "$mnt" 2>/dev/null; then
+        logWarn "Could not mount $part, keys are regenerated"
+        return 0
+      fi
+      fetchRoot "$mnt/etc/ssh/ssh_host_ed25519_key" "$key"
+      if [[ $syncing == true && $SYNC_ROOT == /persist ]]; then
+        fetchRoot "$mnt$SYNC_DIR/cert.pem" "$sync/cert.pem"
+        fetchRoot "$mnt$SYNC_DIR/key.pem" "$sync/key.pem"
+      fi
+      sudo umount "$mnt"
     fi
-    mkdir -p "$mnt"
-    if ! sudo mount -o subvol=/persist,ro "$part" "$mnt" 2>/dev/null; then
-      logWarn "Could not mount $part, keys are regenerated"
-      return 0
-    fi
-    src="$mnt"
-    # read as root, written as the user
-    # shellcheck disable=SC2024
-    sudo cat "$src/etc/ssh/ssh_host_ed25519_key" > "$key" 2>/dev/null || rm -f "$key"
-    # shellcheck disable=SC2024
-    sudo cat "$src/var/lib/syncthing/cert.pem" > "$sync/cert.pem" 2>/dev/null || rm -f "$sync/cert.pem"
-    # shellcheck disable=SC2024
-    sudo cat "$src/var/lib/syncthing/key.pem" > "$sync/key.pem" 2>/dev/null || rm -f "$sync/key.pem"
-    sudo umount "$mnt"
   fi
 
   if [[ ! -s $key ]]; then
@@ -630,6 +696,13 @@ preserveIdentity() {
   # only the key host.toml names can open secrets.json
   if [[ "$(ssh-keygen -y -f "$key" | cut -d' ' -f1-2)" != "$(cut -d' ' -f1-2 <<< "$HOST_KEY")" ]]; then
     logWarn "The host key found isn't the one in host.toml, keys are regenerated"
+    rm -f "$key"
+    return 0
+  fi
+
+  # nothing was encrypted to it yet
+  if [[ ! -f $FLAKE/hosts/$HOSTNAME/secrets.json ]]; then
+    logWarn "hosts/$HOSTNAME has no secrets.json (an earlier run stopped before it), keys are regenerated"
     rm -f "$key"
     return 0
   fi
@@ -1063,12 +1136,20 @@ writeSecrets() {
     return 0
   fi
 
-  [[ $EXISTING == true ]] && logWarn "New keys can't open the old secrets.json; it starts over"
+  [[ $EXISTING == true && -f $FLAKE/hosts/$HOSTNAME/secrets.json ]] && logWarn "New keys can't open the old secrets.json; it starts over"
 
-  local hash pwd tailscale
+  local hash pwd tailscale="" joins label="Tailscale auth key (admin console: Settings → Keys)"
   formPassword pwd "Login password for '$USERNAME'"
   hash="$(printf '%s' "$pwd" | mkpasswd -m sha-512 --stdin)"
-  formPassword tailscale "Tailscale auth key (admin console: Settings → Keys), empty if no cluster.toml relation names this host" false 0
+
+  # the config decides whether it joins the tailnet (modules/core/tailnet.nix); host.toml and the
+  # hardware report are written, which is all the evaluation needs
+  joins="$(nixx eval "$FLAKE#nixosConfigurations.$HOSTNAME.config.services.tailscale.enable" 2>/dev/null)" || joins=""
+  case "$joins" in
+    true) formPassword tailscale "$label; $HOSTNAME joins the tailnet" false 0 ;;
+    false) logInfo "$HOSTNAME doesn't join the tailnet; it needs no Tailscale key" ;;
+    *) formPassword tailscale "$label, empty if this host doesn't join the tailnet" false 0 ;;
+  esac
 
   jq -n \
     --arg pw "$hash" \
@@ -1203,9 +1284,9 @@ write() {
   mkdir -p "$FLAKE/hosts/$HOSTNAME"
 
   writeSopsYaml
-  writeSecrets
   writeHostToml
   writeFacter
+  writeSecrets
   [[ $EXISTING != true ]] && writeDotfiles
 
   return 0
@@ -1363,9 +1444,16 @@ stageFiles() {
     git -C "$home/axon" config "branch.$branch.$key" "$value"
   done
 
+  # Syncthing's keys where the config persists them: under /persist, or on the state volume
+  SYNC_PATH=""
   if [[ -s $sync/cert.pem ]]; then
-    install -d -m 700 "$root/persist/var/lib/syncthing"
-    install -m 600 "$sync/cert.pem" "$sync/key.pem" "$root/persist/var/lib/syncthing/"
+    if syncPlace; then
+      SYNC_PATH="$SYNC_ROOT$SYNC_DIR"
+      install -d -m 700 "$root$SYNC_PATH"
+      install -m 600 "$sync/cert.pem" "$sync/key.pem" "$root$SYNC_PATH/"
+    else
+      logWarn "$HOSTNAME persists no Syncthing folder; its keys aren't installed"
+    fi
   fi
 }
 
@@ -1392,16 +1480,17 @@ installSystem() {
 
   INPLACE=false
   if [[ $REMOTE == true ]] && ! isInstaller && canInPlace; then
-    logInfo "$TARGET runs NixOS on the partitions this config uses; it can be installed in place:"
-    logInfo "no switch into the installer, and if the new system doesn't come up, a power cycle"
-    logInfo "starts the old one again"
+    logInfo "$TARGET runs NixOS on the partitions this config uses; it can be installed in place,"
+    logInfo "without the switch into the installer. If the new system doesn't come up, a power cycle"
+    logInfo "starts the old one again, unless it boots through GRUB: GRUB's NixOS-boot entry, menu and"
+    logInfo "kernels are replaced"
     formConfirm "Install in place?" "y" && INPLACE=true
   fi
 
   gatherWipe
 
   if [[ $INPLACE == true ]]; then
-    logWarn "The system on $DISK is replaced; its partitions stay, /persist and /home start empty"
+    logWarn "The system on $DISK is replaced; its partitions and /home stay, /persist starts empty"
   else
     logWarn "$DISK on ${TARGET:-this machine} will be wiped"
   fi
@@ -1432,9 +1521,11 @@ canInPlace() {
 }
 
 # Install in place, over SSH, while the old system runs
-# The partitions stay; /persist and /home start empty, / is emptied on every boot anyway.
-# The new system is built here, copied over and set to boot once (EFI BootNext): the old
-# boot entry stays the default until the new system has answered.
+# The partitions and /home stay; /persist starts empty (the old one is kept beside it), / is
+# emptied on every boot anyway. The new system is built here, copied over and set to boot once
+# (EFI BootNext): an old system with a loader of its own stays the default until the new one has
+# answered. One that boots through GRUB can't be power-cycled back: GRUB replaces its entry, menu
+# and kernels.
 installInPlace() {
   local stage="$TEMP_DIR/stage" mnt=/mnt/axon-install system efi order entry
   mkdir -p "$stage"
@@ -1460,21 +1551,39 @@ EOF
   tar -C "$stage" --owner=0 --group=0 --transform 's,^persist,persist.new,SH' -cf - persist home \
     | probe tar -C "$mnt" -xpf -
   probe chown -R 1000:100 "$mnt/home/$USERNAME"
-  if [[ -d $stage/persist/var/lib/syncthing ]]; then
-    probe chown -R 1000:100 "$mnt/persist.new/var/lib/syncthing"
+  if [[ $SYNC_PATH == /persist/* ]]; then
+    probe chown -R 1000:100 "$mnt/persist.new${SYNC_PATH#/persist}"
+  elif [[ -n $SYNC_PATH && $WIPE_EXTRA != true ]]; then
+    placeSyncKeys
   fi
   logInfo "Staged the keys and the checkout"
 
   order="$(probe "$efi" | sed -n 's/^BootOrder: //p')"
   probe nix-env -p /nix/var/nix/profiles/system --set "$system"
-  # GRUB copies every generation's kernel onto the ESP, which the old layout keeps small; the
-  # old system still boots from its own loader's copies
+  # GRUB copies every generation's kernel onto the ESP, which the old layout keeps small, and
+  # removes the other kernels under /boot/kernels; a loader of the old system's own keeps its copies
   probe nix-env -p /nix/var/nix/profiles/system --delete-generations old
   probe env NIXOS_INSTALL_BOOTLOADER=1 "$system/bin/switch-to-configuration" boot
   entry="$(probe "$efi" | awk '/NixOS-boot/ { sub(/^Boot/, "", $1); sub(/\*.*/, "", $1); print $1; exit }')"
-  [[ -n $entry ]] || die "GRUB added no boot entry; nothing was swapped, the old system still boots"
-  # grub-install puts itself first; the old entry stays the default until the new system answers
-  [[ -n $order ]] && probe "$efi" -q -o "$order"
+  [[ -n $entry ]] || die "GRUB added no boot entry; nothing was swapped. Check efibootmgr there before a reboot: an old system that booted through GRUB lost its entry too"
+  # grub-install replaces any NixOS-boot entry with its own and puts that first. The old order without
+  # the entries it deleted (efibootmgr rejects an order naming one) and without the new one; a deleted
+  # one means the old system booted through GRUB and has nothing left to fall back on
+  local kept gone
+  kept="$(probe "$efi" | awk -v order="$order" -v entry="$entry" '
+    /^Boot[0-9A-Fa-f]{4}/ { have[substr($1, 5, 4)] = 1 }
+    END {
+      n = split(order, o, ",")
+      for (i = 1; i <= n; i++) {
+        if (!have[o[i]]) gone = 1
+        else if (o[i] != entry) out = out (out ? "," : "") o[i]
+      }
+      print (gone ? "gone" : "kept") " " out
+    }')"
+  gone=${kept%% *}
+  order=${kept#* }
+  # with a fallback, the old order comes back until the new system answers
+  [[ $gone == kept && -n $order ]] && probe "$efi" -q -o "$order"
 
   probe bash -s -- "$mnt" <<'EOF'
 set -eu
@@ -1484,16 +1593,23 @@ mv "$mnt/persist.new" "$mnt/persist"
 umount "$mnt"
 EOF
   # only now: until here, a reboot would have found the new system without its keys
-  probe "$efi" -q -n "$entry"
-  logInfo "Boot entry $entry boots $HOSTNAME once; the old one stays the default"
-
-  logWarn "Rebooting into $HOSTNAME. If it doesn't come back, power-cycle it: the old system starts again"
+  if [[ $gone == kept ]]; then
+    probe "$efi" -q -n "$entry"
+    logInfo "Boot entry $entry boots $HOSTNAME once; the boot order stays as it was"
+    logWarn "Rebooting into $HOSTNAME. If it doesn't come back, power-cycle it: the old system starts"
+    logWarn "again, on the new /persist (its own is kept as persist-old_*)"
+  else
+    probe "$efi" -q -o "$entry${order:+,$order}"
+    logInfo "Boot entry $entry is the default: the old system booted through GRUB, which replaced it"
+    logWarn "Rebooting into $HOSTNAME. There is no old system to fall back on; if it doesn't come back,"
+    logWarn "it needs a screen (its previous /persist is kept as persist-old_*)"
+  fi
   probe systemctl reboot &>/dev/null || true
   ssh -o ControlPath="$TEMP_DIR/ssh-%C" -O exit "$TARGET" &>/dev/null || true
   sleep 20
 
   if ! verifyRemote; then
-    logWarn "$HOSTNAME stays on its old boot entry; a power cycle starts the old system"
+    [[ $gone == kept ]] && logWarn "The boot order is unchanged; a power cycle starts the old system"
     die "Not finished: the new system didn't answer"
   fi
 
@@ -1503,6 +1619,8 @@ EOF
 
   if [[ $WIPE_EXTRA == true ]]; then
     formatData
+    # the state volume was just made anew
+    [[ -n $SYNC_PATH && $SYNC_PATH != /persist/* ]] && placeSyncKeys
     logInfo "Rebooting once more, so everything starts with its disks"
     probe systemctl reboot &>/dev/null || true
     ssh -o ControlPath="$TEMP_DIR/ssh-%C" -O exit "$TARGET" &>/dev/null || true
@@ -1512,25 +1630,46 @@ EOF
   finish
 }
 
-# the data disks as modules/core/storage.nix lays them out, made on the running new system
+# In place, a state volume isn't part of the staged /persist: Syncthing's keys go straight onto it,
+# before the reboot, or after formatData when it is made anew
+placeSyncKeys() {
+  # shellcheck disable=SC2016
+  if ! tar -C "$TEMP_DIR/stage$SYNC_ROOT" --owner=0 --group=0 -cf - "${SYNC_DIR#/}/cert.pem" "${SYNC_DIR#/}/key.pem" \
+    | probe bash -c 'set -eu; udevadm settle || true; mnt=$(mktemp -d)
+        mount ${3:+-o "subvol=$3"} "$2" "$mnt"; install -d -o 1000 -g 100 -m 700 "$mnt$1"
+        tar -C "$mnt" -xpf -; chown -R 1000:100 "$mnt$1"; umount "$mnt"; rmdir "$mnt"' \
+      _ "$SYNC_DIR" "$SYNC_DEVICE" "$SYNC_SUBVOL"; then
+    logWarn "Couldn't put Syncthing's keys on $SYNC_DEVICE ($SYNC_ROOT): it makes new ones, and its id no longer matches host.toml"
+    return 0
+  fi
+  logInfo "Put Syncthing's keys on $SYNC_ROOT"
+}
+
+# the data disks as modules/core/storage.nix lays them out, made on the running new system with the
+# mkfs.btrfs arguments of its disko config (profile, metadata, label, the other devices)
 formatData() {
-  local json label profile meta
-  local -a devices subvolumes
+  local json label profile
+  local -a devices subvolumes args
   json="$(tomlJson "$FLAKE/hosts/$HOSTNAME/host.toml")"
 
   while IFS= read -r label; do
     mapfile -t devices < <(jq -r --arg l "$label" '.disk[$l].devices[]' <<< "$json")
     mapfile -t subvolumes < <(jq -r --arg l "$label" '.disk[$l].mounts | keys[]' <<< "$json")
     profile="$(jq -r --arg l "$label" '.disk[$l].profile // "single"' <<< "$json")"
-    # parity profiles keep metadata mirrored, as storage.nix does
-    case $profile in raid5|raid6) meta=raid1c3 ;; *) meta=$profile ;; esac
+    mapfile -t args < <(nixx eval --json \
+      "$FLAKE#nixosConfigurations.$HOSTNAME.config.disko.devices.disk.\"$label\".content.extraArgs" | jq -r '.[]')
+    if (( ${#args[@]} == 0 )); then
+      logWarn "Couldn't evaluate disk.$label's mkfs.btrfs arguments; the system runs, format it by hand"
+      continue
+    fi
 
-    if ! probe bash -s -- "$label" "$profile" "$meta" "${#devices[@]}" "${devices[@]}" "${subvolumes[@]}" <<'EOF'
+    if ! probe bash -s -- "${#devices[@]}" "${#args[@]}" "${devices[@]}" "${args[@]}" "${subvolumes[@]}" <<'EOF'
 set -eu
-label=$1 profile=$2 meta=$3 n=$4
-shift 4
+n=$1 m=$2
+shift 2
 devices=("${@:1:n}")
-subvolumes=("${@:n+1}")
+args=("${@:n+1:m}")
+subvolumes=("${@:n+m+1}")
 for d in "${devices[@]}"; do
   # an old filesystem on it may still be mounted under its own name
   uuid=$(blkid -s UUID -o value "$d" || true)
@@ -1538,7 +1677,7 @@ for d in "${devices[@]}"; do
   for p in "$d"-part*; do [ -e "$p" ] && wipefs -aq "$p"; done
   wipefs -aq "$d"
 done
-mkfs.btrfs -q -f -L "$label" -d "$profile" -m "$meta" "${devices[@]}"
+mkfs.btrfs -q "${devices[0]}" "${args[@]}"
 mnt=$(mktemp -d)
 mount "${devices[0]}" "$mnt"
 for s in "${subvolumes[@]}"; do btrfs subvolume create "$mnt/$s" >/dev/null; done
@@ -1563,9 +1702,10 @@ installLocal() {
   wipeExtra
   run sudo disko --mode destroy,format,mount --yes-wipe-all-disks --flake "$FLAKE#$HOSTNAME"
 
-  sudo cp -a "$stage/." /mnt/
+  # the staging folders belong to the USB's user; their owners would replace those of /mnt's folders
+  sudo cp -a --no-preserve=ownership "$stage/." /mnt/
   sudo chown -R 1000:100 "/mnt/home/$USERNAME"
-  [[ -d /mnt/persist/var/lib/syncthing ]] && sudo chown -R 1000:100 /mnt/persist/var/lib/syncthing
+  [[ -n $SYNC_PATH ]] && sudo chown -R 1000:100 "/mnt$SYNC_PATH"
 
   # the USB's tmpfs is too small for a first build
   sudo mkdir -p /mnt/tmp
@@ -1589,7 +1729,7 @@ installRemote() {
   stageFiles "$stage"
 
   local -a owners=(--chown "/home/$USERNAME" 1000:100)
-  [[ -d $stage/persist/var/lib/syncthing ]] && owners+=(--chown /persist/var/lib/syncthing 1000:100)
+  [[ -n $SYNC_PATH ]] && owners+=(--chown "$SYNC_PATH" 1000:100)
 
   isInstaller || kexecTarget
   zeroBootDisk

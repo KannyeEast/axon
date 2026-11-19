@@ -38,6 +38,7 @@ To change one, change it here in the same commit, with the new reason.
 | Decision | Why |
 |---|---|
 | `defaultSopsFormat = "yaml"` on `.json` files, `validateSopsFiles = false` | sops-nix's JSON reader rejects the nested keys these files use |
+| `secrets.json` holds only what the owner enters (`just secrets <host>`) plus the user key install.sh makes; nothing generates a value into it, and evaluation names what is missing | chosen: the owner sets every secret |
 
 ## Services
 
