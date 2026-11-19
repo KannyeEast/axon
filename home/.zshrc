@@ -67,6 +67,17 @@ if zle -l zsh-system-clipboard-vicmd-vi-yank; then
     bindkey -M visual 'p' zsh-system-clipboard-visual-put-replace-selection
 fi
 
+# the command line to the terminal's clipboard as OSC 52; tmux sends these keys on prefix y. tmux
+# (set-clipboard external) drops an app's OSC 52, so inside it, also over ssh, it goes as passthrough
+copy-command-line() {
+    local osc=$'\e]52;c;'$(print -rn -- "$BUFFER" | base64 -w0)$'\a'
+    [[ $TERM == tmux* ]] && osc=$'\ePtmux;'${osc//$'\e'/$'\e\e'}$'\e\\'
+    print -rn -- "$osc" >/dev/tty
+}
+zle -N copy-command-line
+bindkey -M viins '^X^Y' copy-command-line
+bindkey -M vicmd '^X^Y' copy-command-line
+
 # ── completion ────────
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"

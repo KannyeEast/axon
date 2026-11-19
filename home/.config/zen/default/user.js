@@ -6,6 +6,8 @@ user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
 // bookmarks.html next to this file, imported on every start
 user_pref("browser.places.importBookmarksHTML", true);
 user_pref("devtools.chrome.enabled", true);
+// the home button opens both; Zen itself restores the previous session at start
+user_pref("browser.startup.homepage", "https://kagi.com/|about:blank");
 user_pref("font.name.sans-serif.x-western", "Inter");
 user_pref("font.name.serif.x-western", "Barlow");
 user_pref("font.name.monospace.x-western", "JetBrainsMono Nerd Font");

@@ -56,11 +56,6 @@
           SponsoredSuggestions = false;
           ImproveSuggest = false;
         };
-        Homepage = {
-          URL = "https://kagi.com";
-          Additional = [ "about:blank" ];
-          StartPage = "previous-session";
-        };
         InstallAddonsPermission.Default = false;
         NetworkPrediction = false;
         NewTabPage = false;

@@ -16,7 +16,7 @@ To change one, change it here in the same commit, with the new reason.
 | No Watchtower or Portainer: container images change only through Renovate's pull requests | every image is pinned to a digest, so what runs is what the repository says, reviewed like any other change |
 | JetBrains IDEs trust every project (`idea.trust.all.projects`) | chosen by the owner; there is no per-path setting |
 | The KeeShare key in `hosts/tower/home/.config/keepassxc/keepassxc.ini` | KeeShare is unused; KeePassXC generates the key itself |
-| Hardcoded domain, user and machine names inside `hosts/<name>/` | that folder belongs to exactly one host; only modules and `home/` must stay generic |
+| Hardcoded domain in `home/` (Zen's pins and space routes), machine names only inside `hosts/<name>/` | `home/` is the owner's folder for all their hosts, so values the whole cluster shares may appear there; what belongs to one host goes in `hosts/<name>/home`; only the modules stay generic |
 | Kanidm (gateway/accounts.nix) is the one login for every service that has a login; there is no other identity provider | one account and one passkey per person for everything |
 | No login in front of the tailnet-only apps (the *arr apps, SABnzbd, qBittorrent, Homepage, Prometheus and the like) | the tailnet is the owner's alone; family devices aren't on it |
 | Jellyfin keeps its own login, and Seerr, which logs in with Jellyfin accounts, follows it | TV and native apps can't do OpenID Connect; they sign in with Quick Connect |
@@ -72,4 +72,5 @@ To change one, change it here in the same commit, with the new reason.
 | fuzzel and mako only get colours, nothing more, and waybar runs its stock config (no dotfile) | a shell of its own (separate repo) will replace them |
 | tower has no swap (`swap = 0`), so it can't hibernate, though the desktop class would resume from swap | chosen; it stays on or shuts down |
 | Plain numbered niri workspaces, none bound to a purpose | the owner finds fixed workspaces restrictive |
+| Zen's cookie allow list (browser/policies.nix), its extensions (browser/extensions.nix) and mods (browser/mods.nix) stay in Nix, though they are personal choices | Zen takes cookie exceptions and force-installed extensions only as enterprise policy, which Nix writes into its package; the zen-browser flake installs mods only from a Nix option |
 | `kanshi` is installed on every desktop, though tower doesn't use it | for laptops and other hosts whose displays change; tower's fixed layout is in niri's own output config |
