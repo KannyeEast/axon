@@ -1,0 +1,9 @@
+// No xkb section: niri then takes the layout from host.toml (through systemd-localed). A host
+// that sets anything under xkb in its own input.kdl must repeat the layout there.
+input {
+    mouse {
+        accel-profile "flat"
+    }
+
+    warp-mouse-to-focus
+}

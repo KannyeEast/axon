@@ -4,7 +4,16 @@
   flake.modules.nixos.server =
     { config, ... }:
     let
-      inherit (config.axon) host routed routes;
+      inherit (config.axon)
+        cluster
+        host
+        routed
+        routes
+        ;
+      gateways = lib.attrNames (
+        lib.filterAttrs (_: data: lib.elem "gateway" data.host.features) cluster.hosts
+      );
+      names = lib.concatStringsSep ", " (lib.attrNames routes);
     in
     {
       documentation.enable = false;
@@ -23,8 +32,11 @@
         }
       ];
 
-      warnings =
-        lib.optional (!routed && routes != { })
-          "hosts/${host.name}/host.toml: ${lib.concatStringsSep ", " (lib.attrNames routes)} have routes but this host runs no gateway, so other machines can't reach them; list the gateway feature here or use ssh -L";
+      warnings = lib.optional (!routed && routes != { }) (
+        if gateways == [ ] then
+          "hosts/${host.name}/host.toml: ${names} have routes but this host runs no gateway, so other machines can't reach them; list the gateway feature here or use ssh -L"
+        else
+          "hosts/${host.name}/host.toml: ${names} have routes, but the gateway on ${lib.concatStringsSep ", " gateways} routes only its own host's services, and their logins stay local; reach them through ssh -L, or move them to that host"
+      );
     };
 }

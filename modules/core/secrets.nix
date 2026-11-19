@@ -8,6 +8,7 @@
     let
       inherit (config.axon) home host user;
       file = host.dir + "/secrets.json";
+      exists = lib.pathExists file;
     in
     {
       imports = [ inputs.sops-nix.nixosModules.sops ];
@@ -15,7 +16,7 @@
       options.axon.secrets = lib.mkOption {
         type = lib.types.raw;
         readOnly = true;
-        default = removeAttrs (lib.importJSON file) [ "sops" ];
+        default = lib.optionalAttrs exists (removeAttrs (lib.importJSON file) [ "sops" ]);
         defaultText = "the key structure of secrets.json";
         description = ''
           The shape of secrets.json. sops encrypts values, not keys, so evaluation can see
@@ -38,7 +39,11 @@
           in
           [
             {
-              assertion = missing == [ ];
+              assertion = exists;
+              message = "hosts/${host.name}/secrets.json: missing; run install.sh for this host";
+            }
+            {
+              assertion = !exists || missing == [ ];
               message = "hosts/${host.name}/secrets.json: missing ${
                 lib.concatMapStringsSep ", " (secret: "'${secret.key}'") missing
               }; add them with `just secrets ${host.name}` (a/b is {\"a\": {\"b\": …}})";

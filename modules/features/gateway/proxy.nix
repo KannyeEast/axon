@@ -24,7 +24,9 @@
       assertions = [
         {
           assertion = lib.length gateways == 1;
-          message = "cluster.toml: exactly one host may run the gateway feature, found ${lib.concatStringsSep ", " gateways}";
+          message = "${
+            lib.concatMapStringsSep ", " (name: "hosts/${name}/host.toml") gateways
+          }: only one host may list the gateway feature; keep it on one";
         }
       ];
 

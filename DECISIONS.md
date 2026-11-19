@@ -50,6 +50,7 @@ To change one, change it here in the same commit, with the new reason.
 | Vaultwarden's admin page exists only while `secrets.json` holds `vaultwarden/admin-token` (passwords/vault.nix) | it is needed only to invite the family; off otherwise, so the public route has no admin login to attack |
 | Radarr, Sonarr and Prowlarr settings (quality profiles, indexers) live in their UIs, not in Nix | they are per-host choices |
 | qBittorrent's hardlinks into the library fail (it writes 0644) | btrfs shares the data anyway, so no space is lost |
+| One service server per cluster for now: the gateway (gateway/proxy.nix) and Kanidm (gateway/accounts.nix) take only their own host's services; another server's routed services get no route or login, and a warning says so (server/headless.nix) | there is no contract yet for services on other hosts |
 | Nextcloud is file storage only | no calendar, contacts or other apps |
 | Space usage is not on the start page | quotas are set per user in the apps; apps show the whole volume's size, as btrfs limits don't change what statfs reports |
 | Avahi only comes with printing | nothing else needs it since the `.local` names went |

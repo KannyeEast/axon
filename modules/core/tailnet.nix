@@ -1,6 +1,7 @@
 # Contract: axon.overlay. The private network between machines (Tailscale) that cluster relations
-# run over. A host joins by being named in a cluster.toml relation; any other stays off, needs no
-# key, keeps the listed ports closed and has a null network.
+# run over. A host joins by being named in a cluster.toml relation, or when monitoring on one host
+# scrapes metrics on another; any other stays off, needs no key, keeps the listed ports closed and
+# has a null network.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -10,10 +11,19 @@ in
     { config, ... }:
     let
       inherit (config.axon) cluster host overlay;
-      member = lib.elem host.name (
-        lib.attrNames cluster.ssh
-        ++ lib.concatLists (lib.attrValues cluster.ssh ++ lib.attrValues cluster.sync)
-      );
+      lists = feature: lib.elem feature host.features;
+      othersList =
+        feature:
+        lib.any (data: lib.elem feature data.host.features) (
+          lib.attrValues (removeAttrs cluster.hosts [ host.name ])
+        );
+      member =
+        lib.elem host.name (
+          lib.attrNames cluster.ssh
+          ++ lib.concatLists (lib.attrValues cluster.ssh ++ lib.attrValues cluster.sync)
+        )
+        || (lists "metrics" && othersList "monitoring")
+        || (lists "monitoring" && othersList "metrics");
     in
     {
       options.axon.overlay = {

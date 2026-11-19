@@ -1,6 +1,8 @@
 # axon
 
-NixOS for my machines, as data plus a small framework.
+NixOS for my machines, as data plus a small framework. Opinionated but modular: the framework is
+a toolset for any owner and any machine; personal choices live in dotfiles, on desktops and
+servers alike; a host's `host.toml` describes the host and nothing else.
 
 - A machine is a folder: `hosts/<name>/host.toml` says what it is, `facter.json` what hardware it
   has, `secrets.json` (sops) what it must keep secret.

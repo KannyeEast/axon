@@ -2,6 +2,14 @@
 
 Instructions for an assistant working in this repository.
 
+## Principle
+
+Opinionated but modular: the framework (`modules/`) is a toolset that serves any owner and any
+machine, and personal choices stay out of it. They live in dotfiles, on desktops and servers
+alike: whatever a program or service can read from a file is a file in `home/` or
+`hosts/<name>/home`, not Nix and not a setting kept in a UI. `host.toml` describes the host and
+nothing else.
+
 ## Roles
 
 This repository is a NixOS configuration built on a small framework (axon) that lives in it. Two
@@ -109,7 +117,7 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   `.desktop` file's name or `StartupWMClass`, or the application id in its source) and decide per
   window: main windows tile; dialogs with a parent window and fixed-height windows float by
   themselves in niri; small tool windows, pickers and popups without a parent get an
-  `open-floating` rule in the host's `windows.kdl`, in the same change.
+  `open-floating` rule in `home/.config/niri/windows.kdl`, in the same change.
 - **Dotfiles with several sections** separate them with a ruler: `# ── name ────────`
   (`--` in Lua, `//` in KDL and JavaScript).
 
@@ -118,7 +126,8 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
 A sweep or audit checks the rules above and also whether the config does its job:
 
 - A fresh host of any class and any feature combination installs and builds without manual fixes
-  (first-switch ordering, missing secrets degrade with a warning, nothing assumes node1 or tower).
+  (first-switch ordering; secrets a feature can't do without fail evaluation with one message
+  listing them, missing extras degrade with a warning; nothing assumes node1 or tower).
 - The split stays clean: Nix installs and wires, dotfiles hold runtime settings, `hosts/<name>` holds
   the choices; nothing the framework on `main` needs lives outside `modules/`.
 - n hosts in any cluster shape work: relations come from `cluster.toml` and the contracts, never

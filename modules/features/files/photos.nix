@@ -26,7 +26,7 @@
         inherit port;
         mediaLocation = data;
         settings = {
-          server.externalDomain = route.url;
+          server.externalDomain = route.origin;
           storageTemplate = {
             enabled = true;
             template = "{{y}}/{{MM}}/{{dd}}/{{filename}}";
