@@ -1,6 +1,8 @@
 # Alloy ships this host's journal to Loki on every host listing monitoring (monitoring/logs.nix),
 # with the labels host, unit, level, service_name and, for Docker containers, container. Without
 # such a host it stays off. Its UI answers on localhost only.
+# level is journald's priority keyword. What a program prints to stdout lands as info, so for
+# those lines it comes from the line itself where that names one ([error], level=warn, ERROR).
 { lib, ... }:
 {
   flake.modules.nixos.metrics =
@@ -53,6 +55,64 @@
           lib.filterAttrs (_: container: lib.elem container.serviceName data.units) containers.containers
         );
 
+      # journald's keywords and how programs write them; the short forms count only in brackets or
+      # after level=, since words like ERR and INF also turn up in plain text
+      levels = {
+        emerg = [
+          "emerg"
+          "emergency"
+        ];
+        alert = [ "alert" ];
+        crit = [
+          "crit"
+          "critical"
+          "fatal"
+          "ftl"
+          "panic"
+        ];
+        err = [
+          "err"
+          "eror"
+          "error"
+        ];
+        warning = [
+          "warn"
+          "warning"
+          "wrn"
+        ];
+        notice = [ "notice" ];
+        info = [
+          "info"
+          "inf"
+          "information"
+        ];
+        debug = [
+          "debug"
+          "dbg"
+          "dbug"
+          "trace"
+          "trc"
+          "verbose"
+          "vrb"
+        ];
+      };
+      tokens = lib.sort (a: b: lib.stringLength a > lib.stringLength b) (
+        lib.concatLists (lib.attrValues levels)
+      );
+      any = lib.concatStringsSep "|" tokens;
+      long = lib.concatStringsSep "|" (
+        map lib.toUpper (lib.filter (token: lib.stringLength token > 3) tokens)
+      );
+      # the first of level=<word> or "level":"<word>", [word], or WORD in capitals
+      named = ''(?i:\b(?:level|lvl|severity)"?\s*[=:]\s*"?)(?P<a>[A-Za-z]+)|\[(?P<b>(?i:${any}))\]|\b(?P<c>${long})\b'';
+      keyword = ''{{- $levels := dict${
+        lib.concatStrings (
+          lib.mapAttrsToList (
+            level: names: lib.concatMapStrings (name: " \"${name}\" \"${level}\"") names
+          ) levels
+        )
+      } -}}{{- with coalesce .a .b .c -}}{{- get $levels (lower .) | default "info" -}}{{- else -}}info{{- end -}}'';
+
       source = pkgs.writeText "config.alloy" ''
         loki.relabel "journal" {
           forward_to = []
@@ -93,9 +153,28 @@
         }
 
         loki.source.journal "journal" {
-          forward_to = [loki.write.monitoring.receiver]
+          forward_to = [loki.process.level.receiver]
           relabel_rules = loki.relabel.journal.rules
           labels = {host = ${lib.toJSON host.name}}
+        }
+
+        loki.process "level" {
+          forward_to = [loki.write.monitoring.receiver]
+
+          stage.match {
+            selector = "{level=\"info\"}"
+
+            stage.regex {
+              expression = ${lib.toJSON named}
+            }
+            stage.template {
+              source = "level"
+              template = ${lib.toJSON keyword}
+            }
+            stage.labels {
+              values = {level = ""}
+            }
+          }
         }
 
         loki.write "monitoring" {
