@@ -3,8 +3,8 @@ keys:
   - &tower age1gr97nezu2se75m2nj3m38k2dx9a4ynqphr4aj8tk4r7dh8fpj36s86v3jw
   - &gldn_node1 age1qlst0tgzgqplavdavx7z5pvcgae8jsdgxnghv302gtx6a7u9qutsn3m6ma
   - &node1 age18pzesaftz045fqryxgxjgmrvlgmz2agmmedq2zznqpl3ht4ecvyqtue5ru
-  - &gldn_laptop age12aa45j9ma3fj63mvhw2w6y45fqfwfu8gzvpne3dnae7n7gqjc4nqxtyctw
-  - &laptop age1pzhg42ljs3wd8x6juwtjxf65xcv6wmukwjug4475ps5v7lys6ursm8khx9
+  - &gldn_laptop age1ujzd4zw4w5kz7hk9vt3p4k384vqg2s55r39xxccd2jcy4gyh3gesqd664p
+  - &laptop age1ea0vmy397nwv5k9jxv4ter3pnrj4e0suycpptfwd473v2ht4usnssanthk
 creation_rules:
   - path_regex: hosts/tower/secrets\.json$
     key_groups:
