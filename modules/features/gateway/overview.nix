@@ -106,7 +106,7 @@ in
       wide = [ "System" ];
       narrow = lib.subtractLists wide groups;
       ordered = lib.filter (group: lib.elem group narrow) first ++ lib.subtractLists first narrow;
-      # for the subtitle: tiles that aren't graphs, and the machines this repository builds
+      # for the subtitle: tiles outside the graph groups, and the machines this repository builds
       serviceCount = lib.length (lib.concatMap inGroup narrow);
       hostCount = lib.length (lib.attrNames config.axon.cluster.hosts);
       single = group: lib.length (inGroup group) == 1;
@@ -138,7 +138,7 @@ in
       layout = map (row: lib.listToAttrs [ (layoutOf row) ]) rows;
 
       # tile name -> its service in Grafana's Logs Drilldown (service_name from metrics/logs.nix),
-      # for every tile but the graphs, while this host ships its logs and Grafana is routed here
+      # for every tile outside the graph groups, while this host ships its logs and Grafana is routed here
       logs = lib.optionalAttrs (lib.elem "metrics" host.features && routes ? grafana) (
         lib.concatMapAttrs (
           name: service:

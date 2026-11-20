@@ -1,9 +1,9 @@
 # Grafana at grafana.<domain>: graphs over Prometheus and logs from Loki, data sources and
-# dashboards provisioned from here; Logs Drilldown shows the logs per service. With a login
-# provider (axon.sso) its admins group logs in there as Admin; the host.toml user stays the local
-# admin, with monitoring/password, for the API. Without a gateway on this host it stays on
-# localhost, with only its own login. The "Start page" dashboard: two tables the gateway's start
-# page embeds, graphs of the last day below.
+# dashboards provisioned from here; Logs Drilldown shows the logs per service, Metrics Drilldown
+# browses the metrics without a query. With a login provider (axon.sso) its admins group logs in
+# there as Admin; the host.toml user stays the local admin, with monitoring/password, for the API.
+# Without a gateway on this host it stays on localhost, with only its own login. The "Start page"
+# dashboard: two tables the gateway's start page embeds, graphs of the last day below.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -270,10 +270,11 @@
     {
       services.grafana = {
         enable = true;
-        # Grafana 13 downloads its data sources and Logs Drilldown on start; declared, they come
+        # Grafana 13 downloads its data sources and Drilldown apps on start; declared, they come
         # from nixpkgs instead, and only these
         declarativePlugins = [
           pkgs.grafanaPlugins.grafana-lokiexplore-app
+          pkgs.grafanaPlugins.grafana-metricsdrilldown-app
           pkgs.grafanaPlugins.loki
           pkgs.grafanaPlugins.prometheus
         ];
@@ -367,7 +368,10 @@
           group = "System";
           icon = "grafana.svg";
           # the overview tables come first in the dashboard, so their panel ids are 1 and 2
-          instances = lib.listToAttrs (
+          instances = {
+            Grafana.description = "Dashboards and logs";
+          }
+          // lib.listToAttrs (
             lib.imap1 (
               id: panel:
               lib.nameValuePair panel.title {

@@ -39,6 +39,12 @@ html[data-start-view="compact"] {
 #layout-groups .services-list:has(iframe) {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr));
 }
+/* a plain tile among graphs: after them, in a row of its own, as wide as any tile */
+#layout-groups .services-list:has(iframe) > li:not(:has(iframe)) {
+  order: 1;
+  grid-column: 1;
+  max-width: var(--start-tile);
+}
 /* compact: icon, name and description; graphs stay */
 html[data-start-view="compact"] #layout-groups .service-container:not(:has(iframe)) {
   display: none;
