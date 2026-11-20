@@ -30,6 +30,9 @@ in
         settings.bind = "127.0.0.1:${toString port}";
       };
 
-      axon.services.cache.route.port = port;
+      axon.services.cache = {
+        units = [ "harmonia" ];
+        route.port = port;
+      };
     };
 }

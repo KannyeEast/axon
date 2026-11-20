@@ -101,6 +101,11 @@
         ++ [ "/var/lib/redis-immich" ];
 
       axon.services.photos = {
+        units = [
+          "immich-machine-learning"
+          "immich-server"
+          "redis-immich"
+        ];
         route = {
           inherit port;
           public = true;

@@ -2,7 +2,7 @@
 # linked to its route, with a status dot and, where it sets a widget, live numbers (amber where the
 # widget's highlight marks one). A service makes its widget key only once it runs, so its tile
 # shows no numbers until the key is in secrets.json. Below the tiles, axon.links and [gateway]
-# links; _start-page.js adds the header, attention bar and group chips.
+# links; _start-page.js adds the header, attention bar, group chips and the tiles' logs links.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -136,6 +136,18 @@ in
       # Homepage shows groups in the order of their layout entries, and Nix writes attribute sets
       # sorted, so the layout is a list of one-entry sets, which Homepage reads in order
       layout = map (row: lib.listToAttrs [ (layoutOf row) ]) rows;
+
+      # tile name -> its service in Grafana's Logs Drilldown (service_name from metrics/logs.nix),
+      # for every tile but the graphs, while this host ships its logs and Grafana is routed here
+      logs = lib.optionalAttrs (lib.elem "metrics" host.features && routes ? grafana) (
+        lib.concatMapAttrs (
+          name: service:
+          lib.genAttrs (lib.concatMap lib.attrNames (tilesOf service)) (
+            _:
+            "${routes.grafana.route.url}/a/grafana-lokiexplore-app/explore/service/${name}/logs?var-filters=service_name%7C%3D%7C${name}"
+          )
+        ) (lib.filterAttrs (_: service: lib.elem service.dashboard.group narrow) tiles)
+      );
     in
     {
       services.homepage-dashboard = {
@@ -145,7 +157,11 @@ in
         environmentFiles = [ config.sops.templates."homepage.env".path ];
 
         customCSS = lib.readFile ./_start-page.css;
-        customJS = lib.readFile ./_start-page.js;
+        customJS =
+          lib.optionalString (logs != { }) ''
+            window.startPageLogs = ${lib.toJSON logs};
+          ''
+          + lib.readFile ./_start-page.js;
 
         settings = {
           title = "Homelab";
@@ -204,6 +220,9 @@ in
         restartUnits = [ "homepage-dashboard.service" ];
       };
 
-      axon.services.home.route.port = port;
+      axon.services.home = {
+        units = [ "homepage-dashboard" ];
+        route.port = port;
+      };
     };
 }

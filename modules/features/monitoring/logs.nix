@@ -66,6 +66,8 @@
             delete_request_store = "filesystem";
           };
           limits_config.retention_period = "30d";
+          # the Patterns tab of Grafana's Logs Drilldown
+          pattern_ingester.enabled = true;
           ruler.alertmanager_url = "http://127.0.0.1:${toString config.services.prometheus.alertmanager.port}";
           analytics.reporting_enabled = false;
         };

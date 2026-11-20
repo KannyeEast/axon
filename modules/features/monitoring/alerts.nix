@@ -174,6 +174,9 @@
         }
       ];
 
-      axon.services.alerts.route.port = port;
+      axon.services.alerts = {
+        units = [ "alertmanager" ];
+        route.port = port;
+      };
     };
 }

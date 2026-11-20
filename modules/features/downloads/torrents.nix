@@ -71,6 +71,7 @@
       ];
 
       axon.services.downloads = {
+        units = [ "qbittorrent" ];
         route = {
           inherit port;
           inherit (vpn.network) address;

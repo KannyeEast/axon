@@ -148,12 +148,14 @@
 
       axon.services =
         lib.mapAttrs (name: app: {
+          units = [ name ];
           route.port = app.port;
           dashboard = dashboard name app;
           backup.paths = [ "/var/lib/${name}" ];
         }) apps
         // {
           prowlarr = {
+            units = [ "prowlarr" ];
             route = {
               inherit (prowlarr) port;
               inherit (vpn.network) address;

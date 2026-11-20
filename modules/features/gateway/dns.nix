@@ -83,6 +83,7 @@
       };
 
       axon.services.dns = {
+        units = [ "adguardhome" ];
         route.port = port;
         # without users AdGuard's API needs no login
         dashboard = {

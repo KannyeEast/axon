@@ -1,8 +1,8 @@
 // The start page's own parts on top of Homepage: a header with the title, a search, a compact
-// view, the up count and the reload button, a bar listing the values its highlights mark, and
-// group chips. Homepage renders in the browser and again on every refresh, so each part is redone
-// on every change of the page, writing only what differs; a part whose element is missing is left
-// out, and the page works without this file.
+// view, the up count and the reload button, a bar listing the values its highlights mark, group
+// chips, and a logs link on the tiles. Homepage renders in the browser and again on every refresh,
+// so each part is redone on every change of the page, writing only what differs; a part whose
+// element is missing is left out, and the page works without this file.
 (() => {
   const store = {
     get(key) {
@@ -239,6 +239,35 @@
     setShown(bar, items.length > 0);
   }
 
+  // ── logs ────────
+  // left of a tile's status dot, to its service in Grafana's Logs Drilldown: overview.nix sets
+  // window.startPageLogs, tile name to address, and leaves it out where no logs reach Grafana
+  const lines =
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>';
+
+  function logs(layout) {
+    const links = window.startPageLogs ?? {};
+    for (const tile of layout.querySelectorAll("li.service")) {
+      const href = links[tile.dataset.name];
+      const tags = tile.querySelector(".service-tags");
+      if (!href || !tags) continue;
+      let link = tags.querySelector("a.start-logs");
+      if (!link) {
+        link = document.createElement("a");
+        link.className = "start-logs";
+        link.rel = "noreferrer";
+        link.title = "Logs";
+        link.setAttribute("aria-label", `Logs of ${tile.dataset.name}`);
+        link.innerHTML = lines;
+        tags.prepend(link);
+      }
+      setAttribute(link, "href", href);
+      // where Homepage opens the tile's own link
+      const target = tile.querySelector("a.service-title-text")?.getAttribute("target");
+      if (target) setAttribute(link, "target", target);
+    }
+  }
+
   // ── updates ────────
   function update() {
     const layout = document.getElementById("layout-groups");
@@ -250,6 +279,7 @@
     filter(root, layout, groupsOf(layout));
     view(root);
     attention(root, layout);
+    logs(layout);
   }
 
   // one update per frame however many changes come in; an update that changes nothing causes no

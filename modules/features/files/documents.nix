@@ -186,6 +186,11 @@
       ];
 
       axon.services.docs = {
+        units = [
+          "docker-paperless"
+          "paperless-exporter"
+          "redis-paperless"
+        ];
         route.port = port;
         dashboard = {
           name = "Paperless";

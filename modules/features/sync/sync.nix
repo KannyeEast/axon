@@ -101,6 +101,10 @@ in
       ];
 
       axon.services.sync = {
+        units = [
+          "syncthing"
+          "syncthing-init"
+        ];
         route.port = 8384;
         dashboard = {
           name = "Syncthing";

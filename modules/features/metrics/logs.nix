@@ -1,12 +1,12 @@
 # Alloy ships this host's journal to Loki on every host listing monitoring (monitoring/logs.nix),
-# with the labels host, unit, level and, for Docker containers, container. Without such a host it
-# stays off. Its UI answers on localhost only.
+# with the labels host, unit, level, service_name and, for Docker containers, container. Without
+# such a host it stays off. Its UI answers on localhost only.
 { lib, ... }:
 {
   flake.modules.nixos.metrics =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) cluster host;
+      inherit (config.axon) cluster host services;
       containers = config.virtualisation.oci-containers;
       # Loki's port on the monitoring hosts
       port = 3100;
@@ -28,6 +28,30 @@
           target_label = ${lib.toJSON target}
         }
       '';
+
+      # service_name, the rows of Grafana's Logs Drilldown: the program, overridden by the unit
+      # without instance and .service, by the container, and last by the axon.services entry the
+      # unit or container belongs to
+      derive = source: regex: ''
+        rule {
+          source_labels = [${lib.toJSON source}]
+          regex = ${lib.toJSON regex}
+          target_label = "service_name"
+        }
+      '';
+      assign = source: values: service: ''
+        rule {
+          source_labels = [${lib.toJSON source}]
+          regex = ${lib.toJSON "(${lib.concatMapStringsSep "|" lib.escapeRegex values})"}
+          target_label = "service_name"
+          replacement = ${lib.toJSON service}
+        }
+      '';
+      containersOf =
+        data:
+        lib.attrNames (
+          lib.filterAttrs (_: container: lib.elem container.serviceName data.units) containers.containers
+        );
 
       source = pkgs.writeText "config.alloy" ''
         loki.relabel "journal" {
@@ -54,6 +78,18 @@
           }
         ${copy "__journal_priority_keyword" "level"}
         ${copy "__journal_container_name" "container"}
+        ${derive "__journal_syslog_identifier" "(.+)"}
+        ${derive "unit" "([^@]+)(@.*)?\\.service"}
+        ${derive "container" "(.+)"}
+        ${lib.concatStrings (
+          lib.mapAttrsToList (
+            service: data:
+            lib.optionalString (data.units != [ ]) (
+              assign "unit" (map (unit: "${unit}.service") data.units) service
+            )
+            + lib.optionalString (containersOf data != [ ]) (assign "container" (containersOf data) service)
+          ) services
+        )}
         }
 
         loki.source.journal "journal" {

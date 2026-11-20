@@ -1,9 +1,9 @@
 # Grafana at grafana.<domain>: graphs over Prometheus and logs from Loki, data sources and
-# dashboards provisioned from here. With a login provider (axon.sso) its admins group logs in there
-# as Admin; the host.toml user stays the local admin, with monitoring/password, for the API.
-# Without a gateway on this host it stays on localhost, with only its own login. The "Start page"
-# dashboard: two tables the gateway's start page embeds, graphs of the last day below. "Logs":
-# error lines per host and unit, the latest ones below.
+# dashboards provisioned from here; Logs Drilldown shows the logs per service. With a login
+# provider (axon.sso) its admins group logs in there as Admin; the host.toml user stays the local
+# admin, with monitoring/password, for the API. Without a gateway on this host it stays on
+# localhost, with only its own login. The "Start page" dashboard: two tables the gateway's start
+# page embeds, graphs of the last day below.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -265,54 +265,18 @@
         ) panels;
       };
 
-      errors = ''{level=~"emerg|alert|crit|error"}'';
-      logs = lib.toJSON {
-        uid = "logs";
-        title = "Logs";
-        time = {
-          from = "now-24h";
-          to = "now";
-        };
-        panels = [
-          (
-            timeseries "Error lines per 5 minutes" { } [
-              (query "sum by (host, unit) (count_over_time(${errors}[5m]))" "{{host}} {{unit}}")
-            ]
-            // {
-              id = 1;
-              datasource.uid = "loki";
-              gridPos = {
-                w = 24;
-                h = 8;
-                x = 0;
-                y = 0;
-              };
-            }
-          )
-          {
-            id = 2;
-            type = "logs";
-            title = "Error lines";
-            datasource.uid = "loki";
-            targets = [ { expr = errors; } ];
-            gridPos = {
-              w = 24;
-              h = 16;
-              x = 0;
-              y = 8;
-            };
-          }
-        ];
-      };
-
-      dashboards = pkgs.linkFarm "dashboards" {
-        "start.json" = pkgs.writeText "start.json" start;
-        "logs.json" = pkgs.writeText "logs.json" logs;
-      };
+      dashboards = pkgs.writeTextDir "start.json" start;
     in
     {
       services.grafana = {
         enable = true;
+        # Grafana 13 downloads its data sources and Logs Drilldown on start; declared, they come
+        # from nixpkgs instead, and only these
+        declarativePlugins = [
+          pkgs.grafanaPlugins.grafana-lokiexplore-app
+          pkgs.grafanaPlugins.loki
+          pkgs.grafanaPlugins.prometheus
+        ];
         settings = {
           server = {
             http_port = port;
@@ -396,6 +360,7 @@
       };
 
       axon.services.grafana = {
+        units = [ "grafana" ];
         route.port = port;
         dashboard = {
           name = "Grafana";

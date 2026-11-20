@@ -62,6 +62,13 @@
           ];
 
           axon.services.requests = {
+            units = [
+              "seerr"
+            ]
+            ++ lib.optionals (routes ? jellyfin && missing == [ ]) [
+              "friend-filter"
+              "friend-tags"
+            ];
             route.port = port;
             dashboard = {
               name = "Seerr";

@@ -103,6 +103,11 @@
       };
 
       axon.services.git = {
+        units = [
+          "forgejo"
+          "forgejo-dump"
+          "forgejo-secrets"
+        ];
         route.port = port;
         dashboard = {
           name = "Forgejo";

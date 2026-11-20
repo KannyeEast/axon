@@ -190,6 +190,12 @@ in
                   );
                 };
 
+                units = mkOption {
+                  type = types.listOf types.str;
+                  default = [ ];
+                  description = "Its systemd services, by name without .service: helpers, timers' jobs, its own Redis and its container's unit included. Their logs, a container's own lines too, go under its name.";
+                };
+
                 backup = {
                   paths = mkOption {
                     type = types.listOf types.str;
