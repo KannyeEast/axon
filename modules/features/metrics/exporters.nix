@@ -1,6 +1,7 @@
-# Exporters for the cluster's Prometheus (the monitoring feature): the system (node) and the
-# disks' SMART health. They answer on the overlay only. The node exporter also serves the textfiles
-# other parts of this feature leave in /run/prometheus-node-exporter-text.
+# Exporters for the cluster's Prometheus (the monitoring feature): the system (node), with the state
+# of every system service, and the disks' SMART health. They answer on the overlay only. The node
+# exporter also serves the textfiles other parts of this feature leave in
+# /run/prometheus-node-exporter-text.
 { lib, ... }:
 {
   flake.modules.nixos.metrics =
@@ -25,9 +26,12 @@
       services.prometheus.exporters = {
         node = {
           enable = true;
+          # failed services for the UnitFailed alert; other unit types only add series
+          enabledCollectors = [ "systemd" ];
           extraFlags = [
             "--collector.filesystem.mount-points-exclude=^(${excluded})($|/)"
             "--collector.textfile.directory=${dir}"
+            "--collector.systemd.unit-include=.+[.]service"
           ];
         };
         smartctl.enable = true;

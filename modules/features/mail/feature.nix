@@ -1,6 +1,6 @@
 {
   axon.features.mail = {
-    description = "Failure mails, a weekly report, and the SMTP account other services send through";
+    description = "The SMTP account services send their mail through, alerts among them";
     classes = [ "server" ];
   };
 }

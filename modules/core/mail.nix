@@ -32,11 +32,7 @@ in
             token = secret "SMTP password.";
             alert = mkOption {
               type = types.str;
-              description = "Recipient for failures.";
-            };
-            report = mkOption {
-              type = types.str;
-              description = "Recipient for scheduled reports.";
+              description = "Recipient for alerts.";
             };
             page = mkOption {
               type = types.str;
@@ -44,7 +40,7 @@ in
             };
             levels = mkOption {
               type = types.attrsOf (types.attrsOf types.str);
-              description = "The label's colours per level (ok, warn, fail): a color and a tint.";
+              description = "The label's colours per level (ok, fail): a color and a tint.";
             };
           };
         }

@@ -65,7 +65,6 @@ To change one, change it here in the same commit, with the new reason.
 | No backup targets in any `secrets.json`; the backup feature only warns | waiting for a second server or a hosting service |
 | The `local`/`proton` names of restic targets | renaming a target loses its history |
 | No watchdog outside the cluster | the server stands next to its owner; a future second server would watch node1 |
-| Failure mails have a plain layout: the facts, then the log | the owner reads the log; no summary box on top |
 
 ## Desktop
 

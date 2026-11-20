@@ -19,7 +19,11 @@
       documentation.enable = false;
       boot.loader.timeout = 1;
 
-      services.smartd.enable = true;
+      services.smartd = {
+        enable = true;
+        # a failing disk alerts through Prometheus (DiskUnhealthy), not on every open terminal
+        notifications.wall.enable = false;
+      };
 
       # a hung machine reboots by itself
       systemd.settings.Manager.RuntimeWatchdogSec = "30s";

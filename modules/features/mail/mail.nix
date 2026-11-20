@@ -1,37 +1,21 @@
-# Mail leaves through Proton's SMTP with a token; a home connection can't deliver mail itself.
-# The sender lives in secrets.json (mail/user, mail/domain, mail/token), out of the repo.
-# Recipients are srv-alert@ and srv-report@ the cluster domain, filed away by a Sieve rule on the
-# local part. Failure mails and the weekly report come from _notify/notify.py; every mail of ours
-# uses the page in _notify/page.html.
+# The account mail leaves through: Proton's SMTP with a token, as a home connection can't deliver
+# mail itself. The sender lives in secrets.json (mail/user, mail/domain, mail/token), out of the
+# repo. Alerts, failed units among them, are mailed by Alertmanager on the host running monitoring
+# to srv-alert@ the cluster domain, filed away by a Sieve rule on the local part, in the page in
+# _page.html.
 { lib, ... }:
 {
   flake.modules.nixos.mail =
-    { config, pkgs, ... }:
+    { config, ... }:
     let
-      inherit (config.axon) domain mail;
+      inherit (config.axon)
+        cluster
+        domain
+        host
+        mail
+        ;
       ph = config.sops.placeholder;
-      levels = {
-        ok = {
-          color = "#1b7f5c";
-          tint = "#e6f5ef";
-        };
-        warn = {
-          color = "#a8660a";
-          tint = "#fdf3e1";
-        };
-        fail = {
-          color = "#c8233f";
-          tint = "#fde8ec";
-        };
-      };
-      settings = pkgs.writeText "notify.json" (
-        lib.toJSON {
-          inherit levels;
-          page = "${./_notify/page.html}";
-          sendmail = "/run/wrappers/bin/sendmail";
-        }
-      );
-      notify = "${lib.getExe' pkgs.python3 "python3"} ${./_notify/notify.py} ${settings}";
+      monitors = lib.filterAttrs (_: data: lib.elem "monitoring" data.host.features) cluster.hosts;
     in
     {
       axon.mail = {
@@ -42,9 +26,17 @@
         address = "${mail.user}@${mail.domain}";
         token = ph."mail/token";
         alert = "srv-alert@${domain}";
-        report = "srv-report@${domain}";
-        page = lib.readFile ./_notify/page.html;
-        inherit levels;
+        page = lib.readFile ./_page.html;
+        levels = {
+          ok = {
+            color = "#1b7f5c";
+            tint = "#e6f5ef";
+          };
+          fail = {
+            color = "#c8233f";
+            tint = "#fde8ec";
+          };
+        };
       };
 
       sops.secrets = {
@@ -53,79 +45,8 @@
         "mail/token" = { };
       };
 
-      sops.templates.msmtprc = {
-        mode = "0444"; # sendmail runs as whichever service fails; the token is send-only
-        content = ''
-          defaults
-          auth on
-          tls on
-          logfile -
-
-          account proton
-          host ${mail.host}
-          port ${toString mail.port}
-          from ${mail.address}
-          user ${mail.address}
-          password ${mail.token}
-
-          account default : proton
-        '';
-      };
-
-      programs.msmtp.enable = true;
-      # the rendered config with the secrets in it replaces the one Nix would write
-      environment.etc."msmtprc" = lib.mkForce { source = config.sops.templates.msmtprc.path; };
-
-      # every failing service mails srv-alert@, except the mailer itself: a drop-in of the same name
-      # linked to /dev/null masks the first one, as an empty OnFailure= can't clear a dependency
-      systemd.packages = [
-        (pkgs.writeTextDir "lib/systemd/system/service.d/90-axon-alert.conf" ''
-          [Unit]
-          OnFailure=alert@%n.service
-        '')
-        (pkgs.runCommand "axon-no-alert" { } ''
-          mkdir -p $out/lib/systemd/system/alert@.service.d
-          ln -s /dev/null $out/lib/systemd/system/alert@.service.d/90-axon-alert.conf
-        '')
-      ];
-
-      systemd.services."alert@" = {
-        description = "Mail a failed unit to ${mail.alert}";
-        serviceConfig = {
-          Type = "oneshot";
-          ExecStart = "${notify} alert ${mail.alert} %i";
-        };
-        path = [ pkgs.systemd ];
-      };
-
-      services.smartd.notifications = {
-        wall.enable = false;
-        mail = {
-          recipient = mail.alert;
-          sender = mail.alert;
-        };
-      };
-
-      systemd.services.report = {
-        description = "Weekly report to ${mail.report}";
-        serviceConfig = {
-          Type = "oneshot";
-          ExecStart = "${notify} report ${mail.report}";
-        };
-        path = [
-          pkgs.btrfs-progs
-          pkgs.coreutils
-          pkgs.smartmontools
-          pkgs.systemd
-          pkgs.util-linux
-        ];
-      };
-      systemd.timers.report = {
-        wantedBy = [ "timers.target" ];
-        timerConfig = {
-          OnCalendar = "Sun 18:00";
-          Persistent = true;
-        };
-      };
+      warnings =
+        lib.optional (monitors == { })
+          "hosts/${host.name}/host.toml: no host lists monitoring, so failed units and other alerts aren't mailed; list monitoring on a server";
     };
 }

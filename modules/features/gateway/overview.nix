@@ -254,7 +254,7 @@ in
       systemd.services.homepage-dashboard = {
         # Next.js listens on every address unless told otherwise
         environment.HOSTNAME = "127.0.0.1";
-        # Next.js exits with 143 on SIGTERM; without this every restart counts as a failure and mails
+        # Next.js exits with 143 on SIGTERM; without this every restart counts as a failure and alerts
         serviceConfig.SuccessExitStatus = [ 143 ];
       };
 
