@@ -35,6 +35,7 @@
           ];
 
       axon.services.jellyfin = {
+        space = "media";
         units = [ "jellyfin" ];
         route = {
           port = 8096;

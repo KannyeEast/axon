@@ -103,6 +103,7 @@
       };
 
       axon.services.git = {
+        space = "forgejo";
         units = [
           "forgejo"
           "forgejo-dump"

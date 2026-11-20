@@ -91,6 +91,7 @@
         ];
 
         axon.services.cloud = {
+          space = "nextcloud";
           # nginx is the module's front for PHP; nothing else here runs one
           units = [
             "nextcloud-cron"

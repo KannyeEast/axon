@@ -1,7 +1,8 @@
 # The start page (Homepage) at home.<domain>: a tile per service with a dashboard entry, grouped,
 # linked to its route, with a status dot and, where it sets a widget, live numbers (amber where the
 # widget's highlight marks one). A service makes its widget key only once it runs, so its tile
-# shows no numbers until the key is in secrets.json. Below the tiles, axon.links and [gateway]
+# shows no numbers until the key is in secrets.json. A service whose space [limits] caps shows its
+# use against that limit, from Prometheus (metrics/spaces.nix). Below the tiles, axon.links and [gateway]
 # links; _start-page.js adds the header, attention bar, group chips and the tiles' logs links.
 { lib, ... }:
 let
@@ -26,8 +27,10 @@ in
     { config, ... }:
     let
       inherit (config.axon)
+        cluster
         gateway
         host
+        limits
         links
         routes
         ;
@@ -49,25 +52,69 @@ in
         )
       );
 
-      tile = service: name: instance: {
-        ${name} = {
-          href = lib.defaultTo service.route.url (instance.link or null);
-          description = lib.defaultTo service.dashboard.description (instance.description or null);
-          inherit (service.dashboard) icon;
-          siteMonitor = service.route.internal + service.dashboard.monitor;
-        }
-        //
-          lib.optionalAttrs
-            (hasKeys service && (service.dashboard.widget != null || instance.widget or { } != { }))
-            {
-              widget = {
-                url = service.route.internal;
-              }
-              // lib.defaultTo { } service.dashboard.widget
-              // lib.mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
-              // instance.widget or { };
-            };
+      # Prometheus (its default port) on a monitoring host, this host's own where it has one; the
+      # values exist only while this host lists metrics
+      monitors = lib.attrNames (
+        lib.filterAttrs (_: data: lib.elem "monitoring" data.host.features) cluster.hosts
+      );
+      prometheus =
+        if !lib.elem "metrics" host.features || monitors == [ ] then
+          null
+        else if lib.elem host.name monitors then
+          "http://127.0.0.1:9090"
+        else
+          "http://${lib.head monitors}:9090";
+      # "7T" -> "7 TiB"
+      size =
+        limit:
+        let
+          parts = lib.match "([0-9]+)([KMGTP]?)" limit;
+          unit = lib.elemAt parts 1;
+        in
+        "${lib.head parts} ${if unit == "" then "B" else "${unit}iB"}";
+      spaceWidget = service: {
+        type = "prometheusmetric";
+        url = prometheus;
+        metrics = [
+          {
+            label = "of ${size limits.${service.space}}";
+            query = ''axon_space_used_bytes{host="${host.name}",space="${service.space}"}'';
+            format.type = "bbytes";
+          }
+        ];
       };
+
+      tile =
+        service: name: instance:
+        let
+          widgets =
+            lib.optional
+              (hasKeys service && (service.dashboard.widget != null || instance.widget or { } != { }))
+              (
+                {
+                  url = service.route.internal;
+                }
+                // lib.defaultTo { } service.dashboard.widget
+                // lib.mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
+                // instance.widget or { }
+              )
+            # on the tile that leads to the service itself, not on those linking elsewhere
+            ++ lib.optional (
+              prometheus != null
+              && service.space != null
+              && limits ? ${service.space}
+              && instance.link or null == null
+            ) (spaceWidget service);
+        in
+        {
+          ${name} = {
+            href = lib.defaultTo service.route.url (instance.link or null);
+            description = lib.defaultTo service.dashboard.description (instance.description or null);
+            inherit (service.dashboard) icon;
+            siteMonitor = service.route.internal + service.dashboard.monitor;
+          }
+          // lib.optionalAttrs (widgets != [ ]) { inherit widgets; };
+        };
       before =
         a: b:
         if a.service.dashboard.order != b.service.dashboard.order then

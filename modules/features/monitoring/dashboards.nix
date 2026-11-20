@@ -3,7 +3,8 @@
 # browses the metrics without a query. With a login provider (axon.sso) its admins group logs in
 # there as Admin; the host.toml user stays the local admin, with monitoring/password, for the API.
 # Without a gateway on this host it stays on localhost, with only its own login. The "Start page"
-# dashboard: two tables the gateway's start page embeds, graphs of the last day below.
+# dashboard: two tables the gateway's start page embeds, graphs of the last day below, then how
+# full each volume or space capped by [limits] is (metrics/spaces.nix).
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -238,8 +239,34 @@
           (query ''sum by (host) (rate(node_disk_written_bytes_total{device!~"loop.*|zram.*|dm-.*"}[5m]))'' "{{host}} write")
         ])
       ];
+      spaceUse = "max by (host, space) (axon_space_used_bytes)";
+      spaceLimit = "max by (host, space) (axon_space_limit_bytes)";
+      spaces = [
+        (
+          table "Spaces"
+            [ "host" "space" ]
+            [
+              { Used = spaceUse; }
+              { Limit = spaceLimit; }
+              { "Use %" = percentOf "${spaceUse} / ${spaceLimit}"; }
+            ]
+          // {
+            fieldConfig = {
+              defaults = { };
+              overrides = [
+                (column "host" [ (property "displayName" "Host") ])
+                (column "space" [ (property "displayName" "Space") ])
+                # limits are powers of 1024
+                (column "Used" [ (property "unit" "bytes") ])
+                (column "Limit" [ (property "unit" "bytes") ])
+                (column "Use %" (percentLevel 80 90))
+              ];
+            };
+          }
+        )
+      ];
       # two per row, in this order
-      panels = overview ++ graphs;
+      panels = overview ++ graphs ++ spaces;
 
       start = lib.toJSON {
         uid = "start";
@@ -361,6 +388,8 @@
       };
 
       axon.services.grafana = {
+        # Loki's logs are the space monitoring fills
+        space = "loki";
         units = [ "grafana" ];
         route.port = port;
         dashboard = {

@@ -130,6 +130,7 @@
         ++ [ "/var/lib/redis-paperless" ];
 
       axon.services.docs = {
+        space = "paperless";
         units = [
           "paperless-consumer"
           "paperless-exporter"

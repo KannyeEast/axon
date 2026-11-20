@@ -1,8 +1,9 @@
 # Prometheus: scrapes the exporters on every host listing the metrics feature and keeps 90 days.
-# Grafana reads it; it has no route of its own. The blackbox exporter checks every route:
-# "service" asks the service directly (any answer below 500 means it runs). Where this host runs
-# the gateway, "route" also calls https://<name>.<domain> the way clients do (DNS, Caddy,
-# certificate, the tunnel for public ones), which must answer.
+# Grafana reads it, and the gateway's start page over the overlay, without a login; it has no
+# route of its own. The blackbox exporter checks every route: "service" asks the service directly
+# (any answer below 500 means it runs). Where this host runs the gateway, "route" also calls
+# https://<name>.<domain> the way clients do (DNS, Caddy, certificate, the tunnel for public
+# ones), which must answer.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -96,7 +97,6 @@
 
       services.prometheus = {
         enable = true;
-        listenAddress = "127.0.0.1";
         retentionTime = "90d";
         globalConfig.scrape_interval = "30s";
         scrapeConfigs = [
@@ -106,6 +106,8 @@
         ]
         ++ lib.optional routed (probe "route" (route: route.url) routes);
       };
+
+      axon.overlay.tcpPorts = [ config.services.prometheus.port ];
 
       axon.persist.state.directories = [
         {

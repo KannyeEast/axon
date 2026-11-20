@@ -101,6 +101,7 @@
         ++ [ "/var/lib/redis-immich" ];
 
       axon.services.photos = {
+        space = "immich";
         units = [
           "immich-machine-learning"
           "immich-server"

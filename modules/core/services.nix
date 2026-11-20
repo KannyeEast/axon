@@ -195,6 +195,12 @@ in
                   );
                 };
 
+                space = mkOption {
+                  type = types.nullOr types.str;
+                  default = null;
+                  description = "The volume or space in host.toml [limits] whose use its tile shows, against that limit.";
+                };
+
                 units = mkOption {
                   type = types.listOf types.str;
                   default = [ ];
