@@ -1,13 +1,13 @@
 # Alert rules over Prometheus' metrics, and Alertmanager to mail them through axon.mail: one
 # mail when an alert fires, again every 12 hours while it lasts, and one when it's resolved. A
-# failed service on any host listing metrics is one (UnitFailed); where Grafana is routed, a mail
-# about a unit links to its logs in Logs Drilldown. Watchdog always fires, so a mail once a week
-# shows that alerting works. Without an account alerts only show in Alertmanager's UI, at
-# alerts.<domain> where silences are set too.
+# failed service on any host listing metrics is one (UnitFailed), mailed by _unit-mail.py with the
+# end of its log from Loki and a link to the rest. Watchdog always fires, so a mail comes once a
+# week. Without an account alerts only show in Alertmanager's UI, at alerts.<domain> where
+# silences are set too.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
-    { config, ... }:
+    { config, pkgs, ... }:
     let
       inherit (config.axon)
         cluster
@@ -17,6 +17,7 @@
         services
         ;
       port = 9093;
+      hook = 9096;
       grafana = services.grafana.route.url;
       downloads = lib.any (
         data: lib.elem "metrics" data.host.features && lib.elem "downloads" data.host.features
@@ -97,6 +98,19 @@
               }
             ];
           };
+
+      unitMail = pkgs.writeText "unit-mail.json" (
+        lib.toJSON {
+          page = pkgs.writeText "page.html" mail.page;
+          inherit (mail) levels port;
+          smtp = mail.host;
+          to = mail.alert;
+          loki = "http://127.0.0.1:${toString config.services.loki.configuration.server.http_listen_port}";
+          grafana = if routed then grafana else "";
+          sender = host.name;
+          listen = hook;
+        }
+      );
     in
     {
       services.prometheus = {
@@ -204,9 +218,24 @@
                   matchers = [ ''alertname="Watchdog"'' ];
                   repeat_interval = "168h";
                 }
+              ]
+              ++ lib.optional (mail != null) {
+                matchers = [ ''alertname="UnitFailed"'' ];
+                receiver = "unit";
+              };
+            };
+            receivers = [
+              receiver
+            ]
+            ++ lib.optional (mail != null) {
+              name = "unit";
+              webhook_configs = [
+                {
+                  url = "http://127.0.0.1:${toString hook}/";
+                  send_resolved = true;
+                }
               ];
             };
-            receivers = [ receiver ];
             # a service that's down takes its route with it, and one mail says so
             inhibit_rules = [
               {
@@ -227,7 +256,21 @@
           MAIL_FROM=${mail.address}
           MAIL_TOKEN=${mail.token}
         '';
-        restartUnits = [ "alertmanager.service" ];
+        restartUnits = [
+          "alertmanager.service"
+          "unit-mail.service"
+        ];
+      };
+
+      systemd.services.unit-mail = lib.mkIf (mail != null) {
+        description = "Mail failed units with their log";
+        wantedBy = [ "multi-user.target" ];
+        serviceConfig = {
+          DynamicUser = true;
+          Restart = "on-failure";
+          EnvironmentFile = config.sops.templates."alertmanager.env".path;
+          ExecStart = "${lib.getExe' pkgs.python3 "python3"} ${./_unit-mail.py} ${unitMail}";
+        };
       };
 
       warnings =
