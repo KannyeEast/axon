@@ -1,6 +1,6 @@
 # Paperless-ngx at docs.<domain> on servers: scanned documents, OCR'd and filed. Tailnet only, its
 # own login; without a gateway on this host it stays on localhost. The NixOS module, on the host's
-# Postgres and its own Redis. Documents on the data volume (or in the state folder without one).
+# Postgres and its own Redis, with Tika and Gotenberg for Office files and mails. Documents on the data volume (or in the state folder without one).
 # The nightly export (originals, OCR'd copies, tags and metadata) is what gets backed up; Paperless
 # stops while it runs.
 # First account by hand after install: sudo paperless-manage createsuperuser
@@ -41,6 +41,7 @@
         mediaDir = "${data}/media";
         consumptionDir = "${data}/consume";
         database.createLocally = true;
+        configureTika = true;
         exporter = {
           enable = true;
           directory = "${data}/export";
@@ -61,6 +62,9 @@
           PAPERLESS_SOCIALACCOUNT_ALLOW_SIGNUPS = false;
         };
       };
+
+      # its default 3000 is AdGuard's
+      services.gotenberg.port = 3002;
 
       # on a new space the empty folders tmpfiles made at boot give way to a subvolume; Paperless
       # won't start without them, so they are made again inside it
@@ -138,7 +142,9 @@
           "paperless-secret-key"
           "paperless-task-queue"
           "paperless-web"
+          "gotenberg"
           "redis-paperless"
+          "tika"
         ];
         route.port = port;
         dashboard = {
