@@ -52,9 +52,11 @@
         name: data: lib.nameValuePair "restic-${name}.env" { content = mkEnv name (envOf data); }
       ) (lib.filterAttrs (_: data: envOf data != { }) targets);
 
-      axon.persist.state.directories = [
-        "/root/.cache/restic"
-      ];
+      # the units' CacheDirectory (RESTIC_CACHE_DIR), so a run doesn't fetch the index again
+      axon.persist.state.directories = lib.mapAttrsToList (name: _: {
+        directory = "/var/cache/restic-backups-${name}";
+        mode = "0700";
+      }) targets;
 
       environment.systemPackages = [
         pkgs.restic

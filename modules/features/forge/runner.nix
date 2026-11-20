@@ -21,8 +21,6 @@ in
       inherit (config.axon) forge services;
     in
     lib.mkIf (forge.runner != null) {
-      services.forgejo.settings.actions.ENABLED = true;
-
       sops.secrets."forge/runner" = { };
 
       services.forgejo-runner.instances.native = {

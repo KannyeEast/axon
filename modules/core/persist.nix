@@ -92,7 +92,6 @@ in
         # each parent's mode from the persisted copy on every activation, so that copy sets it
         systemd.tmpfiles.rules = [
           "d /persist/var/lib/private 0700 root root -"
-          "d /var/lib/private 0700 root root -"
         ]
         ++ lib.optionals (state != null) [ "d ${state}/var/lib/private 0700 root root -" ];
 

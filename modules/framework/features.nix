@@ -58,9 +58,9 @@ in
   };
 
   config = {
-    # for the installer's lists of classes and features
+    # for the installer's lists of classes, features and storage profiles
     flake.axon = {
-      inherit (config.axon) classes features;
+      inherit (config.axon) classes features profiles;
     };
   };
 }

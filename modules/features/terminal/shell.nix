@@ -51,7 +51,6 @@
         enable = true;
         plugins = [
           pkgs.tmuxPlugins.sensible
-          pkgs.tmuxPlugins.yank
           pkgs.tmuxPlugins.resurrect
           pkgs.tmuxPlugins.continuum
         ];

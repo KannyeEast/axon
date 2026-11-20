@@ -28,7 +28,6 @@
         sops.secrets."mullvad/wireguard" = { };
 
         vpnNamespaces.vpn = {
-          enable = true;
           wireguardConfigFile = config.sops.secrets."mullvad/wireguard".path;
           # not the bridge's own subnet: the namespace already has that route, and
           # VPN-Confinement fails adding it twice ("RTNETLINK answers: File exists")
