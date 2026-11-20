@@ -32,11 +32,11 @@ mounts = { vault = "/server/vault", state = "/server/state" }
 
 # most each may hold on bulk
 [limits]
-media = "5T"
-immich = "1T"
-nextcloud = "1T"
+media = "7T"
+immich = "500G"
+nextcloud = "250G"
 paperless = "100G"
-forgejo = "100G"
+forgejo = "45G"
 loki = "5G"
 
 [sync]
