@@ -45,6 +45,17 @@
             cache_optimistic = true;
           };
 
+          # lookups of this host's own services (mostly the route checks of monitoring) would
+          # drown out the devices' traffic in the numbers
+          statistics = {
+            ignored = [ "||${config.axon.domain}^" ];
+            ignored_enabled = true;
+          };
+          querylog = {
+            ignored = [ "||${config.axon.domain}^" ];
+            ignored_enabled = true;
+          };
+
           filtering = {
             # a name as the answer makes it a CNAME, which AdGuard then resolves upstream
             rewrites = lib.mapAttrsToList (_: service: {
