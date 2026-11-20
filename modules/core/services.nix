@@ -112,7 +112,12 @@ in
                         public = mkOption {
                           type = types.bool;
                           default = false;
-                          description = "Also reachable from the internet through the gateway's tunnel; on the tailnet either way. Only for services with their own login: nothing gates a route.";
+                          description = "Also reachable from the internet through the gateway's tunnel; on the tailnet either way. Only for services with their own login: the tunnel bypasses the gate.";
+                        };
+                        gate = mkOption {
+                          type = types.bool;
+                          default = false;
+                          description = "A login through the gateway's oauth2-proxy in front of the route.";
                         };
                       };
                     })

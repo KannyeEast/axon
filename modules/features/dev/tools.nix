@@ -1,5 +1,5 @@
 # IT Tools at tools.<domain> on servers: converters, encoders and generators in the browser, so
-# nothing is pasted into a website. A static page, tailnet only.
+# nothing is pasted into a website. A static page, tailnet only, behind the gateway's login.
 { lib, ... }:
 {
   flake.modules.nixos.dev =
@@ -18,7 +18,10 @@
 
       axon.services.tools = {
         units = [ "static-web-server" ];
-        route.port = port;
+        route = {
+          inherit port;
+          gate = true;
+        };
         dashboard = {
           name = "IT Tools";
           group = "Code";
