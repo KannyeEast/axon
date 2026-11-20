@@ -1,8 +1,8 @@
 # Mail leaves through Proton's SMTP with a token; a home connection can't deliver mail itself.
 # The sender lives in secrets.json (mail/user, mail/domain, mail/token), out of the repo.
-# Recipients are srv-alert@, srv-report@ and srv-info@ the cluster domain, filed away by a Sieve
-# rule on the local part. Failure mails and the weekly report come from _notify/notify.py; every
-# mail of ours uses the page in _notify/page.html.
+# Recipients are srv-alert@ and srv-report@ the cluster domain, filed away by a Sieve rule on the
+# local part. Failure mails and the weekly report come from _notify/notify.py; every mail of ours
+# uses the page in _notify/page.html.
 { lib, ... }:
 {
   flake.modules.nixos.mail =
@@ -43,7 +43,6 @@
         token = ph."mail/token";
         alert = "srv-alert@${domain}";
         report = "srv-report@${domain}";
-        info = "srv-info@${domain}";
         page = lib.readFile ./_notify/page.html;
         inherit levels;
       };
@@ -102,7 +101,6 @@
       services.smartd.notifications = {
         wall.enable = false;
         mail = {
-          enable = true;
           recipient = mail.alert;
           sender = mail.alert;
         };

@@ -31,7 +31,6 @@ style = "bold green"
 ssh_symbol = "󰇧 "
 
 [directory]
-format = "[$path]($style)[$read_only]($read_only_style) "
 style = "bold blue"
 read_only = " 󰌾"
 read_only_style = "bold red"

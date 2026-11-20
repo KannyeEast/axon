@@ -35,16 +35,7 @@ let
         description = "Disks by id. The first one carries the filesystem; never wiped.";
       };
       profile = mkOption {
-        type = types.enum [
-          "single"
-          "raid0"
-          "raid1"
-          "raid1c3"
-          "raid1c4"
-          "raid10"
-          "raid5"
-          "raid6"
-        ];
+        type = types.enum (lib.attrNames config.axon.profiles);
         default = "single";
         description = "btrfs data profile. Metadata is kept off parity profiles.";
       };

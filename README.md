@@ -1,14 +1,16 @@
 # axon
 
-NixOS for my machines, as data plus a small framework.
+NixOS for my machines, as data plus a small framework. Opinionated but modular: the framework is
+a toolset for any owner and any machine; personal choices live in dotfiles, on desktops and
+servers alike; a host's `host.toml` describes the host and nothing else.
 
 - A machine is a folder: `hosts/<name>/host.toml` says what it is, `facter.json` what hardware it
   has, `secrets.json` (sops) what it must keep secret.
 - `cluster.toml` says how machines relate: who may log in where, which folders sync between whom, and where this repository is pushed (the checkout's remotes, through the system git config).
 - Branches: `dev` for daily work, pushed to Forgejo only; `stable` takes it through a reviewed
   pull request (`just pr`), merged when the review has no findings; `main` is the framework alone
-  (`modules/`, `flake.nix` and its lock, the installer, this README), built from `stable` after
-  every merge. Only `stable` and `main` go to the mirrors.
+  (`modules/`, `flake.nix` and its lock, the installer, the justfile, this README), built from
+  `stable` after every merge. Only `stable` and `main` go to the mirrors.
 - `modules/` is found, not wired: core for every host, one class (`desktop` or `server`), and the
   features a host subscribes to, one folder each under `modules/features/`.
 - Dotfiles live in `home/`, with `hosts/<name>/home` winning per file, and are linked live into

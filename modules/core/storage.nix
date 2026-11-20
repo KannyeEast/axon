@@ -82,7 +82,15 @@ let
     );
 in
 {
-  flake.modules.nixos.core =
+  # the schema's profile list (core/host.nix) and the installer read these too
+  options.axon.profiles = mkOption {
+    type = types.attrsOf types.ints.positive;
+    readOnly = true;
+    default = minimum;
+    description = "btrfs data profiles, each with the fewest devices that make it worth having.";
+  };
+
+  config.flake.modules.nixos.core =
     { config, ... }:
     let
       inherit (config.axon) host;

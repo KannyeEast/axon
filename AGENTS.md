@@ -2,6 +2,14 @@
 
 Instructions for an assistant working in this repository.
 
+## Principle
+
+Opinionated but modular: the framework (`modules/`) is a toolset that serves any owner and any
+machine, and personal choices stay out of it. They live in dotfiles, on desktops and servers
+alike: whatever a program or service can read from a file is a file in `home/` or
+`hosts/<name>/home`, not Nix and not a setting kept in a UI. `host.toml` describes the host and
+nothing else.
+
 ## Roles
 
 This repository is a NixOS configuration built on a small framework (axon) that lives in it. Two
@@ -69,7 +77,9 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   loads what needs a store path; settings live in dotfiles.
 - **Contracts are declared in core**: `axon.services` (routes, backup paths), `axon.persist`,
   `axon.volumes`, `axon.spaces` (a service's own subvolume, capped by `[limits]`), `axon.mail`,
-  `axon.sso` (single sign-on), `axon.vpn`, `axon.overlay`, `axon.browser`. Add one for two or more consumers or a realistic swap. Producers set them unconditionally; consumers handle an empty set or null.
+  `axon.sso` (single sign-on), `axon.vpn`, `axon.overlay`, `axon.browser`, `axon.links` (admin
+  links on the start page). Add one for two or more consumers or a realistic swap. Producers set
+  them unconditionally; consumers handle an empty set or null.
 - **One way per thing.** Modules that produce the same result do it the same way. A shared helper
   only when many modules use it.
 - **Only what changes something.** Don't restate an upstream default (read the module's source),
@@ -107,9 +117,23 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   `.desktop` file's name or `StartupWMClass`, or the application id in its source) and decide per
   window: main windows tile; dialogs with a parent window and fixed-height windows float by
   themselves in niri; small tool windows, pickers and popups without a parent get an
-  `open-floating` rule in the host's `windows.kdl`, in the same change.
+  `open-floating` rule in `home/.config/niri/windows.kdl`, in the same change.
 - **Dotfiles with several sections** separate them with a ruler: `# ── name ────────`
   (`--` in Lua, `//` in KDL and JavaScript).
+
+## Checking the whole config
+
+A sweep or audit checks the rules above and also whether the config does its job:
+
+- A fresh host of any class and any feature combination installs and builds without manual fixes
+  (first-switch ordering; secrets a feature can't do without fail evaluation with one message
+  listing them, missing extras degrade with a warning; nothing assumes node1 or tower).
+- The split stays clean: Nix installs and wires, dotfiles hold runtime settings, `hosts/<name>` holds
+  the choices; nothing the framework on `main` needs lives outside `modules/`.
+- n hosts in any cluster shape work: relations come from `cluster.toml` and the contracts, never
+  from host names.
+- Server state that lives only in a service's UI is named, and backed up or reproducible.
+- A building block stays only while it is the plain, common choice for its job.
 
 ## Commands
 

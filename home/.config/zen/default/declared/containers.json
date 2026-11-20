@@ -1,0 +1,43 @@
+{
+  "version": 5,
+  "lastUserContextId": 3,
+  "identities": [
+    {
+      "userContextId": 1,
+      "name": "A",
+      "icon": "fingerprint",
+      "color": "toolbar",
+      "public": true
+    },
+    {
+      "userContextId": 2,
+      "name": "B",
+      "icon": "fingerprint",
+      "color": "purple",
+      "public": true
+    },
+    {
+      "userContextId": 3,
+      "name": "C",
+      "icon": "fingerprint",
+      "color": "blue",
+      "public": true
+    },
+    {
+      "userContextId": 4294967294,
+      "name": "userContextIdInternal.thumbnail",
+      "icon": "",
+      "color": "",
+      "accessKey": "",
+      "public": false
+    },
+    {
+      "userContextId": 4294967295,
+      "name": "userContextIdInternal.webextStorageLocal",
+      "icon": "",
+      "color": "",
+      "accessKey": "",
+      "public": false
+    }
+  ]
+}

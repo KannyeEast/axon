@@ -22,6 +22,7 @@ in
     { config, pkgs, ... }:
     let
       inherit (config.axon) host;
+      reportFile = host.dir + "/facter.json";
       report = config.hardware.facter.report;
 
       cards = report.hardware.graphics_card or [ ];
@@ -48,16 +49,17 @@ in
 
       config = lib.mkMerge [
         {
-          hardware.facter.reportPath = host.dir + "/facter.json";
+          # a throw, not an assertion: the platform comes from the report, so without a usable one
+          # evaluation stops on nixpkgs.hostPlatform before assertions run
+          hardware.facter.reportPath =
+            if
+              lib.pathExists reportFile && lib.readFile reportFile != "" && (lib.importJSON reportFile) ? system
+            then
+              reportFile
+            else
+              throw "hosts/${host.name}/facter.json: missing or empty; run install.sh for this host, or nixos-facter on it";
           axon.laptop = (report.hardware.system.form_factor or "") == "laptop";
           axon.nvidia = has "nvidia";
-
-          assertions = [
-            {
-              assertion = report ? system;
-              message = "hosts/${host.name}/facter.json: missing or empty; generate it with nixos-facter";
-            }
-          ];
         }
 
         # hardware video decoding on Intel GPUs; facter enables graphics, not the VA-API driver
@@ -66,7 +68,6 @@ in
             pkgs.intel-media-driver
             pkgs.vpl-gpu-rt
           ];
-          environment.sessionVariables.LIBVA_DRIVER_NAME = "iHD";
         })
 
         (lib.mkIf nvidia {

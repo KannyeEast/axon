@@ -1,6 +1,8 @@
 include "input.kdl"
 include "output.kdl"
 include "bindings.kdl"
+// keys for programs that come with a feature, kept by the hosts that have it
+include optional=true "apps.kdl"
 include "layout.kdl"
 include "windows.kdl"
 include "startup.kdl"

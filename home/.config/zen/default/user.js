@@ -6,6 +6,8 @@ user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
 // bookmarks.html next to this file, imported on every start
 user_pref("browser.places.importBookmarksHTML", true);
 user_pref("devtools.chrome.enabled", true);
+// the home button opens both; Zen itself restores the previous session at start
+user_pref("browser.startup.homepage", "https://kagi.com/|about:blank");
 user_pref("font.name.sans-serif.x-western", "Inter");
 user_pref("font.name.serif.x-western", "Barlow");
 user_pref("font.name.monospace.x-western", "JetBrainsMono Nerd Font");
@@ -13,15 +15,13 @@ user_pref("font.size.monospace.x-western", 13);
 
 user_pref("browser.display.document_color_use", 0);
 user_pref("browser.urlbar.clipboard.featureGate", false);
-user_pref("browser.urlbar.suggest.addons", false);
 user_pref("browser.urlbar.suggest.engines", false);
-user_pref("browser.urlbar.suggest.mdn", false);
 user_pref("browser.urlbar.suggest.topsites", false);
 user_pref("browser.urlbar.suggest.trending", false);
-user_pref("browser.urlbar.suggest.weather", false);
-user_pref("browser.urlbar.suggest.yelp", false);
 
 user_pref("general.autoScroll", true);
+// the default, written out: profiles that once had it off keep that in prefs.js otherwise
+user_pref("general.smoothScroll", true);
 
 // ── zen ────────
 user_pref("zen.pinned-tab-manager.restore-pinned-tabs-to-pinned-url", true);

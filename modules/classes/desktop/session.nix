@@ -1,5 +1,5 @@
 # The desktop class: niri behind GDM, plus the plumbing apps expect.
-# Which bar, launcher and keybinds run is taste: hosts/<name>/home/.config/niri.
+# Which bar, launcher and keybinds run is taste: home/.config/niri (a host's own file wins).
 { ... }:
 {
   flake.modules.nixos.desktop =
@@ -21,7 +21,6 @@
       # niri's startup.kdl decides what runs
       environment.systemPackages = [
         pkgs.alacritty
-        pkgs.xdg-terminal-exec # apps marked Terminal=true (nvim, …) open in alacritty from the file manager
         pkgs.fuzzel
         pkgs.waybar
         pkgs.swaybg
@@ -35,6 +34,12 @@
         pkgs.pavucontrol
         pkgs.bibata-cursors
       ];
+
+      # apps marked Terminal=true (nvim, …) open in alacritty from the file manager
+      xdg.terminal-exec = {
+        enable = true;
+        settings.default = [ "Alacritty.desktop" ];
+      };
 
       # mako starts on the first notification through D-Bus; nothing has to spawn it
       services.dbus.packages = [ pkgs.mako ];

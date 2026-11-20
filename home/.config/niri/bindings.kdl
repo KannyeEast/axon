@@ -4,9 +4,7 @@ binds {
 
     Mod+Return hotkey-overlay-title="Terminal" { spawn "alacritty"; }
     Mod+Space hotkey-overlay-title="Launcher" { spawn "fuzzel"; }
-    Mod+B hotkey-overlay-title="Browser" { spawn "zen-beta"; }
     Mod+E hotkey-overlay-title="Files" { spawn "nautilus"; }
-    Mod+P hotkey-overlay-title="Passwords" { spawn "keepassxc"; }
     Mod+V hotkey-overlay-title="Clipboard History" { spawn "clipboard-pick"; }
 
     Super+Alt+L hotkey-overlay-title="Lock the Screen" { spawn "swaylock"; }

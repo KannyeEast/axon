@@ -49,3 +49,4 @@ wk.add({
   { "<leader>u", group = "toggle" },
   { "<leader>x", group = "problems" },
 })
+vim.keymap.set("n", "<leader>?", function() wk.show({ global = false }) end, { desc = "keys for this buffer" })

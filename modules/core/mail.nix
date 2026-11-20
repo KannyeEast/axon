@@ -38,10 +38,6 @@ in
               type = types.str;
               description = "Recipient for scheduled reports.";
             };
-            info = mkOption {
-              type = types.str;
-              description = "Recipient for notices: worth reading, but nothing is wrong.";
-            };
             page = mkOption {
               type = types.str;
               description = "The HTML around a mail's content, for the sender to fill in: @label@, @color@, @tint@, @title@, @subtitle@, @footer@ and @body@.";

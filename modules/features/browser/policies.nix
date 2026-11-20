@@ -56,12 +56,6 @@
           SponsoredSuggestions = false;
           ImproveSuggest = false;
         };
-        GenerativeAI.Enable = false;
-        Homepage = {
-          URL = "https://kagi.com";
-          Additional = [ "about:blank" ];
-          StartPage = "previous-session";
-        };
         InstallAddonsPermission.Default = false;
         NetworkPrediction = false;
         NewTabPage = false;
@@ -87,7 +81,6 @@
         ShowHomeButton = true;
         SkipTermsOfUse = true;
         StartDownloadsInTempDirectory = true;
-        TranslateEnabled = false;
         VisualSearchEnabled = false;
         UserMessaging = {
           WhatsNew = false;

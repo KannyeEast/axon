@@ -1,0 +1,1 @@
+// Monitors are per host (hosts/<name>/home); without that file niri picks modes itself.

@@ -17,9 +17,6 @@
       gateways = lib.attrNames (
         lib.filterAttrs (_: data: lib.elem "gateway" data.host.features) cluster.hosts
       );
-
-      # caddy gets no certificates itself (auto_https disable_certs), so every vhost names the acme files
-      tls = "tls /var/lib/acme/${domain}/fullchain.pem /var/lib/acme/${domain}/key.pem";
     in
     {
       axon.routed = true;
@@ -27,7 +24,9 @@
       assertions = [
         {
           assertion = lib.length gateways == 1;
-          message = "cluster.toml: exactly one host may run the gateway feature, found ${lib.concatStringsSep ", " gateways}";
+          message = "${
+            lib.concatMapStringsSep ", " (name: "hosts/${name}/host.toml") gateways
+          }: only one host may list the gateway feature; keep it on one";
         }
       ];
 
@@ -45,26 +44,23 @@
           dnsProvider = "cloudflare";
           dnsResolver = "1.1.1.1:53";
           environmentFile = config.sops.templates."cloudflare.env".path;
-          group = config.services.caddy.group;
-          reloadServices = [ "caddy.service" ];
         };
       };
 
       services.caddy = {
         enable = true;
-        globalConfig = "auto_https disable_certs";
         virtualHosts = {
           # anything not routed below
-          "*.${domain}".extraConfig = ''
-            ${tls}
-            abort
-          '';
+          "*.${domain}" = {
+            useACMEHost = domain;
+            extraConfig = "abort";
+          };
         }
         // lib.mapAttrs' (
           _: service:
           lib.nameValuePair service.route.host {
+            useACMEHost = domain;
             extraConfig = ''
-              ${tls}
               # services that trust Cloudflare's client-address header must not take it from a
               # tailnet client; the tunnel bypasses Caddy, so here it is always the real peer
               reverse_proxy ${service.route.internal} {
