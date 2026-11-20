@@ -18,10 +18,7 @@
 
       axon.services.tools = {
         units = [ "static-web-server" ];
-        route = {
-          inherit port;
-          gate = true;
-        };
+        route.port = port;
         dashboard = {
           name = "IT Tools";
           group = "Code";

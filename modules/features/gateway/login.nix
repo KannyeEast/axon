@@ -1,6 +1,6 @@
-# oauth2-proxy at login.<domain>: the login in front of every route with gate, for the provider's
-# (axon.sso) admins group. The gateway (proxy.nix) asks it on each request to a gated route; one
-# cookie for the whole domain covers them all. Without a provider or its secrets (sso/proxy, the
+# oauth2-proxy at login.<domain>: the login in front of every route with gate (by default every
+# tailnet-only one), for the provider's (axon.sso) admins group. The gateway (proxy.nix) asks it on
+# each request to a gated route; one cookie for the whole domain covers them all. Without a provider or its secrets (sso/proxy, the
 # client secret, and sso/proxy-cookie) it doesn't run and gated routes stay open, with a warning.
 { lib, ... }:
 {

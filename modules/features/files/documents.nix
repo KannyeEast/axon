@@ -146,7 +146,10 @@
           "redis-paperless"
           "tika"
         ];
-        route.port = port;
+        route = {
+          inherit port;
+          gate = false;
+        };
         dashboard = {
           name = "Paperless";
           group = "Files";

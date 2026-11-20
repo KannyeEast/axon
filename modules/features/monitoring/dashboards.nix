@@ -318,8 +318,7 @@
             admin_password = "$__file{${config.sops.secrets."monitoring/password".path}}";
             secret_key = "$__file{${state}/secret_key}";
           };
-          # read-only without a login, like the other tailnet-only tools; the start page's frames
-          # need it
+          # read-only without its own login; the start page's frames need it
           "auth.anonymous".enabled = true;
           # endpoints and claims as Kanidm names them; with no login attribute the login is the
           # mail address, so it can't collide with the local admin's name

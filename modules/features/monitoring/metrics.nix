@@ -87,9 +87,14 @@
                 tls_config.insecure_skip_verify = true;
               };
             };
+            # a redirect counts: gated routes answer with the login's
             route = {
               prober = "http";
-              http.preferred_ip_protocol = "ip4";
+              http = {
+                follow_redirects = false;
+                valid_status_codes = lib.range 200 399;
+                preferred_ip_protocol = "ip4";
+              };
             };
           };
         }

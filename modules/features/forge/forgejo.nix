@@ -109,7 +109,10 @@
           "forgejo-dump"
           "forgejo-secrets"
         ];
-        route.port = port;
+        route = {
+          inherit port;
+          gate = false;
+        };
         dashboard = {
           name = "Forgejo";
           group = "Code";

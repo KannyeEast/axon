@@ -32,7 +32,10 @@ in
 
       axon.services.cache = {
         units = [ "harmonia" ];
-        route.port = port;
+        route = {
+          inherit port;
+          gate = false;
+        };
       };
     };
 }

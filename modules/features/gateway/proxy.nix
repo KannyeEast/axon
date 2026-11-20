@@ -1,6 +1,6 @@
 # Consumer of axon.services: every routed service gets <service>.<domain> on the tailnet, proxied
-# as is; a login is the service's own, or with gate the one at login.<domain> (login.nix). Public
-# ones are on the tunnel as well.
+# as is; with gate (all but public ones by default) the login at login.<domain> (login.nix) stands
+# in front. Public ones are on the tunnel as well.
 # One wildcard certificate from Let's Encrypt via a Cloudflare DNS challenge covers them all.
 { lib, ... }:
 {

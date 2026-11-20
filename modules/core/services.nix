@@ -116,8 +116,9 @@ in
                         };
                         gate = mkOption {
                           type = types.bool;
-                          default = false;
-                          description = "A login through the gateway's oauth2-proxy in front of the route.";
+                          default = !route.config.public;
+                          defaultText = "!public";
+                          description = "The gateway's login (oauth2-proxy) in front of the route; false for what can't follow a browser login.";
                         };
                       };
                     })
