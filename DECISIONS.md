@@ -19,6 +19,7 @@ To change one, change it here in the same commit, with the new reason.
 | Hardcoded domain in `home/` (Zen's pins and space routes), machine names only inside `hosts/<name>/` | `home/` is the owner's folder for all their hosts, so values the whole cluster shares may appear there; what belongs to one host goes in `hosts/<name>/home`; only the modules stay generic |
 | Kanidm (gateway/accounts.nix) is the one login for every service that has a login; there is no other identity provider | one account and one passkey per person for everything |
 | No login in front of the tailnet-only apps (the *arr apps, SABnzbd, qBittorrent, Homepage, Prometheus and the like) | the tailnet is the owner's alone; family devices aren't on it |
+| Loki (monitoring/logs.nix) takes pushes and queries on the tailnet without a login | every host's Alloy pushes to it machine to machine; the tailnet is the owner's alone, and people read the logs in Grafana |
 | Jellyfin keeps its own login, and Seerr, which logs in with Jellyfin accounts, follows it | TV and native apps can't do OpenID Connect; they sign in with Quick Connect |
 | Vaultwarden's master password stays separate from Kanidm | it encrypts the vault; a login elsewhere can't replace it |
 | People and their group memberships are made with the kanidm CLI, never in the repository | names and mail addresses of the family stay private |

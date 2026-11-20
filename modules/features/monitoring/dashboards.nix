@@ -1,8 +1,9 @@
-# Grafana at grafana.<domain>: graphs over Prometheus, data source and dashboards provisioned from
-# here. With a login provider (axon.sso) its admins group logs in there as Admin; the host.toml
-# user stays the local admin, with monitoring/password, for the API. Without a gateway on this
-# host it stays on localhost, with only its own login. The "Start page" dashboard: two tables the
-# gateway's start page embeds, graphs of the last day below.
+# Grafana at grafana.<domain>: graphs over Prometheus and logs from Loki, data sources and
+# dashboards provisioned from here. With a login provider (axon.sso) its admins group logs in there
+# as Admin; the host.toml user stays the local admin, with monitoring/password, for the API.
+# Without a gateway on this host it stays on localhost, with only its own login. The "Start page"
+# dashboard: two tables the gateway's start page embeds, graphs of the last day below. "Logs":
+# error lines per host and unit, the latest ones below.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -264,7 +265,50 @@
         ) panels;
       };
 
-      dashboards = pkgs.writeTextDir "start.json" start;
+      errors = ''{level=~"emerg|alert|crit|error"}'';
+      logs = lib.toJSON {
+        uid = "logs";
+        title = "Logs";
+        time = {
+          from = "now-24h";
+          to = "now";
+        };
+        panels = [
+          (
+            timeseries "Error lines per 5 minutes" { } [
+              (query "sum by (host, unit) (count_over_time(${errors}[5m]))" "{{host}} {{unit}}")
+            ]
+            // {
+              id = 1;
+              datasource.uid = "loki";
+              gridPos = {
+                w = 24;
+                h = 8;
+                x = 0;
+                y = 0;
+              };
+            }
+          )
+          {
+            id = 2;
+            type = "logs";
+            title = "Error lines";
+            datasource.uid = "loki";
+            targets = [ { expr = errors; } ];
+            gridPos = {
+              w = 24;
+              h = 16;
+              x = 0;
+              y = 8;
+            };
+          }
+        ];
+      };
+
+      dashboards = pkgs.linkFarm "dashboards" {
+        "start.json" = pkgs.writeText "start.json" start;
+        "logs.json" = pkgs.writeText "logs.json" logs;
+      };
     in
     {
       services.grafana = {
@@ -310,6 +354,12 @@
               uid = "prometheus";
               url = "http://127.0.0.1:${toString config.services.prometheus.port}";
               isDefault = true;
+            }
+            {
+              name = "Loki";
+              type = "loki";
+              uid = "loki";
+              url = "http://127.0.0.1:${toString config.services.loki.configuration.server.http_listen_port}";
             }
           ];
           dashboards.settings.providers = [

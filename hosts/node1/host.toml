@@ -37,6 +37,7 @@ immich = "1T"
 nextcloud = "1T"
 paperless = "100G"
 forgejo = "100G"
+loki = "5G"
 
 [sync]
 id = "7B5WETD-2BBTFMG-OKJBRDP-A5NJ3UC-3A7HECI-IEB6UP4-KZLTLWF-7RVIPQD"
