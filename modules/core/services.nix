@@ -177,6 +177,11 @@ in
                                   default = null;
                                   description = "Where the tile leads instead of the route.";
                                 };
+                                group = mkOption {
+                                  type = types.nullOr types.str;
+                                  default = null;
+                                  description = "Its group instead of the service's.";
+                                };
                                 description = mkOption {
                                   type = types.nullOr types.str;
                                   default = null;

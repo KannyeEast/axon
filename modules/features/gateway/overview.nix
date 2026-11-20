@@ -36,9 +36,6 @@ in
       port = 8082;
 
       tiles = lib.filterAttrs (_: service: service.dashboard != null) routes;
-      groups = lib.unique (
-        lib.sort (a: b: a < b) (lib.mapAttrsToList (_: service: service.dashboard.group) tiles)
-      );
       linkGroups = lib.unique (lib.sort (a: b: a < b) (lib.mapAttrsToList (_: link: link.group) links));
 
       # "dashboard/radarr/key" -> HOMEPAGE_VAR_DASHBOARD_RADARR_KEY
@@ -71,25 +68,30 @@ in
               // instance.widget or { };
             };
       };
-      tilesOf =
-        service:
-        if service.dashboard.instances == { } then
-          [ (tile service service.dashboard.name { }) ]
-        else
-          lib.mapAttrsToList (tile service) service.dashboard.instances;
       before =
         a: b:
-        if a.dashboard.order != b.dashboard.order then
-          a.dashboard.order < b.dashboard.order
+        if a.service.dashboard.order != b.service.dashboard.order then
+          a.service.dashboard.order < b.service.dashboard.order
         else
-          a.dashboard.name < b.dashboard.name;
-      inGroup =
-        group:
-        lib.concatMap tilesOf (
-          lib.sort before (
-            lib.attrValues (lib.filterAttrs (_: service: service.dashboard.group == group) tiles)
+          a.service.dashboard.name < b.service.dashboard.name;
+      # every tile with its service and group, in order; an instance may sit in a group of its own
+      entries = lib.concatMap (
+        { name, service }:
+        map
+          (instance: {
+            inherit name;
+            group = lib.defaultTo service.dashboard.group (instance.value.group or null);
+            tile = tile service instance.name instance.value;
+          })
+          (
+            if service.dashboard.instances == { } then
+              [ (lib.nameValuePair service.dashboard.name { }) ]
+            else
+              lib.attrsToList service.dashboard.instances
           )
-        );
+      ) (lib.sort before (lib.mapAttrsToList (name: service: { inherit name service; }) tiles));
+      groups = lib.unique (lib.sort (a: b: a < b) (map (entry: entry.group) entries));
+      inGroup = group: map (entry: entry.tile) (lib.filter (entry: entry.group == group) entries);
 
       # Each group has its own rows, except groups of one tile: those share a row at the bottom,
       # above the groups of graphs. The groups named here come first, the rest alphabetically.
@@ -140,13 +142,15 @@ in
       # tile name -> its service in Grafana's Logs Drilldown (service_name from metrics/logs.nix),
       # for every tile outside the graph groups, while this host ships its logs and Grafana is routed here
       logs = lib.optionalAttrs (lib.elem "metrics" host.features && routes ? grafana) (
-        lib.concatMapAttrs (
-          name: service:
-          lib.genAttrs (lib.concatMap lib.attrNames (tilesOf service)) (
-            _:
-            "${routes.grafana.route.url}/a/grafana-lokiexplore-app/explore/service/${name}/logs?var-filters=service_name%7C%3D%7C${name}"
-          )
-        ) (lib.filterAttrs (_: service: lib.elem service.dashboard.group narrow) tiles)
+        lib.mergeAttrsList (
+          map (
+            entry:
+            lib.mapAttrs (
+              _: _:
+              "${routes.grafana.route.url}/a/grafana-lokiexplore-app/explore/service/${entry.name}/logs?var-filters=service_name%7C%3D%7C${entry.name}"
+            ) entry.tile
+          ) (lib.filter (entry: lib.elem entry.group narrow) entries)
+        )
       );
     in
     {

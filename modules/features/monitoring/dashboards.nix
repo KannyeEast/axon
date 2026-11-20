@@ -369,7 +369,10 @@
           icon = "grafana.svg";
           # the overview tables come first in the dashboard, so their panel ids are 1 and 2
           instances = {
-            Grafana.description = "Dashboards and logs";
+            Grafana = {
+              description = "Dashboards and logs";
+              group = "Monitoring";
+            };
           }
           // lib.listToAttrs (
             lib.imap1 (

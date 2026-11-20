@@ -120,7 +120,8 @@ die() { logError "$1"; exit "${2:-1}"; }
 
 # wrap command in gum styling
 run() {
-  if [[ $VERBOSE == true ]]; then
+  # gum spin execs a program, so a function of this script (probe) runs without the spinner
+  if [[ $VERBOSE == true ]] || declare -F "$1" >/dev/null; then
     logDebug "\$ $*"
     "$@"
   else
@@ -558,9 +559,15 @@ listSupportedLocales() {
     | sort -u
 }
 
+# "code  description"; base.lst leaves out the layouts marked exotic (EurKEY's eu among them),
+# which only base.extras.xml lists
 listKeyboardLayouts() {
   [[ -r ${XKB_RULES:-} ]] || return 1
-  awk '/^! layout/{f=1;next} /^!/{f=0} f&&NF{print $1}' "$XKB_RULES"
+  {
+    awk '/^! layout/{f=1;next} /^!/{f=0} f&&NF{code=$1; $1=""; sub(/^ +/, ""); print code "  " $0}' "$XKB_RULES"
+    yq -p xml -o tsv '.xkbConfigRegistry.layoutList.layout[].configItem | [.name, .description]' \
+      "${XKB_RULES%.lst}.extras.xml" 2>/dev/null | awk -F'\t' '{print $1 "  " $2}'
+  } | sort -u
 }
 
 listKeyboardVariants() {
@@ -877,6 +884,7 @@ gatherLocale() {
   formFilter TIMEZONE "Timezone" "$(listSupportedTimezones)" "${TIMEZONE:-UTC}" validTimezone || return 1
   formFilter LOCALE "Language" "$(listSupportedLocales)" || return 1
   formFilter KEYBOARD "Keyboard layout" "$(listKeyboardLayouts)" || return 1
+  KEYBOARD=${KEYBOARD%% *}
   formFilter KEYBOARD_VARIANT "Layout variant" "$(listKeyboardVariants "$KEYBOARD")" || return 1
   if [[ $KEYBOARD_VARIANT == "(none)" ]]; then
     KEYBOARD_VARIANT=""
@@ -939,7 +947,7 @@ gatherData() {
 
     formInput fsLabel "Name (the filesystem label)" "" "bulk" validLabel || return 1
 
-    formMulti picked "Disks (space to select)" "" "${free[@]}" || return 1
+    formMulti picked "Disks" "" "${free[@]}" || return 1
     if (( ${#picked[@]} == 0 )); then
       logWarn "Data disks: none selected; $fsLabel is skipped"
       continue
@@ -1073,7 +1081,7 @@ gatherCluster() {
       pre="$here"
     fi
     while :; do
-      formMulti SSH_IN "May log in to $HOSTNAME with their key (space to select)" "$pre" "${logins[@]}" || return 1
+      formMulti SSH_IN "Who may log in to $HOSTNAME" "$pre" "${logins[@]}" || return 1
       [[ $CLASS != server || ${#SSH_IN[@]} -gt 0 ]] && break
       logWarn "Cluster: with no member's key let in, $HOSTNAME takes only $USERNAME's password over SSH"
       formYesNo leave "Leave it so?" no || continue
@@ -1082,11 +1090,11 @@ gatherCluster() {
   fi
 
   if (( ${#hosts[@]} > 0 )); then
-    formMulti SSH_OUT "$HOSTNAME may log in to (space to select)" "$(IFS=,; echo "${SSH_OUT[*]}")" "${hosts[@]}" || return 1
+    formMulti SSH_OUT "Where $HOSTNAME may log in" "$(IFS=,; echo "${SSH_OUT[*]}")" "${hosts[@]}" || return 1
   fi
 
   if (( ${#folders[@]} > 0 )); then
-    formMulti SYNC_FOLDERS "Folders $HOSTNAME keeps in sync (space to select)" \
+    formMulti SYNC_FOLDERS "Folders $HOSTNAME keeps in sync" \
       "$(IFS=,; echo "${SYNC_FOLDERS[*]}")" "${folders[@]}" || return 1
   fi
 }
