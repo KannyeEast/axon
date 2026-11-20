@@ -246,7 +246,8 @@ showFlags() {
 Usage: ./install.sh [OPTIONS]
 
 Options:
-  -r, --remote            Install another machine over SSH, through nixos-anywhere
+  -r, --remote [TARGET]   Install another machine over SSH, through nixos-anywhere;
+                          TARGET (root@host) fills in the question for it
   -v, --verbose           Show every command and its output
   -h, --help              This message
 EOF
@@ -255,7 +256,14 @@ EOF
 parseArgs() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -r|--remote) REMOTE=true; shift ;;
+      -r|--remote)
+        REMOTE=true
+        shift
+        if [[ $# -gt 0 && $1 != -* ]]; then
+          TARGET=$1
+          shift
+        fi
+        ;;
       -v|--verbose) VERBOSE=true; shift ;;
       -h|--help) showFlags; exit 0 ;;
       *) printf 'Unknown option: %s\n' "$1" >&2; showFlags; exit 1 ;;
