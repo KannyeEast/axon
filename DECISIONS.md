@@ -12,7 +12,7 @@ To change one, change it here in the same commit, with the new reason.
 |---|---|
 | `PasswordAuthentication = true` | a lost key must not lock you out of a machine you can't walk to |
 | No LUKS | chosen; hibernation into a plain swap partition |
-| Docker everywhere: rootful on servers for their services, rootless on desktops (classes/desktop/containers.nix, the sandbox) | servers run their services as containers, all the same way. No person's account joins the docker group, which is root by another name (Komodo's agent, a service, does), and published ports bind 127.0.0.1 only, as Docker's rules pass the firewall |
+| Services run native first; a container only where the native path fails or upstream ships only an image, its reason in its own row (Docker: rootful on servers for those services, rootless for the sandbox on every host with `dev`) | NixOS modules bring the user, state, hardening and database setup a container needs as glue; on unstable they lag upstream little. No account joins the docker group, which is root by another name, and published ports bind 127.0.0.1 only, as Docker's rules pass the firewall |
 | No Watchtower or Portainer: container images change only through Renovate's pull requests | every image is pinned to a digest, so what runs is what the repository says, reviewed like any other change |
 | JetBrains IDEs trust every project (`idea.trust.all.projects`) | chosen by the owner; there is no per-path setting |
 | The KeeShare key in `hosts/tower/home/.config/keepassxc/keepassxc.ini` | KeeShare is unused; KeePassXC generates the key itself |
@@ -45,6 +45,7 @@ To change one, change it here in the same commit, with the new reason.
 | Decision | Why |
 |---|---|
 | Kanidm, Jellyfin, Immich, Nextcloud, Vaultwarden and Home Assistant are public through the Cloudflare tunnel | family devices have no Tailscale; the risk under Cloudflare's terms (video streaming) is accepted |
+| Paperless (files/documents.nix) runs upstream's container, not the NixOS module | the module's package failed to build on torch from nixpkgs (2026-11-18) |
 | Home Assistant (family/hub.nix) runs as root in its container, against the rule of one user per container | the official image's process supervisor needs root; the NixOS module would run it as a user but can't install HACS, which the household cards come from |
 | Home Assistant (family/hub.nix) has no Kanidm login (axon.sso), only its own accounts with TOTP | the only add-on (hass-oidc-auth) can't log in inside the Companion app (a code entered in the browser instead), its button fails on HA 2026.10+ (issue #446), and roles follow Kanidm only at first login |
 | DNS records for public routes are made by hand at Cloudflare | not managed from this repo; a new public route needs its tunnel record (`cloudflared tunnel route dns`), a tailnet-only one none |
@@ -63,7 +64,7 @@ To change one, change it here in the same commit, with the new reason.
 |---|---|
 | No backup targets in any `secrets.json`; the backup feature only warns | waiting for a second server or a hosting service |
 | The `local`/`proton` names of restic targets | renaming a target loses its history |
-| No watchdog outside the cluster | a future second server would watch node1 |
+| No watchdog outside the cluster | the server stands next to its owner; a future second server would watch node1 |
 | Failure mails have a plain layout: the facts, then the log | the owner reads the log; no summary box on top |
 
 ## Desktop

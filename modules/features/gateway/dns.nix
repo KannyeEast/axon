@@ -92,7 +92,7 @@
           icon = "adguard-home.svg";
           widget.type = "adguard";
         };
-        backup.paths = [ "/var/lib/private/AdGuardHome" ];
+        # not backed up: Nix holds the settings; the rest is query logs, statistics and filter lists
       };
     };
 }
