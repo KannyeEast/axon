@@ -45,8 +45,8 @@
         "mail/token" = { };
       };
 
-      warnings =
-        lib.optional (monitors == { })
-          "hosts/${host.name}/host.toml: no host lists monitoring, so failed units and other alerts aren't mailed; list monitoring on a server";
+      warnings = lib.optional (
+        monitors == { }
+      ) "hosts/${host.name}/host.toml: no host lists monitoring, so alerts aren't mailed";
     };
 }

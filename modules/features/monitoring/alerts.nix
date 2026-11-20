@@ -106,39 +106,33 @@
               {
                 name = "axon";
                 rules = [
-                  (rule "HostDown" ''up{job="node",class="server"} == 0'' "5m" "unreachable for 5 minutes")
-                  (rule "ExporterDown" ''up{job!="node",class="server"} == 0'' "5m"
-                    "the {{ $labels.job }} exporter doesn't answer"
-                  )
+                  (rule "HostDown" ''up{job="node",class="server"} == 0'' "5m" "unreachable")
+                  (rule "ExporterDown" ''up{job!="node",class="server"} == 0'' "5m" "{{ $labels.job }} exporter down")
                   (rule "DiskFull"
                     ''1 - node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes > 0.85''
                     "15m"
                     "{{ $labels.mountpoint }} is {{ $value | humanizePercentage }} full"
                   )
                   (rule "CpuBusy" ''1 - avg by (host) (rate(node_cpu_seconds_total{mode="idle"}[5m])) > 0.9'' "15m"
-                    "CPU at {{ $value | humanizePercentage }} for 15 minutes"
+                    "CPU at {{ $value | humanizePercentage }}"
                   )
                   (rule "MemoryLow" "node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.1" "10m"
-                    "only {{ $value | humanizePercentage }} of memory available"
+                    "{{ $value | humanizePercentage }} memory free"
                   )
                   (rule "Hot" "node_hwmon_temp_celsius > 85" "10m"
                     "{{ $labels.chip }} {{ $labels.sensor }} at {{ $value }} °C"
                   )
-                  (rule "DiskUnhealthy" "smartctl_device_smart_status != 1" "0m"
-                    "SMART reports {{ $labels.device }} as failing"
-                  )
+                  (rule "DiskUnhealthy" "smartctl_device_smart_status != 1" "0m" "{{ $labels.device }} failing")
                   (rule "BtrfsErrors" "increase(node_btrfs_device_errors_total[1h]) > 0" "0m"
-                    "{{ $labels.device }} has new {{ $labels.type }} errors"
+                    "{{ $labels.device }}: new {{ $labels.type }} errors"
                   )
                   (rule "ServiceDown" ''probe_success{job="service"} == 0'' "2m"
                     "{{ $labels.service }} doesn't answer"
                   )
-                  (rule "RouteDown" ''probe_success{job="route"} == 0'' "5m"
-                    "{{ $labels.instance }} is not reachable as it should be"
-                  )
+                  (rule "RouteDown" ''probe_success{job="route"} == 0'' "5m" "{{ $labels.instance }} unreachable")
                   (rule "CertificateExpiring" ''probe_ssl_earliest_cert_expiry{job="route"} - time() < 14 * 86400''
                     "0m"
-                    "the certificate of {{ $labels.instance }} expires in {{ $value | humanizeDuration }}"
+                    "{{ $labels.instance }} certificate expires in {{ $value | humanizeDuration }}"
                   )
                   # the node exporter names the unit in name; unit is the label its logs carry
                   (rule "UnitFailed"
@@ -147,7 +141,7 @@
                     "{{ $labels.unit }} failed"
                   )
                   (rule "SpaceFull" "axon_space_used_bytes / axon_space_limit_bytes > 0.9" "15m"
-                    "the space {{ $labels.space }} is {{ $value | humanizePercentage }} full"
+                    "{{ $labels.space }} {{ $value | humanizePercentage }} full"
                   )
                   {
                     alert = "Watchdog";
@@ -155,7 +149,7 @@
                     # the subject names the host an alert is about
                     labels.host = host.name;
                     annotations = {
-                      summary = "alerting works: this mail comes once a week";
+                      summary = "alerting works";
                     }
                     // lib.optionalAttrs routed { link = "${grafana}/d/start"; };
                   }
@@ -164,7 +158,7 @@
                   (rule "DownloadsStalled"
                     "sabnzbd_queue_size > 0 and sabnzbd_paused == 0 and sabnzbd_queue_download_rate_bytes_per_second == 0"
                     "2h"
-                    "SABnzbd has {{ $value }} downloads queued and hasn't downloaded anything for 2 hours"
+                    "{{ $value }} queued, nothing downloading"
                   )
                   # the apps' own health checks: indexers or download client failing, missing folders
                   (rule "ArrUnhealthy"

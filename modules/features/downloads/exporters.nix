@@ -78,7 +78,7 @@
 
         (lib.mkIf (!hasKey) {
           warnings = [
-            "hosts/${host.name}/secrets.json: no ${key}, so SABnzbd's exporter doesn't run: its queue isn't watched and Prometheus reports the exporter down; add SABnzbd's API key with `just secrets ${host.name}`"
+            "hosts/${host.name}/secrets.json: no ${key}, so SABnzbd's exporter is off; add it with `just secrets ${host.name}`"
           ];
         })
       ]
