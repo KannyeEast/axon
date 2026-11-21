@@ -78,7 +78,8 @@
         description = "Restart Decluttarr on a new config";
         serviceConfig = {
           Type = "oneshot";
-          ExecStart = "${pkgs.systemd}/bin/systemctl try-restart decluttarr.service";
+          # also starts it when the file appears after it found none
+          ExecStart = "${pkgs.systemd}/bin/systemctl restart decluttarr.service";
         };
       };
     };
