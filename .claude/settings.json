@@ -34,9 +34,7 @@
     ],
     "ask": [
       "Edit(/hosts/**)",
-      "Write(/hosts/**)",
-      "Edit(/.sops.yaml)",
-      "Write(/.sops.yaml)"
+      "Edit(/.sops.yaml)"
     ]
   },
   "hooks": {
