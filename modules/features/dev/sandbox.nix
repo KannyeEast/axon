@@ -9,6 +9,9 @@
   flake.modules.nixos.dev =
     { config, pkgs, ... }:
     let
+      # Docker hands the container the host's upstream servers; the tailnet's resolver also knows
+      # the other hosts by name
+      inherit (config.axon.overlay) network;
       image = pkgs.dockerTools.streamLayeredImage {
         name = "sandbox";
         contents = [
@@ -120,6 +123,7 @@
           # is world-readable on the host anyway; secrets never enter it. Root in here is the user
           # outside, so what it writes to $PWD is the user's and the nix daemon sees the user's uid.
           exec docker run --rm -it \
+            ${lib.optionalString (network != null) "--dns ${network.resolver} \\"}
             --volume /nix/store:/nix/store:ro \
             --volume /nix/var/nix/daemon-socket:/nix/var/nix/daemon-socket \
             --volume "$PWD:$PWD" \
