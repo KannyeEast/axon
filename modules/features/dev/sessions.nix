@@ -51,6 +51,12 @@
           remote="sessions/$name"
 
           link() {
+            if mutagen sync list "$name" >/dev/null 2>&1; then
+              echo "session: $name is linked already; session attach $name" >&2
+              exit 1
+            fi
+            # Mutagen makes the folder, not its parents
+            ssh "$server" "mkdir -p \"\$HOME/sessions\""
             mutagen sync create --name "$name" --label session="$name" \
               ${lib.concatMapStringsSep " " (pattern: "--ignore=${lib.escapeShellArg pattern}") ignored} \
               "$1" "$server:$remote"
