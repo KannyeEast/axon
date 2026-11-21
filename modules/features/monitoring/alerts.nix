@@ -174,6 +174,10 @@
                     "2h"
                     "{{ $value }} queued, nothing downloading"
                   )
+                  # a hung post-processing keeps it paused, as does a pause that was forgotten
+                  (rule "DownloadsPaused" "sabnzbd_queue_length > 0 and sabnzbd_paused == 1" "2h"
+                    "{{ $value }} queued, paused"
+                  )
                   # the apps' own health checks: indexers or download client failing, missing folders; their
                   # updates come with the system
                   (rule "ArrUnhealthy"
