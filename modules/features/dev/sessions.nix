@@ -103,6 +103,8 @@
       systemd.user.services.mutagen = {
         description = "Mutagen, which keeps the sessions' folders in sync";
         wantedBy = [ "default.target" ];
+        # it, not the session command, connects to the server
+        path = [ pkgs.openssh ];
         serviceConfig = {
           ExecStart = "${lib.getExe pkgs.mutagen} daemon run";
           Restart = "on-failure";
