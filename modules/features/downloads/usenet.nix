@@ -62,9 +62,15 @@
       # make the folders once they're mounted (tmpfiles may run before that)
       systemd.services.sabnzbd = {
         unitConfig.RequiresMountsFor = folders;
-        serviceConfig.ExecStartPre = map (
-          dir: "+${lib.getExe' pkgs.coreutils "install"} -d -o root -g media -m 2775 ${dir}"
-        ) folders;
+        serviceConfig = {
+          ExecStartPre = map (
+            dir: "+${lib.getExe' pkgs.coreutils "install"} -d -o root -g media -m 2775 ${dir}"
+          ) folders;
+          # the module forks it (-d); in the foreground it also logs to the journal, not only to
+          # its own file
+          Type = lib.mkForce "simple";
+          ExecStart = lib.mkForce "${lib.getExe config.services.sabnzbd.package} -f ${state}/sabnzbd.ini";
+        };
       };
 
       axon.persist.state.directories = [
