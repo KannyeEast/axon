@@ -1,0 +1,112 @@
+{
+  "id": "workflowScopes01",
+  "name": "Scope tags",
+  "nodes": [
+    {
+      "id": "5336be63-bf4c-4311-a96b-bf15606f519c",
+      "name": "Item added",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "7b75b4b0-613f-4c86-ab00-6a16d4871d24",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scope-tags",
+        "options": {}
+      }
+    },
+    {
+      "id": "c9448409-a7a0-4397-9b51-b46739adfe35",
+      "name": "Seerr changed",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        200
+      ],
+      "webhookId": "24910c30-d6d0-4f6f-b4a9-e980bba10ae8",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scope-sync",
+        "options": {}
+      }
+    },
+    {
+      "id": "8f78ff4f-042e-4a40-8bc1-59ffedb123ca",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        400
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "4c697445-9536-4c58-886f-2461fec147e0",
+      "name": "Set scope tags",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        200
+      ],
+      "parameters": {
+        "jsCode": "// A person's tag is s-<first 8 hex of their Jellyfin user id>; it goes on every movie and series\n// they requested or watchlisted in Seerr and on the collections those are in. Tags of that shape are\n// this workflow's, every other tag stays. A Jellyfin user whose \"Allow items with tags\" holds\n// `scoped` gets their own tag added there. Called by Jellyfin's webhook, it tags only the added title\n// and adds its tags to its collections; otherwise it sets everything anew.\n// a host without Seerr's or Jellyfin's key has nothing to tag\nif (!$env.REQUESTS_API_KEY || !$env.JELLYFIN_API_KEY) return [];\nconst helpers = this.helpers;\nconst MARKER = 'scoped';\n// f-<8 hex>: an older tag of this kind, removed wherever found\nconst OURS = /^[sf]-[0-9a-f]{8}$/i;\n// a request the owner declined grants nothing (Seerr's MediaRequestStatus)\nconst DECLINED = 3;\nconst PAGE = 100;\n// The fields POST /Items/{id} reads (Jellyfin's ItemUpdateController.UpdateItem). It overwrites each\n// scalar with what it is sent, null too, and fails on the whole item as GET returns it (trickplay),\n// so these go back as they came. People stays out: sent, it rewrites the cast and crew.\nconst EDITABLE = [\n  'AirDays', 'AirTime', 'AirsAfterSeasonNumber', 'AirsBeforeEpisodeNumber', 'AirsBeforeSeasonNumber',\n  'Album', 'AlbumArtists', 'ArtistItems', 'AspectRatio', 'CommunityRating', 'CriticRating',\n  'CustomRating', 'DateCreated', 'DisplayOrder', 'EndDate', 'ForcedSortName', 'Genres', 'Height',\n  'IndexNumber', 'LockData', 'LockedFields', 'Name', 'OfficialRating', 'OriginalLanguage',\n  'OriginalTitle', 'Overview', 'ParentIndexNumber', 'PreferredMetadataCountryCode',\n  'PreferredMetadataLanguage', 'PremiereDate', 'ProductionLocations', 'ProductionYear', 'ProviderIds',\n  'RunTimeTicks', 'SeriesName', 'Status', 'Studios', 'Taglines', 'Tags', 'Video3DFormat',\n];\n\nconst api = (url, headers) => (method, path, qs, body) =>\n  helpers.httpRequest({ method, url: url + path, qs, body, headers, json: true, timeout: 120000 });\nconst seerr = api('http://127.0.0.1:5055', { 'X-Api-Key': $env.REQUESTS_API_KEY });\nconst jellyfin = api('http://127.0.0.1:8096', {\n  Authorization: `MediaBrowser Token=\"${$env.JELLYFIN_API_KEY}\"`,\n});\n\n// Jellyfin ids with or without dashes, the way its API writes them\nconst plain = id => id.replace(/-/g, '').toLowerCase();\nconst tagOf = userId => 's-' + plain(userId).slice(0, 8);\nconst ours = tags => new Set((tags || []).filter(tag => OURS.test(tag)).map(tag => tag.toLowerCase()));\nconst sorted = set => [...set].sort();\n\nasync function pages(path, qs) {\n  const results = [];\n  for (let skip = 0; ; skip += PAGE) {\n    const page = await seerr('GET', path, { ...qs, take: PAGE, skip });\n    results.push(...page.results);\n    if (skip + PAGE >= page.pageInfo.results) return results;\n  }\n}\n\nasync function watchlist(userId) {\n  const results = [];\n  for (let page = 1; ; page++) {\n    const result = await seerr('GET', `/api/v1/user/${userId}/watchlist`, { page });\n    results.push(...result.results);\n    if (page >= result.totalPages) return results;\n  }\n}\n\n// [tag, entry] for every title each person requested or has on their watchlist\nasync function wanted() {\n  const found = [];\n  for (const user of await pages('/api/v1/user', {})) {\n    if (!user.jellyfinUserId) continue;\n    const tag = tagOf(user.jellyfinUserId);\n    for (const request of await pages('/api/v1/request', { filter: 'all', requestedBy: user.id })) {\n      if (request.status !== DECLINED) found.push([tag, request]);\n    }\n    for (const entry of await watchlist(user.id)) found.push([tag, entry]);\n  }\n  return found;\n}\n\n// kind:provider:id -> Jellyfin item id, from the ids Jellyfin keeps for each title\nfunction providerIndex(library) {\n  const index = new Map();\n  for (const item of library) {\n    const kind = item.Type === 'Movie' ? 'movie' : 'tv';\n    for (const [provider, value] of Object.entries(item.ProviderIds || {})) {\n      index.set(`${kind}:${provider.toLowerCase()}:${value}`, plain(item.Id));\n    }\n  }\n  return index;\n}\n\n// The Jellyfin items a request or watchlist entry stands for: Seerr's link, and the title's\n// TMDb/TVDB ids found in Jellyfin, so an item counts before Seerr's scan links it.\nfunction resolve(entry, index) {\n  const media = entry.media || {};\n  const kind = media.mediaType || entry.mediaType;\n  const ids = new Set(\n    ['jellyfinMediaId', 'jellyfinMediaId4k'].filter(key => media[key]).map(key => plain(media[key])),\n  );\n  for (const provider of ['tmdb', 'tvdb']) {\n    const value = media[`${provider}Id`] || entry[`${provider}Id`];\n    const id = value && index.get(`${kind}:${provider}:${value}`);\n    if (id) ids.add(id);\n  }\n  return ids;\n}\n\nconst users = await jellyfin('GET', '/Users');\nconst admin = users.find(user => user.Policy.IsAdministrator)?.Id;\nif (!admin) throw new Error('Jellyfin has no administrator to read the library as');\nconst items = async qs =>\n  (await jellyfin('GET', '/Items', {\n    userId: admin, fields: 'Tags,ProviderIds', enableImages: false, enableUserData: false, ...qs,\n  })).Items;\n\nconst added = $('Item added').isExecuted;\nlet library;\nif (added) {\n  let body = $('Item added').first().json.body;\n  // the Webhook plugin sends text/plain unless its destination sets a Content-Type header\n  if (typeof body === 'string') body = JSON.parse(body);\n  if (!body?.ItemId) throw new Error('Item added: no ItemId in the body; template {\"ItemId\":\"{{ItemId}}\"}');\n  let [item] = await items({ ids: plain(body.ItemId) });\n  // episodes and seasons show through their series\n  if (item?.SeriesId) [item] = await items({ ids: item.SeriesId });\n  library = item && ['Movie', 'Series'].includes(item.Type) ? [item] : [];\n  if (!library.length) return [];\n} else {\n  library = await items({ includeItemTypes: 'Movie,Series', recursive: true });\n}\n\nconst index = providerIndex(library);\nconst asked = new Map();\nfor (const [tag, entry] of await wanted()) {\n  for (const id of resolve(entry, index)) {\n    if (!asked.has(id)) asked.set(id, new Set());\n    asked.get(id).add(tag);\n  }\n}\nconst want = item => asked.get(plain(item.Id)) || new Set();\n\nconst desired = new Map(library.map(item => [plain(item.Id), want(item)]));\n// an added title nobody asked for changes no collection\nconst collections = added && !want(library[0]).size\n  ? []\n  : await items({ includeItemTypes: 'BoxSet', recursive: true });\nconst relevant = [];\nfor (const collection of collections) {\n  const children = await items({ parentId: collection.Id });\n  if (added) {\n    if (!children.some(child => plain(child.Id) === plain(library[0].Id))) continue;\n    // the other children's tags stay\n    const kept = [...ours(collection.Tags)].filter(tag => tag.startsWith('s-'));\n    desired.set(plain(collection.Id), new Set([...kept, ...want(library[0])]));\n  } else {\n    desired.set(plain(collection.Id), new Set(children.flatMap(child => [...want(child)])));\n  }\n  relevant.push(collection);\n}\n\nconst changes = [];\nfor (const item of [...library, ...relevant]) {\n  const have = ours(item.Tags);\n  const tags = desired.get(plain(item.Id));\n  const plus = sorted(tags).filter(tag => !have.has(tag));\n  const minus = sorted(have).filter(tag => !tags.has(tag));\n  if (!plus.length && !minus.length) continue;\n  const current = await jellyfin('GET', `/Items/${item.Id}`, { userId: admin });\n  const update = Object.fromEntries(\n    EDITABLE.filter(field => field in current).map(field => [field, current[field]]),\n  );\n  update.Tags = [...(current.Tags || []).filter(tag => !OURS.test(tag)), ...sorted(tags)];\n  await jellyfin('POST', `/Items/${item.Id}`, undefined, update);\n  changes.push({ json: { name: item.Name ?? item.Id, add: plus, remove: minus } });\n}\n\nif (added) return changes;\nfor (const user of users) {\n  const allowed = (user.Policy.AllowedTags || []).map(tag => tag.toLowerCase());\n  const tag = tagOf(user.Id);\n  // its f- tag, replaced\n  const old = 'f-' + tag.slice(2);\n  if (!allowed.includes(MARKER) || (allowed.includes(tag) && !allowed.includes(old))) continue;\n  const { Policy: policy } = await jellyfin('GET', `/Users/${user.Id}`);\n  const others = (policy.AllowedTags || []).filter(t => ![old, tag].includes(t.toLowerCase()));\n  policy.AllowedTags = [...others, tag];\n  await jellyfin('POST', `/Users/${user.Id}/Policy`, undefined, policy);\n  changes.push({\n    json: {\n      name: `user ${user.Name}`,\n      add: allowed.includes(tag) ? [] : [tag],\n      remove: allowed.includes(old) ? [old] : [],\n    },\n  });\n}\nreturn changes;"
+      }
+    }
+  ],
+  "connections": {
+    "Item added": {
+      "main": [
+        [
+          {
+            "node": "Set scope tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Seerr changed": {
+      "main": [
+        [
+          {
+            "node": "Set scope tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Set scope tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "workflowAlerts01",
+    "saveDataSuccessExecution": "none"
+  },
+  "active": true
+}
