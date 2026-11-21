@@ -1,0 +1,28 @@
+{
+  "trash_id": "a7d3c2e94b5f4e8f9c1d6b0e2f4a8c31",
+  "trash_scores": {
+    "default": -500
+  },
+  "name": "DV HDR10+",
+  "includeCustomFormatWhenRenaming": false,
+  "specifications": [
+    {
+      "name": "Dolby Vision",
+      "implementation": "ReleaseTitleSpecification",
+      "negate": false,
+      "required": true,
+      "fields": {
+        "value": "\\b(DV|DoVi|Dolby[ .]?Vision)\\b"
+      }
+    },
+    {
+      "name": "HDR10+",
+      "implementation": "ReleaseTitleSpecification",
+      "negate": false,
+      "required": true,
+      "fields": {
+        "value": "\\bHDR10(\\+|P(lus)?\\b)"
+      }
+    }
+  ]
+}
