@@ -50,6 +50,16 @@
       # Forms, off for local addresses with the tailnet's 100.64.0.0/10 counted as local (a
       # setting config.xml has and the UI doesn't). Settings here win over config.xml
       settings = name: {
+        # names they answer to besides loopback: their route and their own address (Prowlarr's in
+        # the VPN namespace)
+        server.allowedHosts =
+          let
+            inherit (config.axon.services.${name}) route;
+          in
+          lib.concatStringsSep "," [
+            route.host
+            (lib.head (lib.splitString ":" (lib.removePrefix "http://" route.internal)))
+          ];
         auth = {
           method =
             if config.axon.services.${name}.route.gate && config.services.oauth2-proxy.enable then

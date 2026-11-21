@@ -63,7 +63,7 @@
               {
                 to = mail.alert;
                 send_resolved = true;
-                headers.Subject = ''[{{ .CommonLabels.host }}] {{ .CommonAnnotations.summary }}{{ if eq .Status "resolved" }} (resolved){{ end }}'';
+                headers.Subject = ''[{{ .CommonLabels.host }}] {{ or .CommonAnnotations.summary .CommonLabels.alertname }}{{ if eq .Status "resolved" }} (resolved){{ end }}'';
                 html =
                   lib.replaceStrings
                     [
@@ -174,9 +174,10 @@
                     "2h"
                     "{{ $value }} queued, nothing downloading"
                   )
-                  # the apps' own health checks: indexers or download client failing, missing folders
+                  # the apps' own health checks: indexers or download client failing, missing folders; their
+                  # updates come with the system
                   (rule "ArrUnhealthy"
-                    ''{__name__=~"(sonarr|radarr|prowlarr)_system_health_issues",type=~"warning|error"} == 1''
+                    ''{__name__=~"(sonarr|radarr|prowlarr)_system_health_issues",type=~"warning|error",source!="UpdateCheck"} == 1''
                     "1h"
                     "{{ $labels.job }}: {{ $labels.message }}"
                   )
