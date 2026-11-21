@@ -112,7 +112,13 @@ in
                         public = mkOption {
                           type = types.bool;
                           default = false;
-                          description = "Also reachable from the internet through the gateway's tunnel; on the tailnet either way. Only for services with their own login: nothing gates a route.";
+                          description = "Also reachable from the internet through the gateway's tunnel; on the tailnet either way. Only for services with their own login: the tunnel bypasses the gate.";
+                        };
+                        gate = mkOption {
+                          type = types.bool;
+                          default = !route.config.public;
+                          defaultText = "!public";
+                          description = "The gateway's login (oauth2-proxy) in front of the route; false for what can't follow a browser login.";
                         };
                       };
                     })
@@ -177,6 +183,11 @@ in
                                   default = null;
                                   description = "Where the tile leads instead of the route.";
                                 };
+                                group = mkOption {
+                                  type = types.nullOr types.str;
+                                  default = null;
+                                  description = "Its group instead of the service's.";
+                                };
                                 description = mkOption {
                                   type = types.nullOr types.str;
                                   default = null;
@@ -188,6 +199,18 @@ in
                       };
                     })
                   );
+                };
+
+                space = mkOption {
+                  type = types.nullOr types.str;
+                  default = null;
+                  description = "The volume or space in host.toml [limits] whose use its tile shows, against that limit.";
+                };
+
+                units = mkOption {
+                  type = types.listOf types.str;
+                  default = [ ];
+                  description = "Its systemd services, by name without .service: helpers, timers' jobs, its own Redis and its container's unit included. Their logs, a container's own lines too, go under its name.";
                 };
 
                 backup = {

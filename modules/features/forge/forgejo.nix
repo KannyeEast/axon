@@ -103,7 +103,16 @@
       };
 
       axon.services.git = {
-        route.port = port;
+        space = "forgejo";
+        units = [
+          "forgejo"
+          "forgejo-dump"
+          "forgejo-secrets"
+        ];
+        route = {
+          inherit port;
+          gate = false;
+        };
         dashboard = {
           name = "Forgejo";
           group = "Code";

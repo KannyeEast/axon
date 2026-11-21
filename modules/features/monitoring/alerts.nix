@@ -1,13 +1,27 @@
 # Alert rules over Prometheus' metrics, and Alertmanager to mail them through axon.mail: one
-# mail when an alert fires, again every 12 hours while it lasts, and one when it's resolved.
-# Without an account they only show in its UI, at alerts.<domain> where silences are set too.
+# mail when an alert fires, again every 12 hours while it lasts, and one when it's resolved. A
+# failed service on any host listing metrics is one (UnitFailed), mailed by _unit-mail.py with the
+# end of its log from Loki and a link to the rest. Watchdog always fires, so a mail comes once a
+# week. Without an account alerts only show in Alertmanager's UI, at alerts.<domain> where
+# silences are set too.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
-    { config, ... }:
+    { config, pkgs, ... }:
     let
-      inherit (config.axon) host mail;
+      inherit (config.axon)
+        cluster
+        host
+        mail
+        routed
+        services
+        ;
       port = 9093;
+      hook = 9096;
+      grafana = services.grafana.route.url;
+      downloads = lib.any (
+        data: lib.elem "metrics" data.host.features && lib.elem "downloads" data.host.features
+      ) (lib.attrValues cluster.hosts);
 
       rule = alert: expr: wait: summary: {
         inherit alert expr;
@@ -15,11 +29,29 @@
         annotations.summary = summary;
       };
 
-      # the same page as the other mails; whether the alert is over is only known when it's sent
+      # the page from axon.mail; whether the alert is over is only known when it's sent. The
+      # weekly Watchdog mail is good news, so it looks like a resolved one
       status =
-        firing: resolved: ''{{ if eq .Status "resolved" }}${resolved}{{ else }}${firing}{{ end }}'';
+        firing: resolved:
+        ''{{ if or (eq .Status "resolved") (eq .CommonLabels.alertname "Watchdog") }}${resolved}{{ else }}${firing}{{ end }}'';
       level = field: status mail.levels.fail.${field} mail.levels.ok.${field};
       alertTimes = ''since {{ .StartsAt.Local.Format "Mon 02.01. 15:04" }}{{ if eq .Status "resolved" }}, resolved {{ .EndsAt.Local.Format "Mon 02.01. 15:04" }}{{ end }}'';
+      # an alert's unit in Logs Drilldown, from an hour before it fired. html/template escapes the
+      # html part's values by itself; the text part's go through urlquery
+      logs =
+        escape:
+        "${grafana}/a/grafana-lokiexplore-app/explore/unit/{{ ${escape ".Labels.unit"} }}/logs?var-filters=unit%7C%3D%7C{{ ${escape ".Labels.unit"} }}&var-filters=host%7C%3D%7C{{ ${escape ".Labels.host"} }}&from={{ (.StartsAt.Add -3600000000000).UnixMilli }}&to=now";
+      # below an alert's summary: its unit's logs where Grafana is routed, and its link annotation
+      htmlLinks =
+        lib.optionalString routed ''{{ if .Labels.unit }}<p style="margin:0 0 2px;font-size:14px;"><a href="${
+          lib.replaceStrings [ "&" ] [ "&amp;" ] (logs lib.id)
+        }">Logs of {{ .Labels.unit }}</a></p>{{ end }}''
+        + ''{{ with .Annotations.link }}<p style="margin:0 0 2px;font-size:14px;"><a href="{{ . }}">{{ . }}</a></p>{{ end }}'';
+      textLinks =
+        lib.optionalString routed "{{ if .Labels.unit }}Logs: ${
+          logs (field: "${field} | urlquery")
+        }\n{{ end }}"
+        + "{{ with .Annotations.link }}{{ . }}\n{{ end }}";
 
       receiver =
         if mail == null then
@@ -31,7 +63,7 @@
               {
                 to = mail.alert;
                 send_resolved = true;
-                headers.Subject = ''[{{ .CommonLabels.host }}] {{ .CommonAnnotations.summary }}{{ if eq .Status "resolved" }} (resolved){{ end }}'';
+                headers.Subject = ''[{{ .CommonLabels.host }}] {{ or .CommonAnnotations.summary .CommonLabels.alertname }}{{ if eq .Status "resolved" }} (resolved){{ end }}'';
                 html =
                   lib.replaceStrings
                     [
@@ -44,7 +76,7 @@
                       "@body@"
                     ]
                     [
-                      (status "Firing" "Resolved")
+                      ''{{ if eq .CommonLabels.alertname "Watchdog" }}Working{{ else }}${status "Firing" "Resolved"}{{ end }}''
                       (level "color")
                       (level "tint")
                       "<b>{{ .CommonLabels.alertname }}</b>"
@@ -53,18 +85,32 @@
                       ''
                         {{ range .Alerts }}
                         <p style="margin:0 0 2px;font-weight:600;">{{ .Annotations.summary }}</p>
+                        ${htmlLinks}
                         <p style="margin:0 0 14px;color:#6b7280;font-size:14px;">${alertTimes}</p>
                         {{ end }}''
                     ]
                     mail.page;
                 text = ''
                   {{ range .Alerts }}{{ .Labels.alertname }} on {{ .Labels.host }}: {{ .Annotations.summary }}
-                  ${alertTimes}
+                  ${textLinks}${alertTimes}
 
                   {{ end }}'';
               }
             ];
           };
+
+      unitMail = pkgs.writeText "unit-mail.json" (
+        lib.toJSON {
+          page = pkgs.writeText "page.html" mail.page;
+          inherit (mail) levels port;
+          smtp = mail.host;
+          to = mail.alert;
+          loki = "http://127.0.0.1:${toString config.services.loki.configuration.server.http_listen_port}";
+          grafana = if routed then grafana else "";
+          sender = host.name;
+          listen = hook;
+        }
+      );
     in
     {
       services.prometheus = {
@@ -74,39 +120,66 @@
               {
                 name = "axon";
                 rules = [
-                  (rule "HostDown" ''up{job="node",class="server"} == 0'' "5m" "unreachable for 5 minutes")
-                  (rule "ExporterDown" ''up{job!="node",class="server"} == 0'' "5m"
-                    "the {{ $labels.job }} exporter doesn't answer"
-                  )
+                  (rule "HostDown" ''up{job="node",class="server"} == 0'' "5m" "unreachable")
+                  (rule "ExporterDown" ''up{job!="node",class="server"} == 0'' "5m" "{{ $labels.job }} exporter down")
                   (rule "DiskFull"
                     ''1 - node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes > 0.85''
                     "15m"
                     "{{ $labels.mountpoint }} is {{ $value | humanizePercentage }} full"
                   )
                   (rule "CpuBusy" ''1 - avg by (host) (rate(node_cpu_seconds_total{mode="idle"}[5m])) > 0.9'' "15m"
-                    "CPU at {{ $value | humanizePercentage }} for 15 minutes"
+                    "CPU at {{ $value | humanizePercentage }}"
                   )
                   (rule "MemoryLow" "node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.1" "10m"
-                    "only {{ $value | humanizePercentage }} of memory available"
+                    "{{ $value | humanizePercentage }} memory free"
                   )
                   (rule "Hot" "node_hwmon_temp_celsius > 85" "10m"
                     "{{ $labels.chip }} {{ $labels.sensor }} at {{ $value }} °C"
                   )
-                  (rule "DiskUnhealthy" "smartctl_device_smart_status != 1" "0m"
-                    "SMART reports {{ $labels.device }} as failing"
-                  )
+                  (rule "DiskUnhealthy" "smartctl_device_smart_status != 1" "0m" "{{ $labels.device }} failing")
                   (rule "BtrfsErrors" "increase(node_btrfs_device_errors_total[1h]) > 0" "0m"
-                    "{{ $labels.device }} has new {{ $labels.type }} errors"
+                    "{{ $labels.device }}: new {{ $labels.type }} errors"
                   )
                   (rule "ServiceDown" ''probe_success{job="service"} == 0'' "2m"
                     "{{ $labels.service }} doesn't answer"
                   )
-                  (rule "RouteDown" ''probe_success{job="route"} == 0'' "5m"
-                    "{{ $labels.instance }} is not reachable as it should be"
-                  )
+                  (rule "RouteDown" ''probe_success{job="route"} == 0'' "5m" "{{ $labels.instance }} unreachable")
                   (rule "CertificateExpiring" ''probe_ssl_earliest_cert_expiry{job="route"} - time() < 14 * 86400''
                     "0m"
-                    "the certificate of {{ $labels.instance }} expires in {{ $value | humanizeDuration }}"
+                    "{{ $labels.instance }} certificate expires in {{ $value | humanizeDuration }}"
+                  )
+                  # the node exporter names the unit in name; unit is the label its logs carry
+                  (rule "UnitFailed"
+                    ''label_replace(node_systemd_unit_state{state="failed"} == 1, "unit", "$1", "name", "(.+)")''
+                    "0m"
+                    "{{ $labels.unit }} failed"
+                  )
+                  (rule "SpaceFull" "axon_space_used_bytes / axon_space_limit_bytes > 0.9" "15m"
+                    "{{ $labels.space }} {{ $value | humanizePercentage }} full"
+                  )
+                  {
+                    alert = "Watchdog";
+                    expr = "vector(1)";
+                    # the subject names the host an alert is about
+                    labels.host = host.name;
+                    annotations = {
+                      summary = "alerting works";
+                    }
+                    // lib.optionalAttrs routed { link = "${grafana}/d/start"; };
+                  }
+                ]
+                ++ lib.optionals downloads [
+                  (rule "DownloadsStalled"
+                    "sabnzbd_queue_size > 0 and sabnzbd_paused == 0 and sabnzbd_queue_download_rate_bytes_per_second == 0"
+                    "2h"
+                    "{{ $value }} queued, nothing downloading"
+                  )
+                  # the apps' own health checks: indexers or download client failing, missing folders; their
+                  # updates come with the system
+                  (rule "ArrUnhealthy"
+                    ''{__name__=~"(sonarr|radarr|prowlarr)_system_health_issues",type=~"warning|error",source!="UpdateCheck"} == 1''
+                    "1h"
+                    "{{ $labels.job }}: {{ $labels.message }}"
                   )
                 ];
               }
@@ -121,6 +194,9 @@
           listenAddress = "127.0.0.1";
           inherit port;
           webExternalUrl = if config.axon.routed then config.axon.services.alerts.route.url else null;
+          # Alertmanager forgets a sent mail after this long and then sends it again, so it must
+          # outlast Watchdog's week
+          extraFlags = [ "--data.retention=192h" ];
           # $MAIL_* are filled in from the environment file at start
           environmentFile = if mail != null then config.sops.templates."alertmanager.env".path else null;
           configuration = {
@@ -138,8 +214,29 @@
                 "service"
               ];
               repeat_interval = "12h";
+              routes = [
+                {
+                  matchers = [ ''alertname="Watchdog"'' ];
+                  repeat_interval = "168h";
+                }
+              ]
+              ++ lib.optional (mail != null) {
+                matchers = [ ''alertname="UnitFailed"'' ];
+                receiver = "unit";
+              };
             };
-            receivers = [ receiver ];
+            receivers = [
+              receiver
+            ]
+            ++ lib.optional (mail != null) {
+              name = "unit";
+              webhook_configs = [
+                {
+                  url = "http://127.0.0.1:${toString hook}/";
+                  send_resolved = true;
+                }
+              ];
+            };
             # a service that's down takes its route with it, and one mail says so
             inhibit_rules = [
               {
@@ -160,7 +257,21 @@
           MAIL_FROM=${mail.address}
           MAIL_TOKEN=${mail.token}
         '';
-        restartUnits = [ "alertmanager.service" ];
+        restartUnits = [
+          "alertmanager.service"
+          "unit-mail.service"
+        ];
+      };
+
+      systemd.services.unit-mail = lib.mkIf (mail != null) {
+        description = "Mail failed units with their log";
+        wantedBy = [ "multi-user.target" ];
+        serviceConfig = {
+          DynamicUser = true;
+          Restart = "on-failure";
+          EnvironmentFile = config.sops.templates."alertmanager.env".path;
+          ExecStart = "${lib.getExe' pkgs.python3 "python3"} ${./_unit-mail.py} ${unitMail}";
+        };
       };
 
       warnings =
@@ -174,6 +285,9 @@
         }
       ];
 
-      axon.services.alerts.route.port = port;
+      axon.services.alerts = {
+        units = [ "alertmanager" ];
+        route.port = port;
+      };
     };
 }

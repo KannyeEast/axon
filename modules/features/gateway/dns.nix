@@ -45,6 +45,17 @@
             cache_optimistic = true;
           };
 
+          # lookups of this host's own services (mostly the route checks of monitoring) would
+          # drown out the devices' traffic in the numbers
+          statistics = {
+            ignored = [ "||${config.axon.domain}^" ];
+            ignored_enabled = true;
+          };
+          querylog = {
+            ignored = [ "||${config.axon.domain}^" ];
+            ignored_enabled = true;
+          };
+
           filtering = {
             # a name as the answer makes it a CNAME, which AdGuard then resolves upstream
             rewrites = lib.mapAttrsToList (_: service: {
@@ -83,6 +94,7 @@
       };
 
       axon.services.dns = {
+        units = [ "adguardhome" ];
         route.port = port;
         # without users AdGuard's API needs no login
         dashboard = {
@@ -92,7 +104,7 @@
           icon = "adguard-home.svg";
           widget.type = "adguard";
         };
-        backup.paths = [ "/var/lib/private/AdGuardHome" ];
+        # not backed up: Nix holds the settings; the rest is query logs, statistics and filter lists
       };
     };
 }

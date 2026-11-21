@@ -1,6 +1,6 @@
 # Finding things: Prowlarr manages the indexers for Radarr (movies) and Sonarr (shows),
-# Bazarr fetches subtitles. All tailnet-only, without a login. They fill the movies/ and shows/
-# folders on the media volume, so they only run on a host that has one.
+# Bazarr fetches subtitles. All tailnet-only, behind the gateway's login where it runs. They fill
+# the movies/ and shows/ folders on the media volume, so they only run on a host that has one.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
@@ -46,13 +46,29 @@
         ];
       };
 
-      # they insist on a login method; with it off for local addresses, and the tailnet's
-      # 100.64.0.0/10 counted as local (a setting config.xml has and the UI doesn't), there's no
-      # login over the tailnet. Settings here win over config.xml
-      settings.auth = {
-        method = "Forms";
-        required = "DisabledForLocalAddresses";
-        trustCgnatIpAddresses = true;
+      # they insist on a login method: External where the gateway's login stands in front, else
+      # Forms, off for local addresses with the tailnet's 100.64.0.0/10 counted as local (a
+      # setting config.xml has and the UI doesn't). Settings here win over config.xml
+      settings = name: {
+        # names they answer to besides loopback: their route and their own address (Prowlarr's in
+        # the VPN namespace)
+        server.allowedHosts =
+          let
+            inherit (config.axon.services.${name}) route;
+          in
+          lib.concatStringsSep "," [
+            route.host
+            (lib.head (lib.splitString ":" (lib.removePrefix "http://" route.internal)))
+          ];
+        auth = {
+          method =
+            if config.axon.services.${name}.route.gate && config.services.oauth2-proxy.enable then
+              "External"
+            else
+              "Forms";
+          required = "DisabledForLocalAddresses";
+          trustCgnatIpAddresses = true;
+        };
       };
 
       dashboard = name: app: {
@@ -80,12 +96,12 @@
       services.radarr = {
         enable = true;
         group = "media";
-        inherit settings;
+        settings = settings "radarr";
       };
       services.sonarr = {
         enable = true;
         group = "media";
-        inherit settings;
+        settings = settings "sonarr";
       };
       services.bazarr = {
         enable = true;
@@ -93,7 +109,7 @@
       };
       services.prowlarr = {
         enable = true;
-        inherit settings;
+        settings = settings "prowlarr";
       };
 
       systemd.services = lib.mkMerge [
@@ -148,12 +164,14 @@
 
       axon.services =
         lib.mapAttrs (name: app: {
+          units = [ name ];
           route.port = app.port;
           dashboard = dashboard name app;
           backup.paths = [ "/var/lib/${name}" ];
         }) apps
         // {
           prowlarr = {
+            units = [ "prowlarr" ];
             route = {
               inherit (prowlarr) port;
               inherit (vpn.network) address;

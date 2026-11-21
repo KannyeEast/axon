@@ -1,6 +1,7 @@
 # NVIDIA GPU load, memory and temperature for Prometheus. The node exporter can't read the
 # proprietary driver, so a service asks nvidia-smi every 15 seconds and leaves the values in a
-# textfile the node exporter serves: every host has one, so Prometheus needs no list of GPU hosts.
+# textfile the node exporter serves (exporters.nix): every host has one, so Prometheus needs no
+# list of GPU hosts.
 # Not on laptops, where asking keeps the GPU awake. While nvidia-smi fails (a driver update before
 # the reboot), the values are gone.
 { lib, ... }:
@@ -33,9 +34,6 @@
       };
     in
     lib.mkIf (nvidia && !laptop) {
-      services.prometheus.exporters.node.extraFlags = [ "--collector.textfile.directory=${dir}" ];
-      systemd.tmpfiles.rules = [ "d ${dir} 0755 root root -" ];
-
       systemd.services.gpu-metrics = {
         description = "NVIDIA GPU values for the node exporter";
         wantedBy = [ "multi-user.target" ];

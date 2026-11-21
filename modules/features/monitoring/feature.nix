@@ -1,6 +1,6 @@
 {
   axon.features.monitoring = {
-    description = "Prometheus and Grafana: metrics, history and graphs for every host listing metrics; Komodo: this host's containers";
+    description = "Prometheus, Loki and Grafana: metrics, logs, history and graphs for every host listing metrics";
     classes = [ "server" ];
   };
 }

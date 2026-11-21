@@ -1,7 +1,9 @@
 # `sandbox` opens a rootless Docker container that sees the current folder, its tools' dotfiles
 # (read-only) and the keys in ~/.config/sandbox/secrets.env; not ~, not the SSH keys.
-# `sandbox claude` runs Claude Code in it; bare `sandbox` is a shell for trying untrusted code.
-# Its home (Claude's login, shell history) persists in ~/.local/share/sandbox.
+# `sandbox claude` runs Claude Code in it (`sandbox claude --rc` reachable from claude.ai and the
+# app); bare `sandbox` is a shell for trying untrusted code. Its home (Claude's login, shell
+# history) persists in ~/.local/share/sandbox. Desktops run it on their rootless Docker; servers
+# get one for the user next to the services' daemon.
 { lib, ... }:
 {
   flake.modules.nixos.dev =
@@ -128,7 +130,12 @@
         '';
       };
     in
-    lib.mkIf (config.axon.host.class == "desktop") {
+    {
       environment.systemPackages = [ sandbox ];
+
+      virtualisation.docker.rootless.enable = true;
+      # the user's daemon is a user unit: without lingering it ends with the last SSH session, and
+      # a sandbox left running in tmux with it
+      users.users.${config.axon.user.name}.linger = lib.mkIf (config.axon.host.class == "server") true;
     };
 }

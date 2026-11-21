@@ -1,5 +1,6 @@
 # Consumer of axon.services: every routed service gets <service>.<domain> on the tailnet, proxied
-# as is; a login is the service's own. Public ones are on the tunnel as well.
+# as is; with gate (all but public ones by default) the login at login.<domain> (login.nix) stands
+# in front. Public ones are on the tunnel as well.
 # One wildcard certificate from Let's Encrypt via a Cloudflare DNS challenge covers them all.
 { lib, ... }:
 {
@@ -14,6 +15,7 @@
         ;
 
       ph = config.sops.placeholder;
+      login = config.axon.services.login.route;
       gateways = lib.attrNames (
         lib.filterAttrs (_: data: lib.elem "gateway" data.host.features) cluster.hosts
       );
@@ -60,18 +62,28 @@
           _: service:
           lib.nameValuePair service.route.host {
             useACMEHost = domain;
-            extraConfig = ''
-              # services that trust Cloudflare's client-address header must not take it from a
-              # tailnet client; the tunnel bypasses Caddy, so here it is always the real peer
-              reverse_proxy ${service.route.internal} {
-                header_up Cf-Connecting-IP {remote_host}
-                ${lib.optionalString service.route.tls ''
-                  transport http {
-                    tls_server_name ${service.route.host}
+            extraConfig =
+              lib.optionalString (service.route.gate && config.services.oauth2-proxy.enable) ''
+                forward_auth ${login.endpoint} {
+                  uri /oauth2/auth
+                  @login status 401
+                  handle_response @login {
+                    redir * ${login.url}/oauth2/start?rd={scheme}://{host}{http.request.uri_escaped}
                   }
-                ''}
-              }
-            '';
+                }
+              ''
+              + ''
+                # services that trust Cloudflare's client-address header must not take it from a
+                # tailnet client; the tunnel bypasses Caddy, so here it is always the real peer
+                reverse_proxy ${service.route.internal} {
+                  header_up Cf-Connecting-IP {remote_host}
+                  ${lib.optionalString service.route.tls ''
+                    transport http {
+                      tls_server_name ${service.route.host}
+                    }
+                  ''}
+                }
+              '';
           }
         ) routes;
       };

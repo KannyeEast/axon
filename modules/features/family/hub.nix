@@ -84,6 +84,7 @@
       ];
 
       axon.services.ha = {
+        units = [ "docker-home-assistant" ];
         route = {
           inherit port;
           public = true;
