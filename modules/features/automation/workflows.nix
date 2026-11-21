@@ -17,6 +17,8 @@
           N8N_WEBHOOK_URL = route.origin;
           # the gateway: client addresses come from X-Forwarded-For
           N8N_PROXY_HOPS = 1;
+          # its AI workflow builder, on by default, asks for a model; none is set up
+          N8N_DISABLED_MODULES = "instance-ai";
         };
       };
 
