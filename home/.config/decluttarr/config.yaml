@@ -2,7 +2,7 @@
 # for 3 runs is removed, blocklisted and searched again; the app deletes it in SABnzbd. test_run
 # only logs what it would do.
 general:
-  test_run: true
+  test_run: false
   timer: 10
 
 jobs:
