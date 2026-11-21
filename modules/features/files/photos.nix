@@ -19,6 +19,9 @@
       ];
     in
     lib.mkIf (config.axon.host.class == "server") {
+      # at notice it logs each of its snapshots, every few minutes
+      services.redis.servers.immich.logLevel = "warning";
+
       services.immich = {
         enable = true;
         # "localhost" binds to ::1 only, and the gateway proxies to 127.0.0.1
