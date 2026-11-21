@@ -170,7 +170,7 @@
                 ]
                 ++ lib.optionals downloads [
                   (rule "DownloadsStalled"
-                    "sabnzbd_queue_size > 0 and sabnzbd_paused == 0 and sabnzbd_queue_download_rate_bytes_per_second == 0"
+                    "sabnzbd_queue_length > 0 and sabnzbd_paused == 0 and sabnzbd_speed_bps == 0"
                     "2h"
                     "{{ $value }} queued, nothing downloading"
                   )

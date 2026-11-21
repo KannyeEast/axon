@@ -125,6 +125,8 @@
           group = "Network";
           description = "Accounts and login";
           icon = "kanidm.svg";
+          # its login page logs every visit without a session as an error
+          monitor = "/status";
         };
         backup.paths = [ online_backup.path ];
       };

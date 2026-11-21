@@ -1,11 +1,11 @@
 # Exporters for the download stack, while this host lists metrics and a host runs monitoring, which
 # scrapes them on the ports written out here and in monitoring/metrics.nix: exportarr for Sonarr,
-# Radarr and Prowlarr, and SABnzbd's queue, each with its key dashboard/<name>/key. They answer on
+# Radarr, Prowlarr and SABnzbd (its queue), each with its key dashboard/<name>/key. They answer on
 # the overlay only.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
-    { config, ... }:
+    { config, pkgs, ... }:
     let
       inherit (config.axon) cluster host routes;
       secret = name: "dashboard/${name}/key";
@@ -50,17 +50,56 @@
         }
 
         (lib.mkIf (hasKey "usenet") {
-          services.prometheus.exporters.sabnzbd = {
-            enable = true;
-            port = sabnzbd;
-            servers = [
-              {
-                baseUrl = routes.usenet.route.internal;
-                apiKeyFile = config.sops.secrets.${secret "usenet"}.path;
-              }
-            ];
+          # exportarr has no NixOS module for SABnzbd, so the unit is written out as the module would
+          systemd.services.exportarr-sabnzbd = {
+            description = "Prometheus exporter for SABnzbd";
+            wantedBy = [ "multi-user.target" ];
+            environment = {
+              PORT = toString sabnzbd;
+              URL = routes.usenet.route.internal;
+              API_KEY_FILE = "%d/api-key";
+            };
+            after = [ "network.target" ];
+            serviceConfig = {
+              DynamicUser = true;
+              Restart = "always";
+              LoadCredential = "api-key:${config.sops.secrets.${secret "usenet"}.path}";
+              ExecStart = "${lib.getExe pkgs.exportarr} sabnzbd";
+              CapabilityBoundingSet = [ "" ];
+              DeviceAllow = [ "" ];
+              LockPersonality = true;
+              MemoryDenyWriteExecute = true;
+              NoNewPrivileges = true;
+              PrivateDevices = true;
+              PrivateTmp = true;
+              ProcSubset = "pid";
+              ProtectClock = true;
+              ProtectControlGroups = true;
+              ProtectHome = true;
+              ProtectHostname = true;
+              ProtectKernelLogs = true;
+              ProtectKernelModules = true;
+              ProtectKernelTunables = true;
+              ProtectProc = "invisible";
+              ProtectSystem = "strict";
+              RemoveIPC = true;
+              RestrictAddressFamilies = [
+                "AF_INET"
+                "AF_INET6"
+              ];
+              RestrictNamespaces = true;
+              RestrictRealtime = true;
+              RestrictSUIDSGID = true;
+              SystemCallArchitectures = "native";
+              SystemCallFilter = [
+                "@system-service"
+                "~@privileged"
+              ];
+              UMask = "0077";
+              WorkingDirectory = "/tmp";
+            };
           };
-          sops.secrets.${secret "usenet"}.restartUnits = [ "prometheus-sabnzbd-exporter.service" ];
+          sops.secrets.${secret "usenet"}.restartUnits = [ "exportarr-sabnzbd.service" ];
           axon.overlay.tcpPorts = [ sabnzbd ];
         })
       ]
