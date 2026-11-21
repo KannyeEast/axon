@@ -162,6 +162,12 @@
 
         loki.process "level" {
           forward_to = [loki.write.monitoring.receiver]
+
+          // terminal colours some programs print into the journal too; they hide the level
+          stage.replace {
+            expression = ${lib.toJSON "(\\x1b\\[[0-9;]*m)"}
+            replace = ""
+          }
         ${lib.concatStrings (
           lib.mapAttrsToList (service: data: ''
             stage.match {

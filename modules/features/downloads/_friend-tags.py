@@ -2,8 +2,8 @@
 
 friend-tags.py <seerr url> <jellyfin url> [--dry-run]
 
-Started by a timer, or by a call on its systemd socket (Jellyfin's webhook on an added item): the
-calls are answered first, and a burst of them (a season's episodes) makes one run.
+Started by a timer, or by a call on its systemd socket (friend-filter, on a request or watchlist
+change): the calls are answered first, and a burst of them makes one run.
 
 The API keys come from the unit's credentials, seerr and jellyfin. A person's tag is
 f-<first 8 hex of their Jellyfin user id>; it goes on every movie and series they asked for and on
@@ -26,7 +26,7 @@ OURS = re.compile(r"f-[0-9a-f]{8}", re.IGNORECASE)
 DECLINED = 3
 PAGE = 100
 TIMEOUT = 120
-# a burst of webhook calls is over once none came for this long
+# a burst of calls is over once none came for this long
 QUIET = 10
 # The fields POST /Items/{id} reads (Jellyfin's ItemUpdateController.UpdateItem). It overwrites each
 # scalar with what it is sent, null too, and fails on the whole item as GET returns it (trickplay),

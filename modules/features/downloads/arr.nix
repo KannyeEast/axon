@@ -3,7 +3,8 @@
 # the movies/ and shows/ folders on the media volume, so they only run on a host that has one.
 # Their API keys are dashboard/<name>/key where secrets.json has it; else each keeps its own.
 # Kept only in their UIs (config.db, backed up): download clients with their keys, root folders,
-# Connect entries, Prowlarr's indexers and the apps it syncs them to.
+# Connect entries, Prowlarr's indexers and the apps it syncs them to; Bazarr's providers and
+# language profiles (its config.yaml).
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
