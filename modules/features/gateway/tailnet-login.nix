@@ -47,18 +47,22 @@
         ];
       };
 
-      services.caddy.virtualHosts."http://127.0.0.1:${toString port}".extraConfig = ''
-        @webfinger {
-          path /.well-known/webfinger
-          query resource=acct:${address}
-        }
-        header @webfinger {
-          Content-Type application/jrd+json
-          Access-Control-Allow-Origin *
-        }
-        respond @webfinger `${answer}` 200
-        respond 404
-      '';
+      # any name: the tunnel asks with the domain's
+      services.caddy.virtualHosts."http://:${toString port}" = {
+        listenAddresses = [ "127.0.0.1" ];
+        extraConfig = ''
+          @webfinger {
+            path /.well-known/webfinger
+            query resource=acct:${address}
+          }
+          header @webfinger {
+            Content-Type application/jrd+json
+            Access-Control-Allow-Origin *
+          }
+          respond @webfinger `${answer}` 200
+          respond 404
+        '';
+      };
 
       services.cloudflared.tunnels.${gateway.tunnel}.ingress.${domain} =
         "http://127.0.0.1:${toString port}";
