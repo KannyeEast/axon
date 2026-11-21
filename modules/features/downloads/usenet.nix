@@ -1,7 +1,8 @@
 # SABnzbd: downloads from Usenet, outside the VPN (the provider connection is SSL; nobody else
 # sees it). Unfinished downloads on the scratch volume, finished ones next to the torrents on the
 # media volume by category (movies, tv) for Radarr and Sonarr; in its state folder without those
-# volumes. UI settings (provider, connections, API key) are kept; declared ones win on every start.
+# volumes. UI settings (provider, connections) are kept; declared ones win on every start. The API
+# key is dashboard/usenet/key where secrets.json has it; else SABnzbd keeps its own.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
@@ -12,6 +13,8 @@
       finished = "${volumes.media or state}/downloads";
       incomplete = "${volumes.scratch or state}/usenet";
       port = 8080;
+      key = "dashboard/usenet/key";
+      hasKey = lib.hasAttrByPath (lib.splitString "/" key) config.axon.secrets;
       folders = [
         finished
         incomplete
@@ -33,6 +36,7 @@
             complete_dir = finished;
             # Radarr and Sonarr, in the media group, move and delete what lands here
             permissions = "775";
+            api_key = lib.mkIf hasKey "@api_key@";
           };
           categories = {
             movies = {
@@ -45,6 +49,13 @@
             };
           };
         };
+        secretValues = lib.mkIf hasKey { "@api_key@" = config.sops.secrets.${key}.path; };
+      };
+
+      # read by its preStart, which runs as sabnzbd
+      sops.secrets.${key} = lib.mkIf hasKey {
+        owner = config.services.sabnzbd.user;
+        restartUnits = [ "sabnzbd.service" ];
       };
 
       # the folders may be on data disks that are missing at boot (nofail): wait for them, and

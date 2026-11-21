@@ -65,6 +65,12 @@
 
       # its default 3000 is AdGuard's
       services.gotenberg.port = 3002;
+      # it pushes OpenTelemetry data to a collector on localhost by default and logs every failure
+      systemd.services.gotenberg.environment = {
+        OTEL_METRICS_EXPORTER = "none";
+        OTEL_TRACES_EXPORTER = "none";
+        OTEL_LOGS_EXPORTER = "none";
+      };
 
       # on a new space the empty folders tmpfiles made at boot give way to a subvolume; Paperless
       # won't start without them, so they are made again inside it

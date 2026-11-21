@@ -31,6 +31,7 @@ matters here, and the concrete fix. A choice recorded in DECISIONS.md is not a f
 ```
 flake.nix            inputs; outputs = every .nix under modules/ (import-tree)
 cluster.toml         relations between machines: [ssh], [sync], [external]; the repo's remotes: [repo]
+tailnet.hujson       the tailnet's access rules, applied by CI after a merge into stable
 DECISIONS.md         deliberate choices that look like mistakes; never "fixed" or flagged
 .forgejo/            CI: check and review on pull requests (merged without findings), main published from stable; the reviewer's guide;
                      findings.sh, the latest review's open findings for the author
@@ -151,6 +152,20 @@ nix eval --raw "git+file://$PWD?ref=HEAD#nixosConfigurations.<host>.config.syste
 
 `nix flake check` catches types, missing options and bad references, not a package that fails
 to build or a service that fails to start. Say when a change is unverified and why.
+
+## Logs and metrics
+
+The host that lists `monitoring` keeps every host's journal in Loki (`:3100`) and their metrics in
+Prometheus (`:9090`), both open on the tailnet without a login; read them directly instead of
+asking the owner for logs. Log labels: `host`, `unit`, `service_name` (the `axon.services` entry),
+`level` (journald's keywords: `err`, `warning`, …), `container`.
+
+```sh
+loki=http://<monitoring host>:3100 prom=http://<monitoring host>:9090
+curl -sG $loki/loki/api/v1/query_range --data-urlencode 'query={service_name="downloads",level=~"err|crit"}' \
+  --data-urlencode since=24h --data-urlencode limit=50 | jq -r '.data.result[].values[][1]'
+curl -sG $prom/api/v1/query --data-urlencode 'query=ALERTS{alertstate="firing"}' | jq '.data.result'
+```
 
 ## Boundaries
 

@@ -52,7 +52,7 @@ To change one, change it here in the same commit, with the new reason.
 | Home Assistant (family/hub.nix) has no Kanidm login (axon.sso), only its own accounts with TOTP | the only add-on (hass-oidc-auth) can't log in inside the Companion app (a code entered in the browser instead), its button fails on HA 2026.10+ (issue #446), and roles follow Kanidm only at first login |
 | DNS records for public routes are made by hand at Cloudflare | not managed from this repo; a new public route needs its tunnel record (`cloudflared tunnel route dns`), a tailnet-only one none |
 | Vaultwarden's admin page exists only while `secrets.json` holds `vaultwarden/admin-token` (passwords/vault.nix) | it is needed only to invite the family; off otherwise, so the public route has no admin login to attack |
-| Radarr, Sonarr and Prowlarr settings (quality profiles, indexers) live in their UIs, not in Nix | they are per-host choices |
+| Radarr's and Sonarr's quality profiles and custom formats are a dotfile for Recyclarr (downloads/profiles.nix); indexers, download clients and root folders stay in the UIs | profiles are choices worth keeping in git; the rest holds credentials or rarely changes |
 | qBittorrent's hardlinks into the library fail (it writes 0644) | btrfs shares the data anyway, so no space is lost |
 | One service server per cluster for now: the gateway (gateway/proxy.nix) and Kanidm (gateway/accounts.nix) take only their own host's services; another server's routed services get no route or login, and a warning says so (server/headless.nix) | there is no contract yet for services on other hosts |
 | Nextcloud is file storage only | no calendar, contacts or other apps |

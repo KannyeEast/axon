@@ -170,9 +170,13 @@
                 ]
                 ++ lib.optionals downloads [
                   (rule "DownloadsStalled"
-                    "sabnzbd_queue_size > 0 and sabnzbd_paused == 0 and sabnzbd_queue_download_rate_bytes_per_second == 0"
+                    "sabnzbd_queue_length > 0 and sabnzbd_paused == 0 and sabnzbd_speed_bps == 0"
                     "2h"
                     "{{ $value }} queued, nothing downloading"
+                  )
+                  # a hung post-processing keeps it paused, as does a pause that was forgotten
+                  (rule "DownloadsPaused" "sabnzbd_queue_length > 0 and sabnzbd_paused == 1" "2h"
+                    "{{ $value }} queued, paused"
                   )
                   # the apps' own health checks: indexers or download client failing, missing folders; their
                   # updates come with the system
