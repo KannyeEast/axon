@@ -26,21 +26,5 @@
       groupName: "flake inputs",
       schedule: ["before 6am on monday"],
     },
-    {
-      // its registry also holds commit tags, some of them all digits
-      matchPackageNames: ["ghcr.io/moghtech/komodo-core"],
-      allowedVersions: "/^\\d+\\.\\d+\\.\\d+$/",
-    },
-    {
-      // FerretDB and the Postgres it runs on move together
-      matchPackageNames: ["ghcr.io/ferretdb/ferretdb", "ghcr.io/ferretdb/postgres-documentdb"],
-      groupName: "ferretdb",
-    },
-    {
-      // <postgres major>-<documentdb version>-ferretdb-<ferretdb version>; the major stays, as a new
-      // one can't read the old one's data
-      matchPackageNames: ["ghcr.io/ferretdb/postgres-documentdb"],
-      versioning: "regex:^(?<compatibility>\\d+)-(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-ferretdb-\\d+\\.\\d+\\.\\d+$",
-    },
   ],
 }

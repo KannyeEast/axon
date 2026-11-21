@@ -47,6 +47,20 @@ html[data-start-view="compact"] #layout-groups .service-container:not(:has(ifram
   display: none !important;
 }
 
+/* ── logs link ──────── */
+/* _start-page.js puts it in Homepage's tags at a tile's top right, as tall as the status dot's box */
+#layout-groups .start-logs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 44px;
+  color: #a8a8a8;
+}
+#layout-groups .start-logs:hover {
+  color: #ececec;
+}
+
 /* ── header ──────── */
 /* lined up with the groups below, which have a padding of 0.25rem */
 #start-page {

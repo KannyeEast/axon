@@ -28,7 +28,10 @@ in
         ];
       };
 
-      axon.services.ssh.backup.paths = [ "/persist/etc/ssh" ];
+      axon.services.ssh = {
+        units = [ "sshd" ];
+        backup.paths = [ "/persist/etc/ssh" ];
+      };
 
       # every host in the cluster trusts every other host by its recorded key
       programs.ssh.knownHosts =

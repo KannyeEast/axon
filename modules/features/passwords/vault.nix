@@ -85,6 +85,10 @@
       ++ lib.optional (!volumes ? data) backups;
 
       axon.services.vault = {
+        units = [
+          "backup-vaultwarden"
+          "vaultwarden"
+        ];
         route = {
           inherit port;
           public = true;

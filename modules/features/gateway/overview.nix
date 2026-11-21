@@ -1,8 +1,9 @@
 # The start page (Homepage) at home.<domain>: a tile per service with a dashboard entry, grouped,
 # linked to its route, with a status dot and, where it sets a widget, live numbers (amber where the
 # widget's highlight marks one). A service makes its widget key only once it runs, so its tile
-# shows no numbers until the key is in secrets.json. Below the tiles, axon.links and [gateway]
-# links; _start-page.js adds the header, attention bar and group chips.
+# shows no numbers until the key is in secrets.json. A service whose space [limits] caps shows its
+# use against that limit, from Prometheus (metrics/spaces.nix). Below the tiles, axon.links and [gateway]
+# links; _start-page.js adds the header, attention bar, group chips and the tiles' logs links.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -23,11 +24,13 @@ in
   };
 
   flake.modules.nixos.gateway =
-    { config, pkgs, ... }:
+    { config, ... }:
     let
       inherit (config.axon)
+        cluster
         gateway
         host
+        limits
         links
         routes
         ;
@@ -36,9 +39,6 @@ in
       port = 8082;
 
       tiles = lib.filterAttrs (_: service: service.dashboard != null) routes;
-      groups = lib.unique (
-        lib.sort (a: b: a < b) (lib.mapAttrsToList (_: service: service.dashboard.group) tiles)
-      );
       linkGroups = lib.unique (lib.sort (a: b: a < b) (lib.mapAttrsToList (_: link: link.group) links));
 
       # "dashboard/radarr/key" -> HOMEPAGE_VAR_DASHBOARD_RADARR_KEY
@@ -52,44 +52,93 @@ in
         )
       );
 
-      tile = service: name: instance: {
-        ${name} = {
-          href = lib.defaultTo service.route.url (instance.link or null);
-          description = lib.defaultTo service.dashboard.description (instance.description or null);
-          inherit (service.dashboard) icon;
-          siteMonitor = service.route.internal + service.dashboard.monitor;
-        }
-        //
-          lib.optionalAttrs
-            (hasKeys service && (service.dashboard.widget != null || instance.widget or { } != { }))
-            {
-              widget = {
-                url = service.route.internal;
-              }
-              // lib.defaultTo { } service.dashboard.widget
-              // lib.mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
-              // instance.widget or { };
-            };
-      };
-      tilesOf =
-        service:
-        if service.dashboard.instances == { } then
-          [ (tile service service.dashboard.name { }) ]
+      # Prometheus (its default port) on a monitoring host, this host's own where it has one; the
+      # values exist only while this host lists metrics
+      monitors = lib.attrNames (
+        lib.filterAttrs (_: data: lib.elem "monitoring" data.host.features) cluster.hosts
+      );
+      prometheus =
+        if !lib.elem "metrics" host.features || monitors == [ ] then
+          null
+        else if lib.elem host.name monitors then
+          "http://127.0.0.1:9090"
         else
-          lib.mapAttrsToList (tile service) service.dashboard.instances;
+          "http://${lib.head monitors}:9090";
+      # "7T" -> "7 TiB"
+      size =
+        limit:
+        let
+          parts = lib.match "([0-9]+)([KMGTP]?)" limit;
+          unit = lib.elemAt parts 1;
+        in
+        "${lib.head parts} ${if unit == "" then "B" else "${unit}iB"}";
+      spaceWidget = service: {
+        type = "prometheusmetric";
+        url = prometheus;
+        metrics = [
+          {
+            label = "of ${size limits.${service.space}}";
+            query = ''axon_space_used_bytes{host="${host.name}",space="${service.space}"}'';
+            format.type = "bbytes";
+          }
+        ];
+      };
+
+      tile =
+        service: name: instance:
+        let
+          widgets =
+            lib.optional
+              (hasKeys service && (service.dashboard.widget != null || instance.widget or { } != { }))
+              (
+                {
+                  url = service.route.internal;
+                }
+                // lib.defaultTo { } service.dashboard.widget
+                // lib.mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
+                // instance.widget or { }
+              )
+            # on the tile that leads to the service itself, not on those linking elsewhere
+            ++ lib.optional (
+              prometheus != null
+              && service.space != null
+              && limits ? ${service.space}
+              && instance.link or null == null
+            ) (spaceWidget service);
+        in
+        {
+          ${name} = {
+            href = lib.defaultTo service.route.url (instance.link or null);
+            description = lib.defaultTo service.dashboard.description (instance.description or null);
+            inherit (service.dashboard) icon;
+            siteMonitor = service.route.internal + service.dashboard.monitor;
+          }
+          // lib.optionalAttrs (widgets != [ ]) { inherit widgets; };
+        };
       before =
         a: b:
-        if a.dashboard.order != b.dashboard.order then
-          a.dashboard.order < b.dashboard.order
+        if a.service.dashboard.order != b.service.dashboard.order then
+          a.service.dashboard.order < b.service.dashboard.order
         else
-          a.dashboard.name < b.dashboard.name;
-      inGroup =
-        group:
-        lib.concatMap tilesOf (
-          lib.sort before (
-            lib.attrValues (lib.filterAttrs (_: service: service.dashboard.group == group) tiles)
+          a.service.dashboard.name < b.service.dashboard.name;
+      # every tile with its service and group, in order; an instance may sit in a group of its own
+      entries = lib.concatMap (
+        { name, service }:
+        map
+          (instance: {
+            inherit name;
+            group = lib.defaultTo service.dashboard.group (instance.value.group or null);
+            tile = tile service instance.name instance.value;
+          })
+          (
+            if service.dashboard.instances == { } then
+              [ (lib.nameValuePair service.dashboard.name { }) ]
+            else
+              lib.attrsToList service.dashboard.instances
           )
-        );
+      ) (lib.sort before (lib.mapAttrsToList (name: service: { inherit name service; }) tiles));
+      groups = lib.unique (lib.sort (a: b: a < b) (map (entry: entry.group) entries));
+      inGroup = group: map (entry: entry.tile) (lib.filter (entry: entry.group == group) entries);
 
       # Each group has its own rows, except groups of one tile: those share a row at the bottom,
       # above the groups of graphs. The groups named here come first, the rest alphabetically.
@@ -106,7 +155,7 @@ in
       wide = [ "System" ];
       narrow = lib.subtractLists wide groups;
       ordered = lib.filter (group: lib.elem group narrow) first ++ lib.subtractLists first narrow;
-      # for the subtitle: tiles that aren't graphs, and the machines this repository builds
+      # for the subtitle: tiles outside the graph groups, and the machines this repository builds
       serviceCount = lib.length (lib.concatMap inGroup narrow);
       hostCount = lib.length (lib.attrNames config.axon.cluster.hosts);
       single = group: lib.length (inGroup group) == 1;
@@ -134,11 +183,36 @@ in
           );
 
       # Homepage shows groups in the order of their layout entries, and Nix writes attribute sets
-      # sorted, so the layout is written out by hand, one entry per line in row order
-      layout = map layoutOf rows;
-      page = {
+      # sorted, so the layout is a list of one-entry sets, which Homepage reads in order
+      layout = map (row: lib.listToAttrs [ (layoutOf row) ]) rows;
+
+      # tile name -> its service in Grafana's Logs Drilldown (service_name from metrics/logs.nix),
+      # for every tile outside the graph groups, while this host ships its logs and Grafana is routed here
+      logs = lib.optionalAttrs (lib.elem "metrics" host.features && routes ? grafana) (
+        lib.mergeAttrsList (
+          map (
+            entry:
+            lib.mapAttrs (
+              _: _:
+              "${routes.grafana.route.url}/a/grafana-lokiexplore-app/explore/service/${entry.name}/logs?var-filters=service_name%7C%3D%7C${entry.name}"
+            ) entry.tile
+          ) (lib.filter (entry: lib.elem entry.group narrow) entries)
+        )
+      );
+    in
+    {
+      services.homepage-dashboard = {
+        enable = true;
+        listenPort = port;
+        allowedHosts = routes.home.route.host;
+        environmentFiles = [ config.sops.templates."homepage.env".path ];
+
         customCSS = lib.readFile ./_start-page.css;
-        customJS = lib.readFile ./_start-page.js;
+        customJS =
+          lib.optionalString (logs != { }) ''
+            window.startPageLogs = ${lib.toJSON logs};
+          ''
+          + lib.readFile ./_start-page.js;
 
         settings = {
           title = "Homelab";
@@ -152,6 +226,7 @@ in
           hideVersion = true;
           fullWidth = true;
           useEqualHeights = true;
+          inherit layout;
         };
 
         services = map (
@@ -176,45 +251,11 @@ in
         }) linkGroups;
       };
 
-      settingsFile = pkgs.writeText "settings.yaml" (
-        lib.concatStrings (lib.mapAttrsToList (key: value: "${key}: ${lib.toJSON value}\n") page.settings)
-        + "layout:\n"
-        + lib.concatMapStrings (entry: "  ${lib.toJSON entry.name}: ${lib.toJSON entry.value}\n") layout
-      );
-
-      yaml = pkgs.formats.yaml { };
-      # copies, not links: the container doesn't see the store. Homepage fills in a file that's
-      # missing, which the read-only mount refuses, so every file it reads is here
-      files = pkgs.runCommandLocal "homepage-config" { } (
-        "mkdir $out\n"
-        + lib.concatStrings (
-          lib.mapAttrsToList (name: path: "cp ${path} $out/${name}\n") {
-            "settings.yaml" = settingsFile;
-            "services.yaml" = yaml.generate "services.yaml" page.services;
-            "bookmarks.yaml" = yaml.generate "bookmarks.yaml" page.bookmarks;
-            "widgets.yaml" = yaml.generate "widgets.yaml" [ ];
-            "docker.yaml" = yaml.generate "docker.yaml" { };
-            "kubernetes.yaml" = yaml.generate "kubernetes.yaml" { };
-            "proxmox.yaml" = yaml.generate "proxmox.yaml" { };
-            "custom.css" = pkgs.writeText "custom.css" page.customCSS;
-            "custom.js" = pkgs.writeText "custom.js" page.customJS;
-          }
-        )
-      );
-    in
-    {
-      virtualisation.oci-containers.containers.homepage = {
-        image = "ghcr.io/gethomepage/homepage:v2.8.0@sha256:019d8f063a7299e7c1c51ee4a70b692291809af3244894fbec2c2ac7d1f71b18";
-        # widgets ask the services on 127.0.0.1, which only the host's network reaches
-        networks = [ "host" ];
-        environment = {
-          HOSTNAME = "127.0.0.1";
-          PORT = toString port;
-          HOMEPAGE_ALLOWED_HOSTS = routes.home.route.host;
-          LOG_TARGETS = "stdout";
-        };
-        environmentFiles = [ config.sops.templates."homepage.env".path ];
-        volumes = [ "${files}:/app/config:ro" ];
+      systemd.services.homepage-dashboard = {
+        # Next.js listens on every address unless told otherwise
+        environment.HOSTNAME = "127.0.0.1";
+        # Next.js exits with 143 on SIGTERM; without this every restart counts as a failure and alerts
+        serviceConfig.SuccessExitStatus = [ 143 ];
       };
 
       axon.links = gateway.links;
@@ -223,16 +264,16 @@ in
         lib.optional (waiting != [ ])
           "hosts/${host.name}/secrets.json: no widget key yet for ${lib.concatStringsSep ", " waiting}, so those tiles show no numbers; add the keys with `just secrets ${host.name}`";
 
-      # Node exits with 143 on SIGTERM; without this every restart counts as a failure and mails
-      systemd.services.docker-homepage.serviceConfig.SuccessExitStatus = [ 143 ];
-
       sops.secrets = lib.genAttrs secrets (_: { });
       sops.templates."homepage.env" = {
         content = lib.concatStrings (map (secret: "${envName secret}=${ph.${secret}}\n") secrets);
         # a running Homepage keeps the variables it started with
-        restartUnits = [ "docker-homepage.service" ];
+        restartUnits = [ "homepage-dashboard.service" ];
       };
 
-      axon.services.home.route.port = port;
+      axon.services.home = {
+        units = [ "homepage-dashboard" ];
+        route.port = port;
+      };
     };
 }

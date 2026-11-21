@@ -111,6 +111,9 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   see from the code (a quirk, a reason, a non-obvious value). Plain statements, a line or two;
   more only where the code is genuinely complex. A module's header may run a few lines, as short
   as it can be. Comments never outgrow the code they describe.
+- **Messages are terse**: alert texts, warnings, descriptions and other strings a person reads say
+  what's wrong or what it is in as few words as possible, and nothing the reader already knows
+  (the alert's name, how often it comes, what follows from it).
 - **Quirks are explained where they're handled.** A workaround for a tool, driver or service gets
   a comment on the lines that do it, saying what breaks without them.
 - **A GUI app comes with its window rules.** Adding one, find its Wayland app id (the

@@ -1,0 +1,22 @@
+[host]
+class = "desktop"
+features = ["browser", "dev", "files", "metrics", "passwords", "printing", "sync", "terminal"]
+state = "26.11" # written once at install, never changed
+key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ2hAsCwhYOIGr+SrP6YGojXIyDxo6YUjE3EomgA+eDV root@laptop"
+
+[user]
+name = "gldn"
+email = "acc-git@vexelvault.com"
+key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFLhso3QtDjYnU3q9rGCIU6Z79ir0lZEZj1rcobwL58j gldn@laptop"
+
+[locale]
+timezone = "Europe/Berlin"
+keyboard = "eu"
+
+[disk.boot]
+devices = ["/dev/disk/by-id/nvme-Micron_2400_MTFDKBA1T0QFM_23123FD2467D"]
+swap = 17
+reserve = 100
+
+[sync]
+id = "GZXHJE4-224F5ZU-JKL3JWR-56Y7M72-HGM2XUA-FNAIUTR-BET3SWH-F33W3QO"

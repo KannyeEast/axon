@@ -64,6 +64,9 @@ in
           "/var/log"
         ];
 
+        # the journal stays small on the boot disk; with a monitoring host Loki keeps 30 days
+        services.journald.settings.Journal.SystemMaxUse = "1G";
+
         # the backend; nothing outside this file depends on it
         environment.persistence = {
           "/persist" = {

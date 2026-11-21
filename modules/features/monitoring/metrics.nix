@@ -1,8 +1,10 @@
-# Prometheus: scrapes the exporters on every host listing the metrics feature and keeps 90 days.
-# Grafana reads it; it has no route of its own. The blackbox exporter checks every route:
-# "service" asks the service directly (any answer below 500 means it runs). Where this host runs
-# the gateway, "route" also calls https://<name>.<domain> the way clients do (DNS, Caddy,
-# certificate, the tunnel for public ones), which must answer.
+# Prometheus: scrapes the exporters on every host listing the metrics feature, and the download
+# stack's (downloads/exporters.nix) on those listing downloads too, and keeps 90 days.
+# Grafana reads it, and the gateway's start page over the overlay, without a login; it has no
+# route of its own. The blackbox exporter checks every route: "service" asks the service directly
+# (any answer below 500 means it runs). Where this host runs the gateway, "route" also calls
+# https://<name>.<domain> the way clients do (DNS, Caddy, certificate, the tunnel for public
+# ones), which must answer.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -16,10 +18,16 @@
         ;
       exporters = config.services.prometheus.exporters;
       scraped = lib.filterAttrs (_: data: lib.elem "metrics" data.host.features) cluster.hosts;
+      downloaders = lib.filterAttrs (_: data: lib.elem "downloads" data.host.features) scraped;
+      # Sonarr, Radarr and Prowlarr run only where a data disk mounts a media volume
+      libraries = lib.filterAttrs (
+        _: data:
+        lib.any (disk: (disk.mounts or { }) ? media) (lib.attrValues (removeAttrs data.disk [ "boot" ]))
+      ) downloaders;
 
       # every series carries the host it's about, and its class: alerts that a machine is off
       # only make sense for servers
-      job = name: exporterPort: {
+      job = name: exporterPort: hosts: {
         job_name = name;
         static_configs = lib.mapAttrsToList (name: data: {
           targets = [ "${name}:${toString exporterPort}" ];
@@ -27,7 +35,7 @@
             host = name;
             class = data.host.class;
           };
-        }) scraped;
+        }) hosts;
         # "node1" instead of "node1:9100" in graphs and alerts
         relabel_configs = [
           {
@@ -79,9 +87,14 @@
                 tls_config.insecure_skip_verify = true;
               };
             };
+            # a redirect counts: gated routes answer with the login's
             route = {
               prober = "http";
-              http.preferred_ip_protocol = "ip4";
+              http = {
+                follow_redirects = false;
+                valid_status_codes = lib.range 200 399;
+                preferred_ip_protocol = "ip4";
+              };
             };
           };
         }
@@ -96,16 +109,23 @@
 
       services.prometheus = {
         enable = true;
-        listenAddress = "127.0.0.1";
         retentionTime = "90d";
         globalConfig.scrape_interval = "30s";
         scrapeConfigs = [
-          (job "node" exporters.node.port)
-          (job "smartctl" exporters.smartctl.port)
+          (job "node" exporters.node.port scraped)
+          (job "smartctl" exporters.smartctl.port scraped)
           (probe "service" (route: route.internal) routes)
         ]
-        ++ lib.optional routed (probe "route" (route: route.url) routes);
+        ++ lib.optional routed (probe "route" (route: route.url) routes)
+        ++ lib.optional (downloaders != { }) (job "sabnzbd" 9387 downloaders)
+        ++ lib.optionals (libraries != { }) [
+          (job "sonarr" 9707 libraries)
+          (job "radarr" 9708 libraries)
+          (job "prowlarr" 9710 libraries)
+        ];
       };
+
+      axon.overlay.tcpPorts = [ config.services.prometheus.port ];
 
       axon.persist.state.directories = [
         {

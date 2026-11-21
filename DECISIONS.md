@@ -12,13 +12,16 @@ To change one, change it here in the same commit, with the new reason.
 |---|---|
 | `PasswordAuthentication = true` | a lost key must not lock you out of a machine you can't walk to |
 | No LUKS | chosen; hibernation into a plain swap partition |
-| Docker everywhere: rootful on servers for their services, rootless on desktops (classes/desktop/containers.nix, the sandbox) | servers run their services as containers, all the same way. No person's account joins the docker group, which is root by another name (Komodo's agent, a service, does), and published ports bind 127.0.0.1 only, as Docker's rules pass the firewall |
+| Services run native first; a container only where the native path fails or upstream ships only an image, its reason in its own row (Docker: rootful on servers for those services, rootless for the sandbox on every host with `dev`) | NixOS modules bring the user, state, hardening and database setup a container needs as glue; on unstable they lag upstream little. No account joins the docker group, which is root by another name, and published ports bind 127.0.0.1 only, as Docker's rules pass the firewall |
 | No Watchtower or Portainer: container images change only through Renovate's pull requests | every image is pinned to a digest, so what runs is what the repository says, reviewed like any other change |
 | JetBrains IDEs trust every project (`idea.trust.all.projects`) | chosen by the owner; there is no per-path setting |
 | The KeeShare key in `hosts/tower/home/.config/keepassxc/keepassxc.ini` | KeeShare is unused; KeePassXC generates the key itself |
 | Hardcoded domain in `home/` (Zen's pins and space routes), machine names only inside `hosts/<name>/` | `home/` is the owner's folder for all their hosts, so values the whole cluster shares may appear there; what belongs to one host goes in `hosts/<name>/home`; only the modules stay generic |
 | Kanidm (gateway/accounts.nix) is the one login for every service that has a login; there is no other identity provider | one account and one passkey per person for everything |
-| No login in front of the tailnet-only apps (the *arr apps, SABnzbd, qBittorrent, Homepage, Prometheus and the like) | the tailnet is the owner's alone; family devices aren't on it |
+| Tailnet routes get the gateway's login by default (`route.gate`); without login.nix's secrets they stay open, with a warning | the tailnet is the owner's alone, so a missing login is an extra lost, not a hole |
+| Public routes, and git, docs and cache, never get the gateway's login (`route.gate`, gateway/login.nix) | the tunnel bypasses the gateway, so on a public route it would guard only the tailnet; git, nix and Paperless's apps reach the other three without a browser and can't follow a login |
+| The tailnet logs in through Kanidm (gateway/tailnet-login.nix), which runs on a tailnet member | one login for everything; Tailscale needs Kanidm only to log in, so with key expiry off on the gateway an outage blocks new logins, not the network |
+| Loki (monitoring/logs.nix) takes pushes and queries on the tailnet without a login | every host's Alloy pushes to it machine to machine; the tailnet is the owner's alone, and people read the logs in Grafana |
 | Jellyfin keeps its own login, and Seerr, which logs in with Jellyfin accounts, follows it | TV and native apps can't do OpenID Connect; they sign in with Quick Connect |
 | Vaultwarden's master password stays separate from Kanidm | it encrypts the vault; a login elsewhere can't replace it |
 | People and their group memberships are made with the kanidm CLI, never in the repository | names and mail addresses of the family stay private |
@@ -53,7 +56,7 @@ To change one, change it here in the same commit, with the new reason.
 | qBittorrent's hardlinks into the library fail (it writes 0644) | btrfs shares the data anyway, so no space is lost |
 | One service server per cluster for now: the gateway (gateway/proxy.nix) and Kanidm (gateway/accounts.nix) take only their own host's services; another server's routed services get no route or login, and a warning says so (server/headless.nix) | there is no contract yet for services on other hosts |
 | Nextcloud is file storage only | no calendar, contacts or other apps |
-| Space usage is not on the start page | quotas are set per user in the apps; apps show the whole volume's size, as btrfs limits don't change what statfs reports |
+| A tile's space use comes from its btrfs qgroup (metrics/spaces.nix), not from the app's own widget | apps show the whole volume's size, as btrfs limits don't change what statfs reports |
 | Avahi only comes with printing | nothing else needs it since the `.local` names went |
 | `onShutdown = "shutdown"` for libvirt | a saved state with virtiofs attached can't be restored |
 
@@ -63,8 +66,7 @@ To change one, change it here in the same commit, with the new reason.
 |---|---|
 | No backup targets in any `secrets.json`; the backup feature only warns | waiting for a second server or a hosting service |
 | The `local`/`proton` names of restic targets | renaming a target loses its history |
-| No watchdog outside the cluster | a future second server would watch node1 |
-| Failure mails have a plain layout: the facts, then the log | the owner reads the log; no summary box on top |
+| No watchdog outside the cluster | the server stands next to its owner; a future second server would watch node1 |
 
 ## Desktop
 

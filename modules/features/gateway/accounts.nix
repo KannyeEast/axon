@@ -114,6 +114,7 @@
           ];
 
       axon.services.auth = {
+        units = [ "kanidm" ];
         route = {
           inherit port;
           tls = true;

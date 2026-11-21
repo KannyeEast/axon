@@ -29,6 +29,13 @@
       ]
       ++ lib.optional (!volumes ? data) dumps;
 
-      axon.services.database.backup.paths = [ dumps ];
+      axon.services.database = {
+        units = [
+          "postgresql"
+          "postgresql-setup"
+        ]
+        ++ map (name: "postgresqlBackup-${name}") config.services.postgresqlBackup.databases;
+        backup.paths = [ dumps ];
+      };
     };
 }

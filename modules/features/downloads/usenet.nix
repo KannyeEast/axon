@@ -66,6 +66,7 @@
       ];
 
       axon.services.usenet = {
+        units = [ "sabnzbd" ];
         route = { inherit port; };
         dashboard = {
           name = "SABnzbd";

@@ -29,30 +29,28 @@
     lib.mkIf (config.axon.volumes ? media) (
       lib.mkMerge [
         {
+          services.seerr = {
+            enable = true;
+            inherit port;
+          };
+          systemd.services.seerr = {
+            environment.HOST = "127.0.0.1";
+            # a static user with a fixed id owns the state: as a DynamicUser, systemd would move
+            # /var/lib/seerr into /var/lib/private, which fails on the persisted mount there
+            serviceConfig = {
+              DynamicUser = lib.mkForce false;
+              User = "seerr";
+              Group = "seerr";
+              # systemd sets the mode on every start; settings.json holds API keys
+              StateDirectoryMode = "0700";
+            };
+          };
           users.users.seerr = {
             isSystemUser = true;
             group = "seerr";
             uid = id;
           };
           users.groups.seerr.gid = id;
-
-          virtualisation.oci-containers.containers.seerr = {
-            image = "ghcr.io/seerr-team/seerr:v3.5.2@sha256:aadee014b40e28cf9aa4928bc9d1183a6eb08f8c44d543cddc9efdcb16549be2";
-            user = "${toString id}:${toString id}";
-            # reaches Jellyfin, Radarr and Sonarr on 127.0.0.1
-            networks = [ "host" ];
-            # node directly: npm wants a writable home, which this user hasn't
-            cmd = [
-              "node"
-              "dist/index.js"
-            ];
-            environment = {
-              HOST = "127.0.0.1";
-              PORT = toString port;
-              TZ = config.axon.locale.timezone;
-            };
-            volumes = [ "${state}:/app/config" ];
-          };
 
           axon.persist.state.directories = [
             {
@@ -64,6 +62,13 @@
           ];
 
           axon.services.requests = {
+            units = [
+              "seerr"
+            ]
+            ++ lib.optionals (routes ? jellyfin && missing == [ ]) [
+              "friend-filter"
+              "friend-tags"
+            ];
             route.port = port;
             dashboard = {
               name = "Seerr";

@@ -53,6 +53,11 @@ in
                 fi
               fi
               [ -e "$path" ] || ${btrfs} subvolume create "$path"
+              ${lib.optionalString (limits ? ${name}) ''
+                # a switch runs storage-limits before a new space exists, so its limit is set here too
+                ${btrfs} quota enable ${volumeOf name}
+                ${btrfs} qgroup limit ${limits.${name}} "$path"
+              ''}
               chown ${space.user}:${space.group} "$path"
               chmod 0750 "$path"
             ''

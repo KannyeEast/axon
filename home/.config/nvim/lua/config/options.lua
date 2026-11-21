@@ -9,6 +9,19 @@ o.scrolloff = 8
 o.linebreak = true
 o.mouse = "a"
 o.clipboard = "unnamedplus"
+-- over SSH there's no system clipboard: copies go to the local terminal as OSC 52, and pasting
+-- takes the last yank, as the terminal doesn't answer OSC 52 reads
+if vim.env.SSH_TTY then
+  local osc52 = require("vim.ui.clipboard.osc52")
+  local last = function()
+    return { vim.fn.split(vim.fn.getreg(""), "\n"), vim.fn.getregtype("") }
+  end
+  vim.g.clipboard = {
+    name = "OSC 52",
+    copy = { ["+"] = osc52.copy("+"), ["*"] = osc52.copy("*") },
+    paste = { ["+"] = last, ["*"] = last },
+  }
+end
 o.undofile = true
 o.ignorecase = true
 o.smartcase = true
