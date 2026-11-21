@@ -105,6 +105,8 @@
         enable = true;
         listenAddress = "127.0.0.1";
         configFile = blackbox;
+        # at info it logs every redirect a probe meets
+        extraFlags = [ "--log.prober=warn" ];
       };
 
       services.prometheus = {

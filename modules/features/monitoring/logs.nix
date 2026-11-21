@@ -40,6 +40,8 @@
           auth_enabled = false;
           server = {
             http_listen_port = port;
+            # at info it logs every query and table lookup
+            log_level = "warn";
             grpc_listen_address = "127.0.0.1";
           };
           common = {

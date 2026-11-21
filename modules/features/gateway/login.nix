@@ -61,6 +61,8 @@
           secretFile = config.sops.secrets."sso/proxy-cookie".path;
         };
         reverseProxy = true;
+        # a line per gated request, with the full URL: SABnzbd's web UI puts its API key in it
+        requestLogging = false;
         trustedProxyIP = [ "127.0.0.1" ];
         extraConfig = {
           # Kanidm refuses a client without PKCE
