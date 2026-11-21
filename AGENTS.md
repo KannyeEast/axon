@@ -31,6 +31,7 @@ matters here, and the concrete fix. A choice recorded in DECISIONS.md is not a f
 ```
 flake.nix            inputs; outputs = every .nix under modules/ (import-tree)
 cluster.toml         relations between machines: [ssh], [sync], [external]; the repo's remotes: [repo]
+tailnet.hujson       the tailnet's access rules, applied by CI after a merge into stable
 DECISIONS.md         deliberate choices that look like mistakes; never "fixed" or flagged
 .forgejo/            CI: check and review on pull requests (merged without findings), main published from stable; the reviewer's guide;
                      findings.sh, the latest review's open findings for the author

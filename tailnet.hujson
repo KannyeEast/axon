@@ -1,0 +1,24 @@
+// The tailnet's access rules. Checked on pull requests and applied after a merge into stable
+// (.forgejo/workflows/tailnet.yml); edits in the admin console get overwritten.
+{
+  "tagOwners": {
+    "tag:server": ["autogroup:admin"],
+    "tag:desktop": ["autogroup:admin"],
+  },
+
+  "grants": [
+    // desktops: everything on servers and on each other
+    {"src": ["tag:desktop"], "dst": ["tag:server", "tag:desktop"], "ip": ["*"]},
+    // servers on desktops: Prometheus (node, smartctl) and Syncthing, no SSH
+    {"src": ["tag:server"], "dst": ["tag:desktop"], "ip": ["tcp:9100", "tcp:9633", "tcp:22000", "udp:22000"]},
+    // phones and other untagged devices: web, DNS and Syncthing
+    {"src": ["autogroup:member"], "dst": ["tag:server"], "ip": ["tcp:80", "tcp:443", "tcp:53", "udp:53", "tcp:22000", "udp:22000"]},
+    {"src": ["autogroup:member"], "dst": ["tag:desktop"], "ip": ["tcp:22000", "udp:22000"]},
+    {"src": ["tag:server", "tag:desktop"], "dst": ["autogroup:member"], "ip": ["tcp:22000", "udp:22000"]},
+  ],
+
+  "tests": [
+    {"src": "tag:server", "accept": ["tag:desktop:9100"], "deny": ["tag:desktop:22"]},
+    {"src": "gldn@vexelvault.com", "accept": ["tag:server:443", "tag:server:53"], "deny": ["tag:server:22", "tag:desktop:22"]},
+  ],
+}
