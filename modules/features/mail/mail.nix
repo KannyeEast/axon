@@ -29,12 +29,14 @@
         page = lib.readFile ./_page.html;
         levels = {
           ok = {
-            color = "#1b7f5c";
-            tint = "#e6f5ef";
+            color = "#15803D";
+            tint = "#DCFCE7";
+            bar = "#16A34A";
           };
           fail = {
-            color = "#c8233f";
-            tint = "#fde8ec";
+            color = "#B91C1C";
+            tint = "#FEE2E2";
+            bar = "#DC2626";
           };
         };
       };
