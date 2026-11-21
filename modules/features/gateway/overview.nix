@@ -1,7 +1,7 @@
 # The start page (Homepage) at home.<domain>: a tile per service with a dashboard entry, grouped,
 # linked to its route, with a status dot and, where it sets a widget, live numbers (amber where the
-# widget's highlight marks one). A service makes its widget key only once it runs, so its tile
-# shows no numbers until the key is in secrets.json. A service whose space [limits] caps shows its
+# widget's highlight marks one). A tile shows no numbers until its key is in secrets.json (some
+# services make theirs only once they run). A service whose space [limits] caps shows its
 # use against that limit, from Prometheus (metrics/spaces.nix). Below the tiles, axon.links and [gateway]
 # links; _start-page.js adds the header, attention bar, group chips and the tiles' logs links.
 { lib, ... }:

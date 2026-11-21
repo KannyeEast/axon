@@ -1,7 +1,7 @@
 # Kanidm as the tailnet's login (Tailscale's custom OIDC): a client for Tailscale, and the
-# WebFinger answer on the bare domain that points Tailscale at it, public through the tunnel. The
-# login is srv-auth@<domain>: a Kanidm person with that mail, made by hand. On with sso/tailscale
-# in secrets.json and a tunnel; the bare domain needs its DNS record, like a public route.
+# WebFinger answer on the bare domain that points Tailscale at it, for any address there, public
+# through the tunnel. On with sso/tailscale in secrets.json and a tunnel; the bare domain needs its
+# DNS record, like a public route.
 { lib, ... }:
 {
   flake.modules.nixos.gateway =
@@ -19,9 +19,10 @@
         sso.provider != null
         && gateway.tunnel != null
         && lib.hasAttrByPath (lib.splitString "/" secret) config.axon.secrets;
-      address = "srv-auth@${domain}";
+      # the address is echoed back, so only plain ones are answered
+      address = "^acct:[A-Za-z0-9._+-]+@${lib.replaceStrings [ "." ] [ "[.]" ] domain}$";
       answer = lib.toJSON {
-        subject = "acct:${address}";
+        subject = "{query.resource}";
         links = [
           {
             rel = "http://openid.net/specs/connect/1.0/issuer";
@@ -53,7 +54,7 @@
         extraConfig = ''
           @webfinger {
             path /.well-known/webfinger
-            query resource=acct:${address}
+            expression {query.resource}.matches("${address}")
           }
           header @webfinger {
             Content-Type application/jrd+json

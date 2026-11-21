@@ -1,6 +1,7 @@
 # Finding things: Prowlarr manages the indexers for Radarr (movies) and Sonarr (shows),
 # Bazarr fetches subtitles. All tailnet-only, behind the gateway's login where it runs. They fill
 # the movies/ and shows/ folders on the media volume, so they only run on a host that has one.
+# Their API keys are dashboard/<name>/key where secrets.json has it; else each keeps its own.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
@@ -71,6 +72,17 @@
         };
       };
 
+      secret = name: "dashboard/${name}/key";
+      hasKey = name: lib.hasAttrByPath (lib.splitString "/" (secret name)) config.axon.secrets;
+      keyed = lib.filter hasKey [
+        "radarr"
+        "sonarr"
+        "prowlarr"
+        "bazarr"
+      ];
+      # read over config.xml, as the settings above are
+      envFile = name: lib.optional (hasKey name) config.sops.templates."${name}-key.env".path;
+
       dashboard = name: app: {
         name = lib.toSentenceCase name;
         group = "Media";
@@ -97,20 +109,38 @@
         enable = true;
         group = "media";
         settings = settings "radarr";
+        environmentFiles = envFile "radarr";
       };
       services.sonarr = {
         enable = true;
         group = "media";
         settings = settings "sonarr";
+        environmentFiles = envFile "sonarr";
       };
       services.bazarr = {
         enable = true;
         group = "media";
+        settings = lib.optionalAttrs (hasKey "bazarr") {
+          auth.apikey._secret = config.sops.secrets.${secret "bazarr"}.path;
+        };
       };
       services.prowlarr = {
         enable = true;
         settings = settings "prowlarr";
+        environmentFiles = envFile "prowlarr";
       };
+
+      sops.secrets = lib.listToAttrs (
+        map (name: lib.nameValuePair (secret name) { restartUnits = [ "${name}.service" ]; }) keyed
+      );
+      sops.templates = lib.listToAttrs (
+        map (
+          name:
+          lib.nameValuePair "${name}-key.env" {
+            content = "${lib.toUpper name}__AUTH__APIKEY=${config.sops.placeholder.${secret name}}\n";
+          }
+        ) (lib.remove "bazarr" keyed)
+      );
 
       systemd.services = lib.mkMerge [
         (lib.genAttrs [ "radarr" "sonarr" "bazarr" ] (_: {

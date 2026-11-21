@@ -11,9 +11,11 @@
       # files below their profile's format cutoff searched per night, per app
       upgrades = 50;
 
+      secret = name: "dashboard/${name}/key";
+      hasKey = name: lib.hasAttrByPath (lib.splitString "/" (secret name)) config.axon.secrets;
+
       apps = {
         radarr = {
-          inherit (config.services.radarr) dataDir;
           port = 7878;
           commands = [
             "MissingMoviesSearch"
@@ -33,7 +35,6 @@
           upgrade = ''{"name": "MoviesSearch", "movieIds": $ids}'';
         };
         sonarr = {
-          inherit (config.services.sonarr) dataDir;
           port = 8989;
           commands = [
             "MissingEpisodeSearch"
@@ -61,11 +62,10 @@
         runtimeInputs = [
           pkgs.coreutils
           pkgs.curl
-          pkgs.gnused
+          pkgs.gnugrep
           pkgs.jq
         ];
-        # the API key is the one the app made itself, read from its config.xml; a failed call
-        # fails the unit, so it is reported
+        # a failed call fails the unit, so it is reported
         text = ''
           failed=0
           post() {
@@ -80,32 +80,46 @@
           api() { curl -fsS -H "X-Api-Key: $key" "$base/$1"; }
         ''
         + lib.concatStrings (
-          lib.mapAttrsToList (name: app: ''
-            key=$(sed -n 's:.*<ApiKey>\(.*\)</ApiKey>.*:\1:p' ${app.dataDir}/config.xml 2>/dev/null || true)
-            base=http://127.0.0.1:${toString app.port}/api/v3
-            if [ -z "$key" ]; then
-              echo "${name}: no API key in ${app.dataDir}/config.xml yet, skipped"
-            else
-              ${lib.concatMapStrings (command: ''
-                post "${name}: ${command}" '{"name": "${command}"}'
-              '') app.commands}
-              if profiles=$(api qualityprofile) && below=$(${app.below}); then
-                ids=$(shuf <<<"$below" | head -n ${toString upgrades} | jq -s -c 'map(tonumber)')
-                if [ "$ids" != "[]" ]; then
-                  post "${name}: format upgrade of $(jq length <<<"$ids") of $(grep -c . <<<"$below")" \
-                    "$(jq -n -c --argjson ids "$ids" '${app.upgrade}')"
+          lib.mapAttrsToList (
+            name: app:
+            if hasKey name then
+              ''
+                key=$(<"$CREDENTIALS_DIRECTORY/${name}")
+                base=http://127.0.0.1:${toString app.port}/api/v3
+                ${lib.concatMapStrings (command: ''
+                  post "${name}: ${command}" '{"name": "${command}"}'
+                '') app.commands}
+                if profiles=$(api qualityprofile) && below=$(${app.below}); then
+                  ids=$(shuf <<<"$below" | head -n ${toString upgrades} | jq -s -c 'map(tonumber)')
+                  if [ "$ids" != "[]" ]; then
+                    post "${name}: format upgrade of $(jq length <<<"$ids") of $(grep -c . <<<"$below")" \
+                      "$(jq -n -c --argjson ids "$ids" '${app.upgrade}')"
+                  fi
+                else
+                  echo "${name}: files below the format cutoff couldn't be listed" >&2
+                  failed=1
                 fi
-              else
-                echo "${name}: files below the format cutoff couldn't be listed" >&2
-                failed=1
-              fi
-            fi
-          '') apps
+              ''
+            else
+              ''
+                echo "${name}: no ${secret name}, skipped"
+              ''
+          ) apps
         )
         + "exit $failed\n";
       };
     in
     lib.mkIf (config.axon.volumes ? media) {
+      warnings =
+        let
+          inherit (config.axon.host) name;
+          missing = lib.filter (app: !hasKey app) (lib.attrNames apps);
+        in
+        lib.optional (missing != [ ])
+          "hosts/${name}/secrets.json: no ${
+            lib.concatMapStringsSep ", " secret missing
+          }, so the backlog search skips them; add them with `just secrets ${name}`";
+
       systemd.services.backlog-search = {
         description = "Search Radarr and Sonarr for missing items and upgrades";
         after = [
@@ -115,6 +129,9 @@
         serviceConfig = {
           Type = "oneshot";
           ExecStart = lib.getExe search;
+          LoadCredential = map (name: "${name}:${config.sops.secrets.${secret name}.path}") (
+            lib.filter hasKey (lib.attrNames apps)
+          );
         };
       };
       systemd.timers.backlog-search = {
