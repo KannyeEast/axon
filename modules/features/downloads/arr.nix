@@ -2,6 +2,8 @@
 # Bazarr fetches subtitles. All tailnet-only, behind the gateway's login where it runs. They fill
 # the movies/ and shows/ folders on the media volume, so they only run on a host that has one.
 # Their API keys are dashboard/<name>/key where secrets.json has it; else each keeps its own.
+# Kept only in their UIs (config.db, backed up): download clients with their keys, root folders,
+# Connect entries, Prowlarr's indexers and the apps it syncs them to.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
@@ -71,6 +73,9 @@
           trustCgnatIpAddresses = true;
         };
       };
+
+      # the first line of a log entry in the .NET apps; a stack trace follows it
+      logStart = "^\\[(Trace|Debug|Info|Warn|Error|Fatal)\\]";
 
       secret = name: "dashboard/${name}/key";
       hasKey = name: lib.hasAttrByPath (lib.splitString "/" (secret name)) config.axon.secrets;
@@ -195,6 +200,7 @@
       axon.services =
         lib.mapAttrs (name: app: {
           units = [ name ];
+          logStart = lib.mkIf (name != "bazarr") logStart;
           route.port = app.port;
           dashboard = dashboard name app;
           backup.paths = [ "/var/lib/${name}" ];
@@ -202,6 +208,7 @@
         // {
           prowlarr = {
             units = [ "prowlarr" ];
+            inherit logStart;
             route = {
               inherit (prowlarr) port;
               inherit (vpn.network) address;

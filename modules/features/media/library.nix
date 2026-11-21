@@ -37,6 +37,8 @@
       axon.services.jellyfin = {
         space = "media";
         units = [ "jellyfin" ];
+        # its log entries' first line; a stack trace follows it
+        logStart = "^\\[\\d{2}:\\d{2}:\\d{2}\\.\\d{3}\\] \\[";
         route = {
           port = 8096;
           public = true;
