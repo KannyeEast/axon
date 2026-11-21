@@ -1,7 +1,7 @@
 # Radarr's and Sonarr's quality profiles and custom formats as a file: Recyclarr applies
 # .config/recyclarr/recyclarr.yml (and settings.yml, for formats of our own) from the checkout
 # (hosts/<name>/home wins over home/) when it changes and nightly, as TRaSH's guides move on. The file reads the keys as !env_var RADARR_API_KEY
-# and SONARR_API_KEY. recyclarr-preview shows what a run would change.
+# and SONARR_API_KEY.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
@@ -42,8 +42,10 @@
           echo "no .config/recyclarr/recyclarr.yml in the checkout, nothing to apply"
         '';
       };
-
-      unit = args: {
+    in
+    lib.mkIf (config.axon.volumes ? media && apps != [ ]) {
+      systemd.services.recyclarr = {
+        description = "Apply the Radarr and Sonarr profiles from the checkout";
         after = [
           "radarr.service"
           "sonarr.service"
@@ -55,17 +57,9 @@
           User = user.name;
           StateDirectory = "recyclarr";
           LoadCredential = map (app: "${app}:${config.sops.secrets.${secret app}.path}") apps;
-          ExecStart = "${lib.getExe sync} ${args}";
+          ExecStart = lib.getExe sync;
           Environment = "RECYCLARR_CONFIG_DIR=${state}";
         };
-      };
-    in
-    lib.mkIf (config.axon.volumes ? media && apps != [ ]) {
-      systemd.services.recyclarr = unit "" // {
-        description = "Apply the Radarr and Sonarr profiles from the checkout";
-      };
-      systemd.services.recyclarr-preview = unit "--preview" // {
-        description = "Show what applying the Radarr and Sonarr profiles would change";
       };
       systemd.timers.recyclarr = {
         wantedBy = [ "timers.target" ];
