@@ -29,10 +29,16 @@
         annotations.summary = summary;
       };
 
-      # the page from axon.mail. Watchdog always fires: its weekly mail is good news
-      watchdog =
-        ok: fail: ''{{ if eq .CommonLabels.alertname "Watchdog" }}${ok}{{ else }}${fail}{{ end }}'';
-      level = field: watchdog mail.levels.ok.${field} mail.levels.fail.${field};
+      # the page from axon.mail, by level. Watchdog always fires: its weekly mail is good news; a
+      # Reminder (pushed by an n8n workflow) is news; the rest fail
+      byLevel =
+        {
+          ok,
+          info,
+          fail,
+        }:
+        ''{{ if eq .CommonLabels.alertname "Watchdog" }}${ok}{{ else if eq .CommonLabels.alertname "Reminder" }}${info}{{ else }}${fail}{{ end }}'';
+      level = field: byLevel (lib.mapAttrs (_: colors: colors.${field}) mail.levels);
       since = ''since {{ .StartsAt.Local.Format "Mon 02.01. 15:04" }}'';
       # an alert's unit in Logs Drilldown, from an hour before it fired. html/template escapes the
       # html part's values by itself; the text part's go through urlquery
@@ -83,7 +89,11 @@
                     ]
                     [
                       "{{ .CommonLabels.alertname }} on {{ .CommonLabels.host }}{{ with .CommonAnnotations.summary }}: {{ . }}{{ end }}"
-                      (watchdog "WORKING" "FIRING")
+                      (byLevel {
+                        ok = "WORKING";
+                        info = "REMINDER";
+                        fail = "FIRING";
+                      })
                       (level "color")
                       (level "tint")
                       (level "bar")
@@ -96,7 +106,7 @@
                         {{ if ${hasLinks} }}<div style="${section}">${buttons}</div>{{ end }}
                         {{ end }}{{ else }}
                         <div style="${section}">
-                        <div style="padding:0 0 14px;font-size:12px;line-height:16px;font-weight:700;letter-spacing:0.06em;color:#6B7280;">{{ len .Alerts }} ALERTS</div>
+                        <div style="padding:0 0 14px;font-size:12px;line-height:16px;font-weight:700;letter-spacing:0.06em;color:#6B7280;">{{ len .Alerts }} {{ if eq .CommonLabels.alertname "Reminder" }}REMINDERS{{ else }}ALERTS{{ end }}</div>
                         {{ range .Alerts }}
                         <p style="margin:0;font-size:15px;line-height:22px;color:#111827;">{{ .Annotations.summary }}</p>
                         <p style="margin:0 0 12px;font-size:13px;line-height:20px;color:#6B7280;">${since}${smallLinks}</p>

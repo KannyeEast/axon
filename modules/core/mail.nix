@@ -40,7 +40,7 @@ in
             };
             levels = mkOption {
               type = types.attrsOf (types.attrsOf types.str);
-              description = "Colours per level (ok, fail): the label's color and tint, and the bar across the top.";
+              description = "Colours per level (ok, info, fail): the label's color and tint, and the bar across the top.";
             };
           };
         }

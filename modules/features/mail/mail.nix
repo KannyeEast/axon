@@ -33,6 +33,11 @@
             tint = "#DCFCE7";
             bar = "#16A34A";
           };
+          info = {
+            color = "#1D4ED8";
+            tint = "#DBEAFE";
+            bar = "#2563EB";
+          };
           fail = {
             color = "#B91C1C";
             tint = "#FEE2E2";

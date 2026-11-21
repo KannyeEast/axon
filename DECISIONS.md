@@ -24,7 +24,7 @@ To change one, change it here in the same commit, with the new reason.
 | Loki (monitoring/logs.nix) takes pushes and queries on the tailnet without a login | every host's Alloy pushes to it machine to machine; the tailnet is the owner's alone, and people read the logs in Grafana |
 | Jellyfin keeps its own login, and Seerr, which logs in with Jellyfin accounts, follows it | TV and native apps can't do OpenID Connect; they sign in with Quick Connect |
 | Vaultwarden's master password stays separate from Kanidm | it encrypts the vault; a login elsewhere can't replace it |
-| n8n (automation/workflows.nix), unfree under its Sustainable Use License, keeps its own login behind the gate, and its workflows live in its database, not in files | single sign-on and git sync are paid features |
+| n8n (automation/workflows.nix), unfree under its Sustainable Use License, keeps its own login behind the gate, and its workflow nodes may read its environment, where the API keys are | single sign-on is a paid feature; workflows are files in the checkout that take keys as `$env`, not credentials kept in the UI |
 | People and their group memberships are made with the kanidm CLI, never in the repository | names and mail addresses of the family stay private |
 | The second factor (passkey or TOTP) for `admins` is a Kanidm account policy set once by hand | Kanidm's provisioning has no account policies |
 
