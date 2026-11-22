@@ -2,8 +2,9 @@
 # linked to its route, with a status dot and, where it sets a widget, live numbers (amber where the
 # widget's highlight marks one). A tile shows no numbers until its key is in secrets.json (some
 # services make theirs only once they run). A service whose space [limits] caps shows its
-# use against that limit, from Prometheus (metrics/spaces.nix). Below the tiles, axon.links and [gateway]
-# links; _start-page.js adds the header, attention bar, group chips and the tiles' logs links.
+# use against that limit, from Prometheus (metrics/spaces.nix), which prometheusmetric widgets
+# query too. Below the tiles, axon.links and [gateway] links; _start-page.js adds the header,
+# attention bar, group chips and the tiles' logs links.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -87,17 +88,17 @@ in
       tile =
         service: name: instance:
         let
+          widget = lib.defaultTo { } service.dashboard.widget // instance.widget or { };
+          fromPrometheus = widget.type or null == "prometheusmetric";
           widgets =
-            lib.optional
-              (hasKeys service && (service.dashboard.widget != null || instance.widget or { } != { }))
-              (
-                {
-                  url = service.route.internal;
-                }
-                // lib.defaultTo { } service.dashboard.widget
-                // lib.mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
-                // instance.widget or { }
-              )
+            lib.optional (hasKeys service && widget != { } && (fromPrometheus -> prometheus != null)) (
+              {
+                url = if fromPrometheus then prometheus else service.route.internal;
+              }
+              // lib.defaultTo { } service.dashboard.widget
+              // lib.mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
+              // instance.widget or { }
+            )
             # on the tile that leads to the service itself, not on those linking elsewhere
             ++ lib.optional (
               prometheus != null

@@ -34,6 +34,10 @@
         systemd.services = lib.genAttrs (map (name: "postgresqlBackup-${name}") databases) (_: {
           unitConfig.RequiresMountsFor = [ dumps ];
         });
+        # a dump missed while the host was off runs at the next boot
+        systemd.timers = lib.genAttrs (map (name: "postgresqlBackup-${name}") databases) (_: {
+          timerConfig.Persistent = true;
+        });
 
         axon.persist.state.directories = [
           {

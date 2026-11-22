@@ -1,9 +1,9 @@
 # Alert rules over Prometheus' metrics, and Alertmanager to mail them through axon.mail: one
 # mail when an alert fires and again every 12 hours while it lasts; none when it's over. A
-# failed service on any host listing metrics is one (UnitFailed), mailed by _unit-mail.py with the
-# end of its log from Loki and a link to the rest. Watchdog always fires, so a mail comes once a
-# week. Without an account alerts only show in Alertmanager's UI, at alerts.<domain> where
-# silences are set too.
+# failed service or timer on any host listing metrics is one (UnitFailed), mailed by
+# _unit-mail.py with the end of its log from Loki and a link to the rest. Watchdog always fires,
+# so a mail comes once a week. Without an account alerts only show in Alertmanager's UI, at
+# alerts.<domain> where silences are set too.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =

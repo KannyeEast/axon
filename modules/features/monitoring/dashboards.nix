@@ -4,7 +4,8 @@
 # there as Admin; the host.toml user stays the local admin, with monitoring/password, for the API.
 # Without a gateway on this host it stays on localhost, with only its own login. The "Start page"
 # dashboard: two tables the gateway's start page embeds, graphs of the last day below, then how
-# full each volume or space capped by [limits] is (metrics/spaces.nix).
+# full each volume or space capped by [limits] is (metrics/spaces.nix) and, where a host runs
+# Postgres (monitoring/metrics.nix), its databases' size, connections and last dumps.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -265,8 +266,41 @@
           }
         )
       ];
+      # Postgres runs where a server lists files, as in monitoring/metrics.nix
+      postgres = lib.any (data: data.host.class == "server" && lib.elem "files" data.host.features) (
+        lib.attrValues scraped
+      );
+      ownDatabases = ''datname!~"postgres|template.*"'';
+      # a dump's timer reports 0 until its first run
+      dumped = ''label_replace(node_systemd_timer_last_trigger_seconds{name=~"postgresqlBackup-.+[.]timer"} > 0, "database", "$1", "name", "postgresqlBackup-(.+)[.]timer")'';
+      databases = [
+        (timeseries "Database size" { unit = "bytes"; } [
+          (query "pg_database_size_bytes{${ownDatabases}}" "{{host}} {{datname}}")
+        ])
+        (timeseries "Database connections" { } [
+          (query "pg_stat_database_numbackends{${ownDatabases}}" "{{host}} {{datname}}")
+        ])
+        (
+          table "Dumps"
+            [ "host" "database" ]
+            [
+              { Age = "max by (host, database) (time() - ${dumped})"; }
+            ]
+          // {
+            fieldConfig = {
+              defaults = { };
+              overrides = [
+                (column "host" [ (property "displayName" "Host") ])
+                (column "database" [ (property "displayName" "Database") ])
+                # nightly: amber after a missed night, red after two
+                (column "Age" ([ (property "unit" "s") ] ++ level (36 * 3600) (60 * 3600)))
+              ];
+            };
+          }
+        )
+      ];
       # two per row, in this order
-      panels = overview ++ graphs ++ spaces;
+      panels = overview ++ graphs ++ spaces ++ lib.optionals postgres databases;
 
       start = lib.toJSON {
         uid = "start";

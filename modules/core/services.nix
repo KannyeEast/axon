@@ -154,7 +154,7 @@ in
                         widget = mkOption {
                           type = types.nullOr (types.attrsOf types.anything);
                           default = null;
-                          description = "Homepage widget settings; url defaults to the route's address.";
+                          description = "Homepage widget settings; url defaults to the route's address, for a prometheusmetric widget to the cluster's Prometheus (shown only where the gateway host lists metrics and a host runs monitoring).";
                         };
                         key = mkOption {
                           type = types.bool;
