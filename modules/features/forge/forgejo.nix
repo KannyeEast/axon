@@ -127,6 +127,10 @@
           group = "Infrastructure";
           description = "Git repositories";
           icon = "forgejo.svg";
+          # Forgejo answers Gitea's API; the key is a token that reads repositories, issues and
+          # notifications
+          widget.type = "gitea";
+          key = true;
         };
         # the custom dir holds the key that encrypts secrets in the database
         backup = {

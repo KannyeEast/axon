@@ -3,7 +3,9 @@
 # failed service or timer on any host listing metrics is one (UnitFailed), mailed by
 # _unit-mail.py with the end of its log from Loki and a link to the rest. Watchdog always fires,
 # so a mail comes once a week. Without an account alerts only show in Alertmanager's UI, at
-# alerts.<domain> where silences are set too.
+# alerts.<domain> where silences are set too. Where n8n runs on this host, every alert also goes to
+# its webhook `alerts`, firing and resolved, for workflows that act on them; without a workflow on
+# that path n8n answers 404, which Alertmanager logs per alert.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -18,6 +20,7 @@
         ;
       port = 9093;
       hook = 9096;
+      n8n.url = "http://127.0.0.1:${toString config.services.n8n.environment.N8N_PORT}/webhook/alerts";
       grafana = services.grafana.route.url;
       downloads = lib.any (
         data: lib.elem "metrics" data.host.features && lib.elem "downloads" data.host.features
@@ -257,18 +260,27 @@
                 receiver = "unit";
               };
             };
-            receivers = [
-              receiver
-            ]
-            ++ lib.optional (mail != null) {
-              name = "unit";
-              webhook_configs = [
-                {
-                  url = "http://127.0.0.1:${toString hook}/";
-                  send_resolved = false;
-                }
-              ];
-            };
+            receivers =
+              map
+                (
+                  each:
+                  each
+                  // lib.optionalAttrs config.services.n8n.enable {
+                    webhook_configs = each.webhook_configs or [ ] ++ [ n8n ];
+                  }
+                )
+                (
+                  [ receiver ]
+                  ++ lib.optional (mail != null) {
+                    name = "unit";
+                    webhook_configs = [
+                      {
+                        url = "http://127.0.0.1:${toString hook}/";
+                        send_resolved = false;
+                      }
+                    ];
+                  }
+                );
             inhibit_rules = [
               # a host that's gone takes everything else of it along, and one mail says so
               {
@@ -285,7 +297,16 @@
                   "service"
                 ];
               }
-            ];
+            ]
+            # a full media space pauses the downloads on purpose (n8n's Media space)
+            ++ lib.optional downloads {
+              source_matchers = [
+                ''alertname="SpaceFull"''
+                ''space="media"''
+              ];
+              target_matchers = [ ''alertname="DownloadsPaused"'' ];
+              equal = [ "host" ];
+            };
           };
         };
       };

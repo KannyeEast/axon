@@ -1,0 +1,95 @@
+{
+  "id": "workflowSpaces01",
+  "name": "Media space",
+  "nodes": [
+    {
+      "id": "14d403ed-355c-49ab-b50e-484184ef7e11",
+      "name": "Alert",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "a16478ab-fb60-4007-909b-89bfc83cbdbe",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "alerts",
+        "options": {}
+      }
+    },
+    {
+      "id": "d4ffb196-face-41f1-9d42-a2432752b589",
+      "name": "Pause or resume",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// SpaceFull on this host's media space: firing pauses SABnzbd, resolved resumes it\n// a host without SABnzbd's key has nothing to pause\nif (!$env.USENET_API_KEY) return [];\nreturn ($input.first().json.body.alerts || [])\n  .filter(a => a.labels.alertname === 'SpaceFull' && a.labels.space === 'media' && a.labels.host === $env.AXON_HOST)\n  .map(a => ({ json: { mode: a.status === 'firing' ? 'pause' : 'resume' } }));"
+      }
+    },
+    {
+      "id": "b158f65a-bd24-4d2d-9e17-98ebf91ddb25",
+      "name": "SABnzbd",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "url": "http://127.0.0.1:8080/api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "mode",
+              "value": "={{ $json.mode }}"
+            },
+            {
+              "name": "apikey",
+              "value": "={{ $env.USENET_API_KEY }}"
+            },
+            {
+              "name": "output",
+              "value": "json"
+            }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Alert": {
+      "main": [
+        [
+          {
+            "node": "Pause or resume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pause or resume": {
+      "main": [
+        [
+          {
+            "node": "SABnzbd",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "workflowAlerts01"
+  },
+  "active": true
+}

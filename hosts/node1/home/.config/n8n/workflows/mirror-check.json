@@ -1,0 +1,85 @@
+{
+  "id": "workflowMirror01",
+  "name": "Mirror check",
+  "nodes": [
+    {
+      "id": "b2ca2e7a-e1fd-4303-b73e-bd47b58d374e",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "28cece32-20a4-4b97-a46b-049e4a3f4cd5",
+      "name": "Failing mirrors",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Forgejo's push mirrors whose last two or more syncs failed, counted across runs; a sync without\n// error resets the count. Each run posts them ending two hours on, so one alert lasts while they fail.\n// a host without Forgejo's key has nothing to check\nif (!$env.GIT_API_KEY) return [];\nconst helpers = this.helpers;\nconst PAGE = 50;\nconst forgejo = (path, qs) => helpers.httpRequest({\n  url: 'http://127.0.0.1:3030/api/v1' + path, qs, json: true,\n  headers: { Authorization: `token ${$env.GIT_API_KEY}` },\n});\nconst repos = [];\nfor (let page = 1; ; page++) {\n  const batch = await forgejo('/user/repos', { page, limit: PAGE });\n  repos.push(...batch);\n  if (batch.length < PAGE) break;\n}\n\nconst state = $getWorkflowStaticData('global');\nconst counted = state.mirrors || {};\nconst mirrors = {};\nconst failing = [];\nconst startsAt = $now.toISO();\nconst endsAt = $now.plus({ hours: 2 }).toISO();\nfor (const repo of repos) {\n  for (const mirror of await forgejo(`/repos/${repo.full_name}/push_mirrors`)) {\n    const id = `${repo.full_name} ${mirror.remote_name}`;\n    const before = counted[id] || { failures: 0, update: null };\n    // a failed sync counts once, by its time\n    const now = !mirror.last_error ? { failures: 0, update: null }\n      : mirror.last_update === before.update ? before\n      : { failures: before.failures + 1, update: mirror.last_update };\n    mirrors[id] = now;\n    if (now.failures < 2) continue;\n    // ssh://git@host/… or git@host:… -> host\n    const remote = mirror.remote_address.replace(/^\\w+:\\/\\//, '').replace(/^[^@/]*@/, '').split(/[:/]/)[0];\n    const error = mirror.last_error.trim().split('\\n')[0].slice(0, 120);\n    failing.push({ json: {\n      mirror: mirror.remote_name,\n      summary: `${repo.full_name} → ${remote}: ${error}`,\n      link: `${repo.html_url}/settings`,\n      startsAt,\n      endsAt,\n    } });\n  }\n}\nstate.mirrors = mirrors;\nreturn failing;"
+      }
+    },
+    {
+      "id": "2f6d1b7e-8c4a-4f0e-9b3d-5a7c9e1f2d48",
+      "name": "Mail through Alertmanager",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ALERTMANAGER_URL }}/api/v2/alerts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify([{ labels: { alertname: 'MirrorFailing', host: $env.AXON_HOST, service: 'git', mirror: $json.mirror }, annotations: { summary: $json.summary, link: $json.link }, startsAt: $json.startsAt, endsAt: $json.endsAt }]) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Failing mirrors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Failing mirrors": {
+      "main": [
+        [
+          {
+            "node": "Mail through Alertmanager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "workflowAlerts01"
+  },
+  "active": true
+}

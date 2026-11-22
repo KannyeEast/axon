@@ -106,15 +106,16 @@
       long = lib.concatStringsSep "|" (
         map lib.toUpper (lib.filter (token: lib.stringLength token > 3) tokens)
       );
-      # the first of level=<word> or "level":"<word>", [word], or WORD in capitals
-      named = ''(?i:\b(?:level|lvl|severity)"?\s*[=:]\s*"?)(?P<a>[A-Za-z]+)|\[(?P<b>(?i:${any}))\]|\b(?P<c>${long})\b'';
+      # the first of level=<word> or "level":"<word>", [word], WORD in capitals, or a short form right
+      # after a leading timestamp (zerolog's console format: 2026-01-02T15:04:05Z ERR …)
+      named = ''(?i:\b(?:level|lvl|severity)"?\s*[=:]\s*"?)(?P<a>[A-Za-z]+)|\[(?P<b>(?i:${any}))\]|\b(?P<c>${long})\b|^\d{4}-\d{2}-\d{2}T\S+ (?P<d>(?i:${any}))\b'';
       keyword = ''{{- $levels := dict${
         lib.concatStrings (
           lib.mapAttrsToList (
             level: names: lib.concatMapStrings (name: " \"${name}\" \"${level}\"") names
           ) levels
         )
-      } -}}{{- with coalesce .a .b .c -}}{{- get $levels (lower .) | default "info" -}}{{- else -}}info{{- end -}}'';
+      } -}}{{- with coalesce .a .b .c .d -}}{{- get $levels (lower .) | default "info" -}}{{- else -}}info{{- end -}}'';
 
       source = pkgs.writeText "config.alloy" ''
         loki.relabel "journal" {
