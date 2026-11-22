@@ -44,9 +44,13 @@
           };
           service.DISABLE_REGISTRATION = true;
           session.COOKIE_SECURE = routed;
-          # no router log (a line per request, a "slow" warning for each over 3 s, such as clones);
-          # errors still reach the default log
-          log.LOGGER_ROUTER_MODE = "";
+          log = {
+            # no router log (a line per request, a "slow" warning for each over 3 s, such as clones);
+            # errors still reach the default log
+            LOGGER_ROUTER_MODE = "";
+            # at info it logs a database ping for every health check
+            LEVEL = "Warn";
+          };
         };
       };
 
