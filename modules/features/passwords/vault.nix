@@ -92,13 +92,13 @@
         route = {
           inherit port;
           public = true;
+          health = "/alive";
         };
         dashboard = {
           name = "Vaultwarden";
           group = "Files";
           description = "Passwords";
           icon = "vaultwarden.svg";
-          monitor = "/alive";
         };
         backup = {
           paths = [ backups ];

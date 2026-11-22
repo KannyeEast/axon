@@ -110,14 +110,14 @@
           route = {
             inherit port;
             public = true;
+            # / redirects to https on this plain http port
+            health = "/status.php";
           };
           dashboard = {
             name = "Nextcloud";
             group = "Files";
             description = "Files";
             icon = "nextcloud.svg";
-            # / redirects to https on this plain http port
-            monitor = "/status.php";
             widget = {
               type = "nextcloud";
               # four values make labels like "ACTIVE USERS" wrap, and the whole row grows with them

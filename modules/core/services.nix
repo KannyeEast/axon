@@ -120,6 +120,11 @@ in
                           defaultText = "!public";
                           description = "The gateway's login (oauth2-proxy) in front of the route; false for what can't follow a browser login.";
                         };
+                        health = mkOption {
+                          type = types.str;
+                          default = "";
+                          description = "Path the health checks (the start page's status dot, the monitoring probes) request after internal and url; empty is the root. The status dot follows redirects, so it must not lead off plain http.";
+                        };
                       };
                     })
                   );
@@ -145,11 +150,6 @@ in
                         icon = mkOption {
                           type = types.str;
                           description = "A name from homarr-labs/dashboard-icons, e.g. jellyfin.svg.";
-                        };
-                        monitor = mkOption {
-                          type = types.str;
-                          default = "/";
-                          description = "Path the status dot requests; it follows redirects, so it must not lead off plain http.";
                         };
                         widget = mkOption {
                           type = types.nullOr (types.attrsOf types.anything);

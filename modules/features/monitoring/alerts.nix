@@ -168,10 +168,12 @@
                   (rule "ServiceDown" ''probe_success{job="service"} == 0'' "2m"
                     "{{ $labels.service }} doesn't answer"
                   )
-                  (rule "RouteDown" ''probe_success{job="route"} == 0'' "5m" "{{ $labels.instance }} unreachable")
+                  (rule "RouteDown" ''probe_success{job="route"} == 0'' "5m"
+                    "{{ $labels.service }}: route unreachable"
+                  )
                   (rule "CertificateExpiring" ''probe_ssl_earliest_cert_expiry{job="route"} - time() < 14 * 86400''
                     "0m"
-                    "{{ $labels.instance }} certificate expires in {{ $value | humanizeDuration }}"
+                    "{{ $labels.service }} certificate expires in {{ $value | humanizeDuration }}"
                   )
                   # the node exporter names the unit in name; unit is the label its logs carry
                   (rule "UnitFailed"

@@ -111,7 +111,7 @@ in
             href = lib.defaultTo service.route.url (instance.link or null);
             description = lib.defaultTo service.dashboard.description (instance.description or null);
             inherit (service.dashboard) icon;
-            siteMonitor = service.route.internal + service.dashboard.monitor;
+            siteMonitor = service.route.internal + service.route.health;
           }
           // lib.optionalAttrs (widgets != [ ]) { inherit widgets; };
         };

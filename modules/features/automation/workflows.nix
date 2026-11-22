@@ -165,13 +165,15 @@
           "n8n"
           "n8n-import"
         ];
-        route.port = 5678;
+        route = {
+          port = 5678;
+          health = "/healthz";
+        };
         dashboard = {
           name = "n8n";
           group = "Code";
           description = "Workflows";
           icon = "n8n.svg";
-          monitor = "/healthz";
         };
         backup.paths = [ state ];
       };
