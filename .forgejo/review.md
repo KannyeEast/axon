@@ -77,11 +77,13 @@ You report findings; you never edit, commit or push.
 - **Data disks mount with `nofail`**: a unit writing to a volume needs `RequiresMountsFor`, or it
   writes to the root filesystem while the disk is missing.
 - **Backup**: `backup.paths` for what can't be rebuilt, `exclude` for what can (thumbnails,
-  caches); a database is backed up through a dump, not its live files.
+  caches); a database is backed up through a dump, not its live files: a Postgres one is listed in
+  `axon.databases`.
 - **Start page**: a `dashboard` entry with name, group, icon, and a widget where Homepage has one;
   every `secrets` key it names exists in the gateway host's `secrets.json` (evaluation warns
   otherwise).
-- **VPN**: a service that talks to trackers or indexers lists itself in `axon.vpn.confined`.
+- **VPN**: a service that talks to torrent trackers or peers lists itself in `axon.vpn.confined`;
+  Usenet indexers and providers are plain HTTPS and need no tunnel.
 - **Mail and other contracts are extras**: the service works when `axon.mail` is null or the
   host has no gateway (`axon.routed` false).
 - **Class**: parts for only one class check `config.axon.host.class` inside the feature.

@@ -1,6 +1,6 @@
 # Nextcloud at cloud.<domain> on servers. Files on the data volume (or in the state folder without
 # one), app state with the host's state (the state volume, else the boot disk), database in the
-# shared Postgres. Public through the tunnel so share links work without Tailscale; its own login
+# host's Postgres. Public through the tunnel so share links work without Tailscale; its own login
 # guards it. Without a gateway on this host it stays on localhost. First account by hand after
 # install, then two-factor in the web UI:
 #   nextcloud-occ user:add <you> && nextcloud-occ group:adduser admin <you>
@@ -83,6 +83,8 @@
             "phpfpm-nextcloud"
           ];
         };
+
+        axon.databases = [ "nextcloud" ];
 
         axon.persist.state.directories = [
           {

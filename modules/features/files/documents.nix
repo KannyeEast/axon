@@ -126,6 +126,8 @@
         ];
       };
 
+      axon.databases = [ "paperless" ];
+
       # the search index as an entry of its own: the module's tmpfiles rule for it runs before the
       # dataDir's mount on a switch and ends up hidden under it, and the scheduler won't start without
       axon.persist.state.directories =
