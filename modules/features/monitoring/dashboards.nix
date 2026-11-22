@@ -92,6 +92,8 @@
             "C"
             "D"
           ];
+          # Grafana adds " #<ref>" to the value field only when there are several queries
+          field = ref: if lib.length columns == 1 then "Value" else "Value #${ref}";
         in
         {
           type = "table";
@@ -112,10 +114,10 @@
               options = {
                 excludeByName.Time = true;
                 indexByName = lib.listToAttrs (
-                  lib.imap0 (i: key: lib.nameValuePair key i) (keys ++ map (ref: "Value #${ref}") refs)
+                  lib.imap0 (i: key: lib.nameValuePair key i) (keys ++ map field refs)
                 );
                 renameByName = lib.listToAttrs (
-                  lib.imap0 (i: ref: lib.nameValuePair "Value #${ref}" (lib.elemAt names i)) refs
+                  lib.imap0 (i: ref: lib.nameValuePair (field ref) (lib.elemAt names i)) refs
                 );
               };
             }

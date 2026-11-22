@@ -127,8 +127,8 @@
           group = "Infrastructure";
           description = "Git repositories";
           icon = "forgejo.svg";
-          # Forgejo answers Gitea's API; the key is a token that reads repositories, issues and
-          # notifications
+          # Forgejo answers Gitea's API; the key is a token that reads repositories, issues,
+          # notifications and the user (n8n's Mirror check lists the owner's repositories with it)
           widget.type = "gitea";
           key = true;
         };
