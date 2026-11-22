@@ -230,8 +230,8 @@
           inherit port;
           webExternalUrl = if config.axon.routed then config.axon.services.alerts.route.url else null;
           # Alertmanager forgets a sent mail after this long and then sends it again, so it must
-          # outlast Watchdog's week
-          extraFlags = [ "--data.retention=192h" ];
+          # outlast the longest repeat below
+          extraFlags = [ "--data.retention=8760h" ];
           # $MAIL_* are filled in from the environment file at start
           environmentFile = if mail != null then config.sops.templates."alertmanager.env".path else null;
           configuration = {
@@ -253,6 +253,12 @@
                 {
                   matchers = [ ''alertname="Watchdog"'' ];
                   repeat_interval = "168h";
+                }
+                # a full disk stays full until someone frees it: one mail, the next only once it
+                # filled up again
+                {
+                  matchers = [ ''alertname=~"DiskFull|SpaceFull"'' ];
+                  repeat_interval = "8760h";
                 }
               ]
               ++ lib.optional (mail != null) {

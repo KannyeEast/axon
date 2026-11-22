@@ -9,6 +9,8 @@
   the desktop, the LAN, Tailscale) is a command for the user to run in a real terminal.
   Ask them to write its output to `.claude/logs/` in the current folder (git-ignored, so logs
   never end up in a commit), then read that file.
+- Commands you hand the owner that read a system unit's journal need `sudo`; without it
+  journalctl shows only the user's own entries and reports "No entries".
 
 ## Working style
 

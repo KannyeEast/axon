@@ -59,7 +59,8 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
 
 - **Setting, derived value, or host data?** Same on every host: just set it. Differs and can be
   detected: derive it (facter). Differs and is a choice: a field in `host.toml`. A different
-  behaviour: a feature, never an option.
+  behaviour: a feature, never an option. A host.toml table becomes `config.axon.<table>`: its name
+  must not be a core contract's (`mail`).
 - **Use what exists before building it.** Before a custom script, wrapper or option, look for
   what already does it: a setting of the NixOS module or the program itself, a package or plugin
   in nixpkgs, a common add-on (the program's docs, its issue tracker, the web). Write your own only
@@ -142,6 +143,10 @@ A sweep or audit checks the rules above and also whether the config does its job
 - n hosts in any cluster shape work: relations come from `cluster.toml` and the contracts, never
   from host names.
 - Server state that lives only in a service's UI is named, and backed up or reproducible.
+
+Checking one service: its lines and levels in Loki (by `service_name`, the top repeated messages,
+everything above info), what only its UI holds (named in the module header), what it should tell
+or trigger in another service (a built-in connection or an n8n workflow), and its backup.
 - A building block stays only while it is the plain, common choice for its job.
 
 ## Commands
@@ -158,12 +163,19 @@ nix eval --raw "git+file://$PWD?ref=HEAD#nixosConfigurations.<host>.config.syste
 `nix flake check` catches types, missing options and bad references, not a package that fails
 to build or a service that fails to start. Say when a change is unverified and why.
 
+Modules read dotfiles from the host's checkout (`axon.repo`), not from a session folder: a switch
+from `~/sessions/<repo>` brings the Nix code, the dotfiles only arrive with commit, push and pull.
+
 ## Logs and metrics
 
 The host that lists `monitoring` keeps every host's journal in Loki (`:3100`) and their metrics in
 Prometheus (`:9090`), both open on the tailnet without a login; read them directly instead of
 asking the owner for logs. Log labels: `host`, `unit`, `service_name` (the `axon.services` entry),
 `level` (journald's keywords: `err`, `warning`, …), `container`.
+
+A service's log reaches Loki with the right level when its lines name one (`[error]`, `level=warn`,
+`ERROR`, a syslog prefix, JSON `"level"`); a program that prints none gets a log-format or
+log-level setting. Entries spanning lines (stack traces) set `axon.services.<name>.logStart`.
 
 ```sh
 loki=http://<monitoring host>:3100 prom=http://<monitoring host>:9090
