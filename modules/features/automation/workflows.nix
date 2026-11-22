@@ -84,6 +84,8 @@
           N8N_LOG_FORMAT = "json";
           # workflow nodes read the API keys and addresses below as {{ $env.X }}
           N8N_BLOCK_ENV_ACCESS_IN_NODE = false;
+          # its current default; unset, it warns on every start that the default turns false later
+          N8N_UNVERIFIED_PACKAGES_ENABLED = true;
           AXON_HOST = host.name;
         }
         // lib.optionalAttrs alertmanager.enable {
@@ -155,12 +157,7 @@
         lib.optional (!alertmanager.enable)
           "hosts/${host.name}/host.toml: no Alertmanager on this host, so n8n's failed workflows and reminders aren't mailed; list monitoring here to mail them";
 
-      axon.persist.state.directories = [
-        {
-          directory = state;
-          mode = "0700";
-        }
-      ];
+      axon.persist.state.directories = [ state ];
 
       axon.services.automation = {
         units = [

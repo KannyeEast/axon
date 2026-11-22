@@ -39,8 +39,9 @@
           DynamicUser = true;
           Restart = "on-failure";
           # only the bookmark connects: no form to reach other servers, while --lock-session would
-          # also stop switching databases. At info it logs every request, the status checks' too
-          ExecStart = "${lib.getExe pkgs.pgweb} --bind=127.0.0.1 --listen=${toString port} --bookmarks-dir=${bookmarks} --bookmarks-only --bookmark=${host.name} --readonly --log-level=warn";
+          # also stop switching databases. At info it logs every request, at warn every 4xx: the
+          # start page's status check tries HEAD first, which it answers 404
+          ExecStart = "${lib.getExe pkgs.pgweb} --bind=127.0.0.1 --listen=${toString port} --bookmarks-dir=${bookmarks} --bookmarks-only --bookmark=${host.name} --readonly --log-level=error";
         };
       };
 

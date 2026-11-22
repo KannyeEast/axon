@@ -344,10 +344,7 @@
           "hosts/${host.name}/host.toml: alerts only show in Alertmanager's UI; list the mail feature here to have them mailed";
 
       axon.persist.state.directories = [
-        {
-          directory = "/var/lib/private/alertmanager";
-          mode = "0700";
-        }
+        "/var/lib/private/alertmanager"
       ];
 
       axon.services.alerts = {

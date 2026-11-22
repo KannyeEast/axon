@@ -61,10 +61,7 @@ in
       };
 
       axon.persist.state.directories = [
-        {
-          directory = "/var/lib/private/forgejo-runner";
-          mode = "0700";
-        }
+        "/var/lib/private/forgejo-runner"
       ];
     };
 }

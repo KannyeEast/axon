@@ -245,10 +245,7 @@
           '';
 
       axon.persist.state.directories = [
-        {
-          directory = "/var/lib/private/alloy";
-          mode = "0700";
-        }
+        "/var/lib/private/alloy"
       ];
     };
 }

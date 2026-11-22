@@ -45,7 +45,8 @@ You report findings; you never edit, commit or push.
   the file and line it comes from, and the fix.
 - **The rules in AGENTS.md**, each of them. The ones most often missed:
   - a setting equal to the upstream default, an option nothing sets, a helper with one caller,
-    a package nothing runs (Only what changes something)
+    a package nothing runs (Only what changes something; Nix only, not the dotfiles in `home/`
+    and `hosts/*/home`)
   - a custom script or wrapper where a module setting, a nixpkgs package or a common add-on does
     the job (Use what exists before building it)
   - comments that tell history or reasoning instead of what the code does

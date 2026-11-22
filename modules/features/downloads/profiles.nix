@@ -7,15 +7,17 @@
   flake.modules.nixos.downloads =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) user;
+      inherit (config.axon) host user;
       state = "/var/lib/recyclarr";
       dirs = map (home: "${home}/.config/recyclarr") config.axon.dotfiles;
       secret = name: "dashboard/${name}/key";
       hasKey = name: lib.hasAttrByPath (lib.splitString "/" (secret name)) config.axon.secrets;
-      apps = lib.filter hasKey [
+      names = [
         "radarr"
         "sonarr"
       ];
+      # recyclarr.yml reads both keys; one unset fails the whole file
+      missing = lib.filter (name: !hasKey name) names;
 
       sync = pkgs.writeShellApplication {
         name = "recyclarr-sync";
@@ -24,7 +26,7 @@
           ${lib.concatMapStrings (app: ''
             ${lib.toUpper app}_API_KEY=$(<"$CREDENTIALS_DIRECTORY/${app}")
             export ${lib.toUpper app}_API_KEY
-          '') apps}
+          '') names}
           for dir in ${lib.escapeShellArgs dirs}; do
             if [ -e "$dir/recyclarr.yml" ]; then
               # it keeps its state next to settings.yml, so that one is linked in
@@ -40,46 +42,59 @@
         '';
       };
     in
-    lib.mkIf (config.axon.volumes ? media && apps != [ ]) {
-      systemd.services.recyclarr = {
-        description = "Apply the Radarr and Sonarr profiles from the checkout";
-        after = [
-          "radarr.service"
-          "sonarr.service"
-          "network-online.target"
-        ];
-        wants = [ "network-online.target" ];
-        serviceConfig = {
-          Type = "oneshot";
-          User = user.name;
-          StateDirectory = "recyclarr";
-          LoadCredential = map (app: "${app}:${config.sops.secrets.${secret app}.path}") apps;
-          ExecStart = lib.getExe sync;
-          Environment = "RECYCLARR_CONFIG_DIR=${state}";
-        };
-      };
-      systemd.timers.recyclarr = {
-        wantedBy = [ "timers.target" ];
-        timerConfig = {
-          OnCalendar = "03:00";
-          Persistent = true;
-        };
-      };
-      systemd.paths.recyclarr = {
-        wantedBy = [ "paths.target" ];
-        pathConfig.PathChanged = lib.concatMap (dir: [
-          "${dir}/recyclarr.yml"
-          "${dir}/settings.yml"
-        ]) dirs;
-      };
-
-      # which custom formats it made, so it can remove the ones a file no longer lists
-      axon.persist.state.directories = [
+    lib.mkIf (config.axon.volumes ? media) (
+      lib.mkMerge [
         {
-          directory = state;
-          user = user.name;
-          mode = "0700";
+          warnings =
+            lib.optional (missing != [ ])
+              "hosts/${host.name}/secrets.json: no ${
+                lib.concatMapStringsSep ", " secret missing
+              }, so Recyclarr doesn't run; add them with `just secrets ${host.name}`";
         }
-      ];
-    };
+
+        (lib.mkIf (missing == [ ]) {
+          systemd.services.recyclarr = {
+            description = "Apply the Radarr and Sonarr profiles from the checkout";
+            after = [
+              "radarr.service"
+              "sonarr.service"
+              "network-online.target"
+            ];
+            wants = [ "network-online.target" ];
+            serviceConfig = {
+              Type = "oneshot";
+              User = user.name;
+              StateDirectory = "recyclarr";
+              StateDirectoryMode = "0700";
+              LoadCredential = map (app: "${app}:${config.sops.secrets.${secret app}.path}") names;
+              ExecStart = lib.getExe sync;
+              Environment = "RECYCLARR_CONFIG_DIR=${state}";
+            };
+          };
+          systemd.timers.recyclarr = {
+            wantedBy = [ "timers.target" ];
+            timerConfig = {
+              OnCalendar = "03:00";
+              Persistent = true;
+            };
+          };
+          systemd.paths.recyclarr = {
+            wantedBy = [ "paths.target" ];
+            pathConfig.PathChanged = lib.concatMap (dir: [
+              "${dir}/recyclarr.yml"
+              "${dir}/settings.yml"
+            ]) dirs;
+          };
+
+          # which custom formats it made, so it can remove the ones a file no longer lists
+          axon.persist.state.directories = [
+            {
+              directory = state;
+              user = user.name;
+              mode = "0700";
+            }
+          ];
+        })
+      ]
+    );
 }

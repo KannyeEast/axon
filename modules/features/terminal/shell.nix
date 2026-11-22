@@ -49,11 +49,7 @@
 
       programs.tmux = {
         enable = true;
-        plugins = [
-          pkgs.tmuxPlugins.sensible
-          pkgs.tmuxPlugins.resurrect
-          pkgs.tmuxPlugins.continuum
-        ];
+        plugins = [ pkgs.tmuxPlugins.sensible ];
       };
 
       # nvim as $EDITOR. With plugins the wrapper skips ~/.config/nvim/init.lua, so it loads it here.

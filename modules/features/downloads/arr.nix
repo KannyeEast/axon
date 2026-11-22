@@ -60,7 +60,7 @@
           in
           lib.concatStringsSep "," [
             route.host
-            (lib.head (lib.splitString ":" (lib.removePrefix "http://" route.internal)))
+            route.address
           ];
         auth = {
           method =
@@ -165,6 +165,9 @@
             sonarr = "shows";
           }
         )
+        # systemd sets it on every start, over the mode the folder was made with; Radarr has no
+        # StateDirectory, and Bazarr's module makes its folder 0700 by tmpfiles
+        { sonarr.serviceConfig.StateDirectoryMode = "0750"; }
       ];
 
       # Radarr's module only declares .config/Radarr, so tmpfiles makes .config root's and then
@@ -172,18 +175,16 @@
       systemd.tmpfiles.rules = [ "d /var/lib/radarr/.config 0750 radarr media -" ];
 
       axon.persist.state.directories =
-        map (app: {
-          directory = "/var/lib/${app}";
-          user = app;
-          group = "media";
-          mode = "0750";
-        }) (lib.attrNames apps)
-        ++ [
+        map (
+          app:
           {
-            directory = "/var/lib/private/prowlarr";
-            mode = "0700";
+            directory = "/var/lib/${app}";
+            user = app;
+            group = "media";
           }
-        ];
+          // lib.optionalAttrs (app != "bazarr") { mode = "0750"; }
+        ) (lib.attrNames apps)
+        ++ [ "/var/lib/private/prowlarr" ];
 
       axon.services =
         lib.mapAttrs (name: app: {

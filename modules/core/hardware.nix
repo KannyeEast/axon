@@ -87,6 +87,8 @@ in
 
         (lib.mkIf laptop {
           services.power-profiles-daemon.enable = true;
+          # the chosen profile (state.ini)
+          axon.persist.directories = [ "/var/lib/power-profiles-daemon" ];
         })
       ];
     };

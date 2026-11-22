@@ -14,10 +14,7 @@
     in
     {
       axon.persist.state.directories = [
-        {
-          directory = "/var/lib/private/AdGuardHome";
-          mode = "0700";
-        }
+        "/var/lib/private/AdGuardHome"
       ];
 
       # free port 53 for the dns to use

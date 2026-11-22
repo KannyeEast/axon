@@ -29,7 +29,6 @@
     in
     {
       virtualisation.docker = {
-        enable = true;
         # where a port published without an address binds
         daemon.settings.ip = "127.0.0.1";
         autoPrune = {
@@ -40,7 +39,7 @@
       };
       virtualisation.oci-containers.backend = "docker";
 
-      axon.persist.directories = [ "/var/lib/docker" ];
+      axon.persist.directories = lib.mkIf config.virtualisation.docker.enable [ "/var/lib/docker" ];
 
       assertions = lib.concatLists (
         lib.mapAttrsToList checks config.virtualisation.oci-containers.containers

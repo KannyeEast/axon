@@ -1,6 +1,6 @@
-# Contract: axon.services. What a service offers the rest of the cluster. On a host without the
-# gateway or backup feature nobody reads it; a server warns (server/headless.nix), as its routes
-# then reach no other machine.
+# Contract: axon.services. What a service offers the rest of the cluster: the gateway reads its
+# routes and start-page tiles, backup its paths, metrics its units for the log labels. A server
+# without the gateway warns (server/headless.nix), as its routes then reach no other machine.
 { lib, ... }:
 let
   inherit (lib) mkOption types;

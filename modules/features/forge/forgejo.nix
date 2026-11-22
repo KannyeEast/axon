@@ -1,7 +1,8 @@
 # Forgejo at git.<domain>: git repositories on the tailnet, its own login, sign-up off. Without a
 # gateway on this host it stays on localhost. Repositories, attachments and avatars live on the
 # data volume (or in /var/lib without one) and are backed up as files; the database is in Postgres,
-# dumped with the host's others (axon.databases). Git over SSH goes through the host's own sshd as
+# dumped with the host's others (axon.databases). Kept only in its UI, in that database: users,
+# tokens, push mirrors, Actions secrets. Git over SSH goes through the host's own sshd as
 # forgejo@git.<domain>. First account by hand after install:
 #   sudo -u forgejo forgejo --work-path <state dir> admin user create --admin --username <name> --email <address> --random-password
 # With a login provider (axon.sso) its admins log in there too: the first time, Forgejo asks for the

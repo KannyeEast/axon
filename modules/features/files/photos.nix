@@ -108,6 +108,9 @@
         }) generated
       );
       systemd.services.immich-server.unitConfig.RequiresMountsFor = map (dir: "${data}/${dir}") generated;
+      # systemd sets these on every start, over the mode the folders were made with
+      systemd.services.immich-server.serviceConfig.StateDirectoryMode = "0700";
+      systemd.services.immich-machine-learning.serviceConfig.CacheDirectoryMode = "0700";
 
       axon.databases = [ "immich" ];
 

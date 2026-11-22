@@ -75,6 +75,8 @@
           # its own file
           Type = lib.mkForce "simple";
           ExecStart = lib.mkForce "${lib.getExe config.services.sabnzbd.package} -f ${state}/sabnzbd.ini";
+          # systemd sets it on every start, over the mode the folder was made with
+          StateDirectoryMode = "0750";
         };
       };
 
