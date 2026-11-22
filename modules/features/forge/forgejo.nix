@@ -1,7 +1,8 @@
 # Forgejo at git.<domain>: git repositories on the tailnet, its own login, sign-up off. Without a
-# gateway on this host it stays on localhost. Repositories, SQLite database and dumps live on the
-# data volume (or in /var/lib without one); the nightly dump is what gets backed up. Git over SSH
-# goes through the host's own sshd as forgejo@git.<domain>. First account by hand after install:
+# gateway on this host it stays on localhost. Repositories, attachments and avatars live on the
+# data volume (or in /var/lib without one) and are backed up as files; the database is in Postgres,
+# dumped with the host's others (axon.databases). Git over SSH goes through the host's own sshd as
+# forgejo@git.<domain>. First account by hand after install:
 #   sudo -u forgejo forgejo --work-path <state dir> admin user create --admin --username <name> --email <address> --random-password
 # With a login provider (axon.sso) its admins log in there too: the first time, Forgejo asks for the
 # local password once to link the two; nobody signs up through it, and the password form stays.
@@ -22,6 +23,8 @@
       route = services.git.route;
       source = "Kanidm";
       port = 3030;
+      # attachments, avatars, LFS objects, packages
+      data = "${cfg.stateDir}/data";
       # the forges the repository is mirrored to, from cluster.toml [repo]
       mirrors = lib.unique (
         lib.mapAttrsToList (_: remote: remote.host) (lib.filterAttrs (_: remote: remote.mirror) remotes)
@@ -31,7 +34,7 @@
       services.forgejo = {
         enable = true;
         stateDir = spaces.forgejo.path;
-        dump.enable = true;
+        database.type = "postgres";
         settings = {
           server = {
             HTTP_ADDR = "127.0.0.1";
@@ -41,8 +44,13 @@
           };
           service.DISABLE_REGISTRATION = true;
           session.COOKIE_SECURE = routed;
+          # no router log (a line per request, a "slow" warning for each over 3 s, such as clones);
+          # errors still reach the default log
+          log.LOGGER_ROUTER_MODE = "";
         };
       };
+
+      axon.databases = [ cfg.database.name ];
 
       # the login source, made or updated before every start; Forgejo keeps it in its database.
       # Making it fetches the provider's discovery document; any failure leaves the source as it
@@ -96,22 +104,19 @@
 
       axon.spaces.forgejo = {
         inherit (cfg) user group;
-        units = [
-          "forgejo"
-          "forgejo-dump"
-        ];
+        units = [ "forgejo" ];
       };
 
       axon.services.git = {
         space = "forgejo";
         units = [
           "forgejo"
-          "forgejo-dump"
           "forgejo-secrets"
         ];
         route = {
           inherit port;
           gate = false;
+          health = "/api/healthz";
         };
         dashboard = {
           name = "Forgejo";
@@ -119,7 +124,19 @@
           description = "Git repositories";
           icon = "forgejo.svg";
         };
-        backup.paths = [ cfg.dump.backupDir ];
+        # the custom dir holds the key that encrypts secrets in the database
+        backup = {
+          paths = [
+            cfg.repositoryRoot
+            cfg.customDir
+            data
+          ];
+          # rebuilt by Forgejo
+          exclude = [
+            "${data}/indexers"
+            "${data}/repo-archive"
+          ];
+        };
       };
     };
 }

@@ -54,10 +54,14 @@
       ]
       ++ lib.optional (databases != [ ]) exporters.postgres.port;
 
-      # monitoring/metrics.nix scrapes Postgres where a server lists files, whose services keep the
-      # databases: no other host's list says where Postgres runs
+      # monitoring/metrics.nix scrapes Postgres where a server lists files or forge, whose services
+      # keep the databases: no other host's list says where Postgres runs
       warnings =
-        lib.optional (databases != [ ] && !(host.class == "server" && lib.elem "files" host.features))
+        lib.optional
+          (
+            databases != [ ]
+            && !(host.class == "server" && lib.intersectLists [ "files" "forge" ] host.features != [ ])
+          )
           "modules/features/monitoring/metrics.nix: Postgres on ${host.name} isn't scraped; scrape it where its databases come from";
     };
 }

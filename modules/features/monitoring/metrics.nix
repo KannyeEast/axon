@@ -19,9 +19,10 @@
         ;
       exporters = config.services.prometheus.exporters;
       scraped = lib.filterAttrs (_: data: lib.elem "metrics" data.host.features) cluster.hosts;
-      # files keeps its databases (axon.databases) on servers, so Postgres runs there
+      # files and forge keep their databases (axon.databases) on servers, so Postgres runs there
       databases = lib.filterAttrs (
-        _: data: data.host.class == "server" && lib.elem "files" data.host.features
+        _: data:
+        data.host.class == "server" && lib.intersectLists [ "files" "forge" ] data.host.features != [ ]
       ) scraped;
       downloaders = lib.filterAttrs (_: data: lib.elem "downloads" data.host.features) scraped;
       # Sonarr, Radarr and Prowlarr run only where a data disk mounts a media volume

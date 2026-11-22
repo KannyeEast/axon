@@ -266,10 +266,11 @@
           }
         )
       ];
-      # Postgres runs where a server lists files, as in monitoring/metrics.nix
-      postgres = lib.any (data: data.host.class == "server" && lib.elem "files" data.host.features) (
-        lib.attrValues scraped
-      );
+      # Postgres runs where a server lists files or forge, as in monitoring/metrics.nix
+      postgres = lib.any (
+        data:
+        data.host.class == "server" && lib.intersectLists [ "files" "forge" ] data.host.features != [ ]
+      ) (lib.attrValues scraped);
       ownDatabases = ''datname!~"postgres|template.*"'';
       # a dump's timer reports 0 until its first run
       dumped = ''label_replace(node_systemd_timer_last_trigger_seconds{name=~"postgresqlBackup-.+[.]timer"} > 0, "database", "$1", "name", "postgresqlBackup-(.+)[.]timer")'';
