@@ -63,7 +63,13 @@ in
           # behind the gateway the UI is asked for as sync.<domain>, which its host check
           # rejects; it still only listens on localhost, and only the tailnet reaches the gateway.
           # Elsewhere the check stays: it keeps websites out of the local UI (DNS rebinding).
-          gui.insecureSkipHostcheck = config.axon.routed;
+          gui = {
+            insecureSkipHostcheck = config.axon.routed;
+            # no login of its own (one set in its UI is cleared): the gateway's login stands in
+            # front of its route, and elsewhere only this machine reaches it
+            user = "";
+            password = "";
+          };
           devices = lib.genAttrs peers device;
           folders = lib.genAttrs folders (folder: {
             path = pathOf folder;
@@ -78,16 +84,23 @@ in
         };
       };
 
-      # A folder on a volume needs that disk. Volumes mount with nofail, so without it Syncthing
-      # would start against the bare mountpoint on the root filesystem. The folder is handed to
-      # the user only once the disk is mounted (the volume itself is mounted as root).
-      systemd.services.syncthing = lib.mkIf (onVolumes != [ ]) {
-        unitConfig.RequiresMountsFor = map pathOf onVolumes;
-        serviceConfig.ExecStartPre = map (
-          folder:
-          "+${lib.getExe' pkgs.coreutils "install"} -d -o ${user.name} -g users -m 0700 ${pathOf folder}"
-        ) onVolumes;
-      };
+      systemd.services.syncthing = lib.mkMerge [
+        {
+          # the level as a syslog prefix, which journald reads; as INF/WRN in the text it counts
+          # as info
+          environment.STLOGFORMATLEVELSYSLOG = "true";
+        }
+        # A folder on a volume needs that disk. Volumes mount with nofail, so without it Syncthing
+        # would start against the bare mountpoint on the root filesystem. The folder is handed to
+        # the user only once the disk is mounted (the volume itself is mounted as root).
+        (lib.mkIf (onVolumes != [ ]) {
+          unitConfig.RequiresMountsFor = map pathOf onVolumes;
+          serviceConfig.ExecStartPre = map (
+            folder:
+            "+${lib.getExe' pkgs.coreutils "install"} -d -o ${user.name} -g users -m 0700 ${pathOf folder}"
+          ) onVolumes;
+        })
+      ];
 
       axon.overlay.tcpPorts = [ peerPort ];
 
