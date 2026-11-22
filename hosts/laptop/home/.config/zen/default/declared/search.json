@@ -1,0 +1,206 @@
+{
+  "engines": [
+    {
+      "_definedAliases": [
+        "@hm"
+      ],
+      "_iconMapObj": {
+        "16": "file:///run/current-system/sw/share/icons/hicolor/scalable/apps/nix-snowflake.svg"
+      },
+      "_isAppProvided": false,
+      "_loadPath": "[home-manager]/programs.zen-browser.profiles.default.search.engines.\"Home Manager Options\"",
+      "_metaData": {},
+      "_name": "Home Manager Options",
+      "_urls": [
+        {
+          "params": [
+            {
+              "name": "channel",
+              "value": "unstable"
+            },
+            {
+              "name": "type",
+              "value": "options"
+            },
+            {
+              "name": "query",
+              "value": "{searchTerms}"
+            },
+            {
+              "name": "source",
+              "value": "home_manager"
+            }
+          ],
+          "template": "https://search.nixos.org/options"
+        }
+      ],
+      "id": "Home Manager Options"
+    },
+    {
+      "_definedAliases": [
+        "@k"
+      ],
+      "_iconMapObj": {
+        "16": "https://kagi.com/favicon.ico"
+      },
+      "_isAppProvided": false,
+      "_loadPath": "[home-manager]/programs.zen-browser.profiles.default.search.engines.Kagi",
+      "_metaData": {},
+      "_name": "Kagi",
+      "_urls": [
+        {
+          "params": [
+            {
+              "name": "q",
+              "value": "{searchTerms}"
+            }
+          ],
+          "template": "https://kagi.com/search"
+        }
+      ],
+      "id": "Kagi"
+    },
+    {
+      "_definedAliases": [
+        "@no"
+      ],
+      "_iconMapObj": {
+        "16": "file:///run/current-system/sw/share/icons/hicolor/scalable/apps/nix-snowflake.svg"
+      },
+      "_isAppProvided": false,
+      "_loadPath": "[home-manager]/programs.zen-browser.profiles.default.search.engines.\"NixOS Options\"",
+      "_metaData": {},
+      "_name": "NixOS Options",
+      "_urls": [
+        {
+          "params": [
+            {
+              "name": "q",
+              "value": "{searchTerms}"
+            }
+          ],
+          "template": "https://mynixos.com/search"
+        }
+      ],
+      "id": "NixOS Options"
+    },
+    {
+      "_definedAliases": [
+        "@np"
+      ],
+      "_iconMapObj": {
+        "16": "file:///run/current-system/sw/share/icons/hicolor/scalable/apps/nix-snowflake.svg"
+      },
+      "_isAppProvided": false,
+      "_loadPath": "[home-manager]/programs.zen-browser.profiles.default.search.engines.\"NixOS Packages\"",
+      "_metaData": {},
+      "_name": "NixOS Packages",
+      "_urls": [
+        {
+          "params": [
+            {
+              "name": "channel",
+              "value": "unstable"
+            },
+            {
+              "name": "type",
+              "value": "packages"
+            },
+            {
+              "name": "query",
+              "value": "{searchTerms}"
+            }
+          ],
+          "template": "https://search.nixos.org/packages"
+        }
+      ],
+      "id": "NixOS Packages"
+    },
+    {
+      "_definedAliases": [
+        "@ng"
+      ],
+      "_iconMapObj": {
+        "16": "file:///run/current-system/sw/share/icons/hicolor/scalable/apps/nix-snowflake.svg"
+      },
+      "_isAppProvided": false,
+      "_loadPath": "[home-manager]/programs.zen-browser.profiles.default.search.engines.Noogle",
+      "_metaData": {},
+      "_name": "Noogle",
+      "_urls": [
+        {
+          "params": [
+            {
+              "name": "term",
+              "value": "{searchTerms}"
+            }
+          ],
+          "template": "https://noogle.dev/q"
+        }
+      ],
+      "id": "Noogle"
+    },
+    {
+      "_isAppProvided": true,
+      "_metaData": {
+        "hidden": true
+      },
+      "id": "bing"
+    },
+    {
+      "_isAppProvided": true,
+      "_metaData": {
+        "hidden": true
+      },
+      "id": "ddg"
+    },
+    {
+      "_isAppProvided": true,
+      "_metaData": {
+        "hidden": true
+      },
+      "id": "ebay"
+    },
+    {
+      "_isAppProvided": true,
+      "_metaData": {
+        "hidden": true
+      },
+      "id": "ecosia"
+    },
+    {
+      "_isAppProvided": true,
+      "_metaData": {
+        "hidden": true
+      },
+      "id": "google"
+    },
+    {
+      "_isAppProvided": true,
+      "_metaData": {
+        "hidden": true
+      },
+      "id": "perplexity"
+    },
+    {
+      "_isAppProvided": true,
+      "_metaData": {
+        "hidden": true
+      },
+      "id": "startpage"
+    },
+    {
+      "_isAppProvided": true,
+      "_metaData": {
+        "hidden": true
+      },
+      "id": "wikipedia"
+    }
+  ],
+  "metaData": {
+    "defaultEngineId": "Kagi",
+    "privateDefaultEngineId": "Kagi",
+    "useSavedOrder": false
+  },
+  "version": 12
+}

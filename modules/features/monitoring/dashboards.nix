@@ -361,7 +361,8 @@
               # Loki without auth still wants a tenant on some endpoints (Logs Drilldown's limits);
               # "fake" is the one it uses for all others
               jsonData.httpHeaderName1 = "X-Scope-OrgID";
-              secureJsonData.httpHeaderValue1 = "fake";
+              # from a file: a value written here directly draws a warning on every evaluation
+              secureJsonData.httpHeaderValue1 = "$__file{${pkgs.writeText "loki-tenant" "fake"}}";
             }
           ];
           dashboards.settings.providers = [

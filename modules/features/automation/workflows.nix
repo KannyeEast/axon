@@ -12,14 +12,11 @@
   flake.modules.nixos.automation =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) host repo;
+      inherit (config.axon) host;
       inherit (config.axon.services.automation) route;
       inherit (config.services.prometheus) alertmanager;
       state = "/var/lib/private/n8n";
-      dirs = map (home: "${home}/.config/n8n/workflows") [
-        "${repo}/home"
-        "${repo}/hosts/${host.name}/home"
-      ];
+      dirs = map (home: "${home}/.config/n8n/workflows") (lib.reverseList config.axon.dotfiles);
       # n8n's DynamicUser can't read the checkout under the user's 0700 home: root copies the files
       # here first, later ones replacing earlier ones of the same name
       copied = "/run/n8n-import";

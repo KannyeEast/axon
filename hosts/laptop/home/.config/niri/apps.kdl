@@ -1,0 +1,5 @@
+// programs from this host's features (browser, passwords)
+binds {
+    Mod+B hotkey-overlay-title="Browser" { spawn "zen-beta"; }
+    Mod+P hotkey-overlay-title="Passwords" { spawn "keepassxc"; }
+}

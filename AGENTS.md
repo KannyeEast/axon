@@ -37,7 +37,7 @@ DECISIONS.md         deliberate choices that look like mistakes; never "fixed" o
                      findings.sh, the latest review's open findings for the author
 hosts/<name>/        host.toml, facter.json, secrets.json (sops), optional home/
 hosts/_old/          previous hosts, kept for reference, never built
-home/                dotfiles every host shares; hosts/<name>/home wins per file
+home/                dotfiles every host uses (the terminal); hosts/<name>/home wins per file
 modules/framework/   the registry, host discovery, docs output
 modules/core/        every host
 modules/classes/     exactly one per host: desktop, server
@@ -74,8 +74,11 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   that can work without the other piece must, and the piece only adds to it; never fail silently.
   Features read contracts, not each other's names; the feature lists in `cluster.hosts` are the
   only cross-host data, so reading those is fine.
-- **Dotfiles are runtime, user-space files.** Nix never reads `home/`. Nix installs programs and
-  loads what needs a store path; settings live in dotfiles.
+- **Dotfiles are runtime, user-space files.** Nix never reads `home/` or `hosts/<name>/home`. Nix
+  installs programs and loads what needs a store path; settings live in dotfiles. They are the
+  owner's files that live in this repo, independent of the features: `home/` holds only what every
+  host uses (the terminal: zsh, nvim, tmux, starship, direnv, claude, ccstatusline); everything
+  else is the host's own in `hosts/<name>/home`, copied between hosts that share it.
 - **Contracts are declared in core**: `axon.services` (routes, backup paths), `axon.persist`,
   `axon.volumes`, `axon.spaces` (a service's own subvolume, capped by `[limits]`), `axon.mail`,
   `axon.sso` (single sign-on), `axon.vpn`, `axon.overlay`, `axon.browser`, `axon.links` (admin
@@ -122,7 +125,8 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
   `.desktop` file's name or `StartupWMClass`, or the application id in its source) and decide per
   window: main windows tile; dialogs with a parent window and fixed-height windows float by
   themselves in niri; small tool windows, pickers and popups without a parent get an
-  `open-floating` rule in `home/.config/niri/windows.kdl`, in the same change.
+  `open-floating` rule in each desktop's `hosts/<name>/home/.config/niri/windows.kdl`, in the
+  same change.
 - **Dotfiles with several sections** separate them with a ruler: `# ── name ────────`
   (`--` in Lua, `//` in KDL and JavaScript).
 

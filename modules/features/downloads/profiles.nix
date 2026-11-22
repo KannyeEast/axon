@@ -1,18 +1,15 @@
 # Radarr's and Sonarr's quality profiles and custom formats as a file: Recyclarr applies
 # .config/recyclarr/recyclarr.yml (and settings.yml, for formats of our own) from the checkout
-# (hosts/<name>/home wins over home/) when it changes and nightly, as TRaSH's guides move on. The file reads the keys as !env_var RADARR_API_KEY
-# and SONARR_API_KEY.
+# (hosts/<name>/home wins over home/) when it changes and nightly, as TRaSH's guides move on. The
+# file reads the keys as !env_var RADARR_API_KEY and SONARR_API_KEY.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) host repo user;
+      inherit (config.axon) user;
       state = "/var/lib/recyclarr";
-      dirs = map (home: "${home}/.config/recyclarr") [
-        "${repo}/hosts/${host.name}/home"
-        "${repo}/home"
-      ];
+      dirs = map (home: "${home}/.config/recyclarr") config.axon.dotfiles;
       secret = name: "dashboard/${name}/key";
       hasKey = name: lib.hasAttrByPath (lib.splitString "/" (secret name)) config.axon.secrets;
       apps = lib.filter hasKey [

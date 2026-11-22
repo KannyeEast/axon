@@ -1,5 +1,5 @@
 # The desktop class: niri behind GDM, plus the plumbing apps expect.
-# Which bar, launcher and keybinds run is taste: home/.config/niri (a host's own file wins).
+# Which bar, launcher and keybinds run is taste: each host's hosts/<name>/home/.config/niri.
 { ... }:
 {
   flake.modules.nixos.desktop =

@@ -1,0 +1,8 @@
+# Colours only, from the shared palette (alacritty.toml).
+background-color=#0c0c12
+text-color=#a5b6cf
+border-color=#8aa2ff
+progress-color=over #323947
+
+[urgency=high]
+border-color=#ff6b7a

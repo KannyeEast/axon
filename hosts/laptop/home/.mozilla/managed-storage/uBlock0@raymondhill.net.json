@@ -1,0 +1,32 @@
+{
+  "name": "uBlock0@raymondhill.net",
+  "description": "uBlock Origin settings",
+  "type": "storage",
+  "data": {
+    "adminSettings": {
+      "userSettings": {
+        "uiTheme": "dark"
+      },
+      "selectedFilterLists": [
+        "user-filters",
+        "ublock-filters",
+        "ublock-badware",
+        "ublock-privacy",
+        "ublock-quick-fixes",
+        "ublock-unbreak",
+        "easylist",
+        "easyprivacy",
+        "urlhaus-1",
+        "plowe-0",
+        "fanboy-social",
+        "fanboy-ai-suggestions",
+        "easylist-chat",
+        "easylist-newsletters",
+        "easylist-notifications",
+        "easylist-annoyances",
+        "DEU-0"
+      ],
+      "userFilters": "accounts.google.com/gsi/*\n\n! YouTube\nwww.youtube.com###voice-search-button\nwww.youtube.com##ytd-notification-topbar-button-renderer.ytd-masthead.style-scope\nwww.youtube.com##ytd-button-renderer.ytd-masthead.style-scope\nyoutube.com##ytd-guide-section-renderer:has([href=\"/feed/subscriptions\"]) #items>:not(:first-child)\nyoutube.com##ytd-rich-section-renderer:has-text(Most relevant)\nyoutube.com##ytd-reel-shelf-renderer:has-text(Most relevant)\nwww.youtube.com##ytd-guide-section-renderer.ytd-guide-renderer.style-scope:nth-of-type(6)\nwww.youtube.com###section-items > ytd-guide-entry-renderer.ytd-guide-collapsible-section-entry-renderer.style-scope > .ytd-guide-entry-renderer.style-scope.yt-simple-endpoint\nwww.youtube.com###section-items\nwww.youtube.com###copyright\nwww.youtube.com###guide-links-secondary\nwww.youtube.com###guide-links-primary\nyoutube.com##span[id*=\"country-code\"]\nwww.youtube.com##.yt-core-attributed-string--inline-block-mod\nwww.youtube.com##.yt-badge-shape__icon\nwww.youtube.com##.ytdChipsShelfWithVideoShelfRendererHost > div\nwww.youtube.com###top-level-buttons-computed\n\n! Reddit\nwww.reddit.com##faceplate-expandable-section-helper\nwww.reddit.com##faceplate-tracker[noun*=\"explore\"]\nwww.reddit.com##faceplate-tracker[noun*=\"all\"]\nwww.reddit.com##li.left-nav-create-community-button[slot=\"sr-creation-entrypoint-experiment\"]\nwww.reddit.com##hr.my-sm\nwww.reddit.com##.mb-md.mx-md.flex.justify-self-end.legal-links\nwww.reddit.com##.mb-md.mx-md.flex.\\!mx-0.legal-links\nreddit.com##reddit-search-large[show-ask-button]:remove-attr(show-ask-button)\n||www.redditstatic.com/shreddit/search-input-desktop-client-css$css,domain=reddit.com\nwww.reddit.com##reddit-search-large[show-snoo-leading-icon]:remove-attr(show-snoo-leading-icon)\nwww.reddit.com##div.h-\\[40px\\].flex:nth-of-type(1)\nwww.reddit.com##recent-posts\nwww.reddit.com###left-sidebar-container > faceplate-tracker\nwww.reddit.com###right-sidebar-container\n"
+    }
+  }
+}

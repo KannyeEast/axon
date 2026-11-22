@@ -1,0 +1,54 @@
+include "input.kdl"
+include "output.kdl"
+include "bindings.kdl"
+// keys for programs that come with a feature, kept by the hosts that have it
+include optional=true "apps.kdl"
+include "layout.kdl"
+include "windows.kdl"
+include "startup.kdl"
+
+include "colors.kdl"
+
+cursor {
+    xcursor-theme "Bibata-Modern-Ice"
+    hide-when-typing
+    hide-after-inactive-ms 5000
+}
+
+overview {
+    workspace-shadow {
+        off
+    }
+}
+
+clipboard {
+    disable-primary
+}
+
+hotkey-overlay {
+    hide-not-bound
+}
+
+animations {
+    slowdown 0.25
+}
+
+gestures {
+    hot-corners {
+        off
+    }
+}
+
+recent-windows {
+    highlight {
+        padding 8
+        corner-radius 16
+    }
+
+    // Alt+Tab stays on the focused workspace (A, O and S in the switcher widen it); Alt+grave
+    // cycles tabs instead (bindings.kdl)
+    binds {
+        Alt+Tab { next-window scope="workspace"; }
+        Alt+Shift+Tab { previous-window scope="workspace"; }
+    }
+}

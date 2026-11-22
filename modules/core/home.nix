@@ -1,14 +1,29 @@
-# Dotfiles: home/ is shared, hosts/<name>/home wins per file; both mirror $HOME as symlinks into
-# the live checkout; Nix never reads them. A watcher links added, removed or renamed files within
-# a moment, and a 15 minute resync restores links deleted from ~.
-{ inputs, ... }:
+# Dotfiles: home/ is shared, hosts/<name>/home wins per file (axon.dotfiles); both mirror $HOME as
+# symlinks into the live checkout; Nix never reads them. A watcher links added, removed or renamed
+# files within a moment, and a 15 minute resync restores links deleted from ~.
+{ inputs, lib, ... }:
 {
   flake.modules.nixos.core =
     { config, ... }:
     {
       imports = [ inputs.home-manager.nixosModules.home-manager ];
 
-      home-manager = {
+      options.axon.dotfiles = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        readOnly = true;
+        default =
+          let
+            inherit (config.axon) host repo;
+          in
+          [
+            "${repo}/hosts/${host.name}/home"
+            "${repo}/home"
+          ];
+        defaultText = "<repo>/hosts/<name>/home, <repo>/home";
+        description = "The dotfile folders in the checkout, the host's own first; each may be missing.";
+      };
+
+      config.home-manager = {
         useGlobalPkgs = true;
         useUserPackages = true;
         backupFileExtension = "bak";
@@ -19,15 +34,12 @@
   flake.modules.homeManager.core =
     {
       config,
-      lib,
       osConfig,
       pkgs,
       ...
     }:
     let
-      inherit (osConfig.axon) host repo;
-      own = "${repo}/hosts/${host.name}/home";
-      shared = "${repo}/home";
+      homes = osConfig.axon.dotfiles;
 
       sync = pkgs.writeShellApplication {
         name = "dotfiles-sync";
@@ -36,20 +48,22 @@
           pkgs.findutils
         ];
         text = ''
-          own=${lib.escapeShellArg own}
-          shared=${lib.escapeShellArg shared}
+          homes=(${lib.escapeShellArgs homes})
           dst=${lib.escapeShellArg config.home.homeDirectory}
-          # every link the last run made, for those under a folder neither source has any more
+          # every link the last run made, for those under a folder neither home has any more
           list=${lib.escapeShellArg "${config.xdg.stateHome}/dotfiles/links"}
 
-          # drop links into either source whose file is gone; ownership is read off the link target
+          # drop links into either home whose file is gone; ownership is read off the link target
           if [ -f "$list" ]; then
             while IFS= read -r link; do
               [ -L "$link" ] && [ ! -e "$link" ] || continue
-              case "$(readlink -- "$link")" in "$own"/* | "$shared"/*) rm -f -- "$link" ;; esac
+              target=$(readlink -- "$link")
+              for src in "''${homes[@]}"; do
+                case "$target" in "$src"/*) rm -f -- "$link" ;; esac
+              done
             done <"$list"
           fi
-          for src in "$own" "$shared"; do
+          for src in "''${homes[@]}"; do
             # a file at the top of ~ has no folder left to be found through below
             find "$dst" -maxdepth 1 -xtype l -lname "$src/*" -delete
             [ -d "$src" ] || continue
@@ -59,13 +73,16 @@
             done < <(find "$src" -mindepth 1 -maxdepth 1 -printf '%P\n')
           done
 
-          # link every file; the host's own file wins over the shared one
+          # link every file from the first home that has it
           mkdir -p -- "$(dirname -- "$list")"
           : >"$list.new"
-          for src in "$own" "$shared"; do
+          for i in "''${!homes[@]}"; do
+            src=''${homes[i]}
             [ -d "$src" ] || continue
             while IFS= read -r rel; do
-              [ "$src" = "$shared" ] && [ -e "$own/$rel" ] && continue
+              for more in "''${homes[@]:0:i}"; do
+                [ -e "$more/$rel" ] && continue 2
+              done
               link="$dst/$rel"
               printf '%s\n' "$link" >>"$list.new"
 
@@ -90,7 +107,7 @@
         while :; do
           ${lib.getExe sync} || true
           dirs=()
-          for d in ${lib.escapeShellArg own} ${lib.escapeShellArg shared}; do
+          for d in ${lib.escapeShellArgs homes}; do
             [ -d "$d" ] && dirs+=("$d")
           done
           if [ ''${#dirs[@]} -gt 0 ]; then

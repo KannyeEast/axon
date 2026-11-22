@@ -110,7 +110,9 @@ You report findings; you never edit, commit or push.
 ### Dotfiles
 
 - Nix never reads `home/` or `hosts/<name>/home`, and modules don't write dotfiles.
-- A file in `home/` works on every host: it must not assume a feature is there.
+- A file in `home/` works on every host: it must not assume a feature is there. `home/` holds only
+  the terminal; the rest is each host's own in `hosts/<name>/home`, so the same file in several
+  hosts is deliberate, not a finding.
 - Several sections get the ruler from AGENTS.md.
 
 ### Inputs and packages

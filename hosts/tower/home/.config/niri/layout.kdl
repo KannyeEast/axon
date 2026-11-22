@@ -1,0 +1,26 @@
+layout {
+    gaps 4
+    default-column-display "tabbed"
+    // new windows fill the screen; narrowed with the width presets when needed
+    default-column-width { proportion 1.0; }
+
+    border {
+        on
+        width 3
+    }
+
+    focus-ring {
+        width 1
+    }
+
+    // a bar along the top of the column, one segment per tab; outside the column it would sit in
+    // the 4px gap between columns, where it can't be seen
+    tab-indicator {
+        hide-when-single-tab
+        place-within-column
+        position "top"
+        width 6
+        length total-proportion=1.0
+        gaps-between-tabs 4
+    }
+}

@@ -1,0 +1,57 @@
+[terminal]
+# every window its own tmux session in the folder it opens in, gone when the window closes
+# (`work` sessions are made elsewhere and stay); the login shell where tmux isn't installed
+shell = { program = "sh", args = ["-lc", "if command -v tmux >/dev/null; then exec tmux new-session \\; set-option destroy-unattached on; else exec \"${SHELL:-sh}\" -l; fi"] }
+
+[window]
+decorations = "none"
+
+padding.x = 15
+padding.y = 15
+
+[window.dimensions]
+columns = 160
+lines = 80
+
+[cursor.style]
+blinking = "Never"
+
+[colors]
+draw_bold_text_with_bright_colors = true
+
+[env]
+# tmux.conf turns on extended keys (Shift+Enter and the like) for xterm* terminals
+TERM = "xterm-256color"
+
+[font]
+normal.family = "JetBrainsMonoNL Nerd Font Mono"
+size = 11.0
+
+# the palette; mako, fuzzel, swaylock, niri's colors.kdl and nvim's colors/terminal.lua repeat it
+[colors.selection]
+text = "CellForeground"
+background = "#323947"
+
+[colors.primary]
+background = "#0c0c12"
+foreground = "#a5b6cf"
+
+[colors.normal]
+black = "#1c1e27"
+red = "#ff6b7a"
+green = "#95d3af"
+yellow = "#f1d8a5"
+blue = "#8aa2ff"
+magenta = "#c79bf0"
+cyan = "#98d3ee"
+white = "#a5b6cf"
+
+[colors.bright]
+black = "#323947"
+red = "#ff6b7a"
+green = "#95d3af"
+yellow = "#f1d8a5"
+blue = "#8aa2ff"
+magenta = "#c79bf0"
+cyan = "#98d3ee"
+white = "#e6e8ee"
