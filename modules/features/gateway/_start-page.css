@@ -152,7 +152,7 @@ html[data-start-view="compact"] #layout-groups .service-container:not(:has(ifram
   color: #ffffff;
 }
 /* on a phone the search takes the first line, the view switch and the reload button the whole
-   second; the attention bar goes without its dot */
+   second */
 @media (max-width: 640px) {
   #start-page .start-tools {
     flex: 1 1 100%;
@@ -165,10 +165,6 @@ html[data-start-view="compact"] #layout-groups .service-container:not(:has(ifram
   }
   #start-page .start-view button {
     flex: 1;
-  }
-  /* the amber bar says it; its dot would take a line of its own */
-  #start-page .start-attention-count {
-    display: none;
   }
 }
 
@@ -240,6 +236,12 @@ html[data-start-view="compact"] #layout-groups .service-container:not(:has(ifram
 }
 #start-page .start-attention-items > a:hover {
   color: #ffffff;
+}
+/* on a phone the amber bar says it; its dot would take a line of its own */
+@media (max-width: 640px) {
+  #start-page .start-attention-count {
+    display: none;
+  }
 }
 
 /* ── chips ──────── */
