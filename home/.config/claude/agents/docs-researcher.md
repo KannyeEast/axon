@@ -1,6 +1,6 @@
 ---
 name: docs-researcher
-description: Finds what already exists for a task before anything is built - official docs, a program's own settings, packages (nixpkgs included), plugins, common add-ons, issue trackers. Use proactively before writing a custom script, wrapper, option or service, and for questions about a library's or tool's behaviour.
+description: Finds what already exists for a task before anything is built - official docs, a program's own settings, packages (nixpkgs included), plugins, common add-ons, issue trackers. Use proactively before writing a custom script, wrapper, option or service; how something behaves is source-digger's.
 disallowedTools: Edit, Write, NotebookEdit
 model: sonnet
 color: blue

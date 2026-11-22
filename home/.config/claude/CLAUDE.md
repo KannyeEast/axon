@@ -38,9 +38,15 @@ trigger applies, without being asked.
 - Before adding a script, wrapper, option, package or service: `docs-researcher` looks for what
   exists. Skip it only when you already checked the source yourself and say so.
 - Finding code across more than a handful of files: `cavecrew-investigator`.
+- How a program, library or module really behaves, when docs are thin or the answer decides a
+  change: `source-digger` reads its source at the version in use.
+- A question whose answer lives on the web, not in code (a service, DNS, prices, known issues):
+  `web-researcher`.
+- A Nix change that isn't obvious, or an eval error that doesn't explain itself: `nix-expert`.
 - A change of more than 3 files, once the plan is agreed: write the plan (files, what changes,
-  how to verify) and hand it to `builder`. One builder on the live tree at a time; two only on
-  files that don't overlap.
+  how to verify), have `critic` check it (the plan, not your reasoning), fix what it confirms,
+  then hand it to `builder`. One builder on the live tree at a time; two only on files that
+  don't overlap.
 - Before you suggest a commit message for a change of more than 3 files: `reviewer` over the diff,
   and fix what it confirms first.
 - An audit or sweep of more than one file: `reviewer` and `docs-researcher` in parallel, then you

@@ -1,8 +1,10 @@
 # `session` lends the current folder to a server for a while: Mutagen keeps it in sync with
 # ~/sessions/<name> there, where Claude runs in tmux (`sandbox claude --rc`), so the work goes on
-# with this machine off and can be picked up from another one.
-#   session start [name]   from the project folder: link it, start Claude there, attach
-#   session attach [name]  back into the session; restarts Claude with its last conversation
+# with this machine off and can be picked up from another one. The tmux session holds a `git`
+# window (lazygit, then a shell, in the folder) and one window per chat.
+#   session start [name]   from the project folder: link it, open the session there, attach
+#   session attach [name]  back into the session; reopens it with a fresh chat if it ended
+#   session chat [name]    one more chat in the running session (old ones: /resume in Claude)
 #   session join <name>    on another machine: a copy in ~/sessions/<name>, linked to the same one
 #   session leave [name]   end that copy (do this before `end` on the first machine)
 #   session end [name]     wait for the last changes, unlink, stop Claude, remove the server's copy
@@ -65,24 +67,27 @@
               "$1" "$server:$remote"
             mutagen sync flush "$name"
           }
-          # -A attaches to a running session or starts it: quitting Claude ends the tmux session,
-          # attach brings it back with the last conversation
-          attach() {
-            exec ssh -t "$server" "cd \"\$HOME/$remote\" && exec tmux new-session -A -s '$name' '$1'"
+          # runs on the server, in the session's folder; windows start there too. "=" makes tmux
+          # match the name exactly; without it `axon` also finds `axon-docs`
+          chat="tmux new-window -t '=$name:' -n claude 'sandbox claude --rc'"
+          open="tmux has-session -t '=$name' 2>/dev/null || {
+            tmux new-session -d -s '$name' -n git 'command -v lazygit >/dev/null && lazygit; exec \$SHELL' && $chat; }"
+          on_server() {
+            exec ssh -t "$server" "cd \"\$HOME/$remote\" && { $1; } && exec tmux attach -t '=$name'"
           }
-          resume='sandbox claude --rc --continue || sandbox claude --rc'
 
           case $cmd in
             start)
               link "$PWD"
-              attach 'sandbox claude --rc'
+              on_server "$open"
               ;;
-            attach) attach "$resume" ;;
+            attach) on_server "$open" ;;
+            chat) on_server "$chat" ;;
             join)
               [ $# -gt 0 ] || { echo "session join: which session? (session list)" >&2; exit 2; }
               mkdir -p "$HOME/$remote"
               link "$HOME/$remote"
-              attach "$resume"
+              on_server "$open"
               ;;
             leave)
               mutagen sync flush "$name"
@@ -99,7 +104,7 @@
               ssh "$server" "tmux ls 2>/dev/null || echo 'no sessions on $server'"
               ;;
             *)
-              echo "usage: session start|attach|join|leave|end|list [name]" >&2
+              echo "usage: session start|attach|chat|join|leave|end|list [name]" >&2
               exit 2
               ;;
           esac
