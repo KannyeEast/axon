@@ -2,7 +2,7 @@
 # ~/sessions/<name> there, where Claude runs in tmux (`sandbox claude --rc`), so the work goes on
 # with this machine off and can be picked up from another one.
 #   session start [name]   from the project folder: link it, start Claude there, attach
-#   session attach [name]  back into a running session
+#   session attach [name]  back into the session; restarts Claude with its last conversation
 #   session join <name>    on another machine: a copy in ~/sessions/<name>, linked to the same one
 #   session leave [name]   end that copy (do this before `end` on the first machine)
 #   session end [name]     wait for the last changes, unlink, stop Claude, remove the server's copy
@@ -65,20 +65,24 @@
               "$1" "$server:$remote"
             mutagen sync flush "$name"
           }
-          attach() { exec ssh -t "$server" tmux attach -t "$name"; }
+          # -A attaches to a running session or starts it: quitting Claude ends the tmux session,
+          # attach brings it back with the last conversation
+          attach() {
+            exec ssh -t "$server" "cd \"\$HOME/$remote\" && exec tmux new-session -A -s '$name' '$1'"
+          }
+          resume='sandbox claude --rc --continue || sandbox claude --rc'
 
           case $cmd in
             start)
               link "$PWD"
-              ssh "$server" "tmux new-session -d -s '$name' -c \"\$HOME/$remote\" 'sandbox claude --rc'"
-              attach
+              attach 'sandbox claude --rc'
               ;;
-            attach) attach ;;
+            attach) attach "$resume" ;;
             join)
               [ $# -gt 0 ] || { echo "session join: which session? (session list)" >&2; exit 2; }
               mkdir -p "$HOME/$remote"
               link "$HOME/$remote"
-              attach
+              attach "$resume"
               ;;
             leave)
               mutagen sync flush "$name"
