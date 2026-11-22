@@ -2,12 +2,14 @@
 # Bazarr fetches subtitles. All tailnet-only, behind the gateway's login where it runs. They fill
 # the movies/ and shows/ folders on the media volume, so they only run on a host that has one.
 # Their API keys are dashboard/<name>/key where secrets.json has it; else each keeps its own.
+# Kept only in their UIs (config.db, backed up): download clients with their keys, root folders,
+# Connect entries, Prowlarr's indexers and the apps it syncs them to; Bazarr's providers and
+# language profiles (its config.yaml).
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) vpn;
       inherit (config.axon.volumes) media;
       # order: Jellyfin and Seerr first, then the downloaders, then these four (Media fills rows
       # left to right). attention: widget values marked amber above 0
@@ -51,8 +53,7 @@
       # Forms, off for local addresses with the tailnet's 100.64.0.0/10 counted as local (a
       # setting config.xml has and the UI doesn't). Settings here win over config.xml
       settings = name: {
-        # names they answer to besides loopback: their route and their own address (Prowlarr's in
-        # the VPN namespace)
+        # names they answer to: their route and their own address
         server.allowedHosts =
           let
             inherit (config.axon.services.${name}) route;
@@ -71,6 +72,9 @@
           trustCgnatIpAddresses = true;
         };
       };
+
+      # the first line of a log entry in the .NET apps; a stack trace follows it
+      logStart = "^\\[(Trace|Debug|Info|Warn|Error|Fatal)\\]";
 
       secret = name: "dashboard/${name}/key";
       hasKey = name: lib.hasAttrByPath (lib.splitString "/" (secret name)) config.axon.secrets;
@@ -163,17 +167,6 @@
         )
       ];
 
-      axon.vpn = {
-        # Prowlarr talks to the trackers' sites, so it searches through the tunnel like
-        # qBittorrent downloads; Radarr and Sonarr only talk to the two of them
-        confined.prowlarr.ports = [ prowlarr.port ];
-        # Prowlarr hands its indexers to Radarr and Sonarr on the host
-        hostPorts = [
-          apps.radarr.port
-          apps.sonarr.port
-        ];
-      };
-
       # Radarr's module only declares .config/Radarr, so tmpfiles makes .config root's and then
       # refuses the unsafe step from radarr's folder into it: Radarr is never created
       systemd.tmpfiles.rules = [ "d /var/lib/radarr/.config 0750 radarr media -" ];
@@ -195,6 +188,7 @@
       axon.services =
         lib.mapAttrs (name: app: {
           units = [ name ];
+          logStart = lib.mkIf (name != "bazarr") logStart;
           route.port = app.port;
           dashboard = dashboard name app;
           backup.paths = [ "/var/lib/${name}" ];
@@ -202,10 +196,8 @@
         // {
           prowlarr = {
             units = [ "prowlarr" ];
-            route = {
-              inherit (prowlarr) port;
-              inherit (vpn.network) address;
-            };
+            inherit logStart;
+            route.port = prowlarr.port;
             dashboard = dashboard "prowlarr" prowlarr;
             backup.paths = [ "/var/lib/private/prowlarr" ];
           };

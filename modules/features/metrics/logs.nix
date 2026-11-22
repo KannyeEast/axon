@@ -3,6 +3,8 @@
 # such a host it stays off. Its UI answers on localhost only.
 # level is journald's priority keyword. What a program prints to stdout lands as info, so for
 # those lines it comes from the line itself where that names one ([error], level=warn, ERROR).
+# Where a service declares logStart, the lines that follow an entry's first one (a stack trace)
+# join it, so it is one entry with the first line's level.
 { lib, ... }:
 {
   flake.modules.nixos.metrics =
@@ -160,6 +162,22 @@
 
         loki.process "level" {
           forward_to = [loki.write.monitoring.receiver]
+
+          // terminal colours some programs print into the journal too; they hide the level
+          stage.replace {
+            expression = ${lib.toJSON "(\\x1b\\[[0-9;]*m)"}
+            replace = ""
+          }
+        ${lib.concatStrings (
+          lib.mapAttrsToList (service: data: ''
+            stage.match {
+              selector = ${lib.toJSON "{service_name=\"${service}\"}"}
+              stage.multiline {
+                firstline = ${lib.toJSON data.logStart}
+              }
+            }
+          '') (lib.filterAttrs (_: data: data.logStart != null) services)
+        )}
 
           stage.match {
             selector = "{level=\"info\"}"

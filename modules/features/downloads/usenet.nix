@@ -37,6 +37,11 @@
             # Radarr and Sonarr, in the media group, move and delete what lands here
             permissions = "775";
             api_key = lib.mkIf hasKey "@api_key@";
+            # empty means no article cache: every article goes straight to disk. Its own default
+            # for new installs is a quarter of the memory, at most this
+            cache_limit = "1G";
+            # its web UI's one-time tips message, seen
+            notified_new_skin = 2;
           };
           categories = {
             movies = {
@@ -62,9 +67,15 @@
       # make the folders once they're mounted (tmpfiles may run before that)
       systemd.services.sabnzbd = {
         unitConfig.RequiresMountsFor = folders;
-        serviceConfig.ExecStartPre = map (
-          dir: "+${lib.getExe' pkgs.coreutils "install"} -d -o root -g media -m 2775 ${dir}"
-        ) folders;
+        serviceConfig = {
+          ExecStartPre = map (
+            dir: "+${lib.getExe' pkgs.coreutils "install"} -d -o root -g media -m 2775 ${dir}"
+          ) folders;
+          # the module forks it (-d); in the foreground it also logs to the journal, not only to
+          # its own file
+          Type = lib.mkForce "simple";
+          ExecStart = lib.mkForce "${lib.getExe config.services.sabnzbd.package} -f ${state}/sabnzbd.ini";
+        };
       };
 
       axon.persist.state.directories = [

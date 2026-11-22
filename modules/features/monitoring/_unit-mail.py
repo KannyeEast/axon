@@ -20,10 +20,16 @@ from pathlib import Path
 LINES = 30  # shown; more are read, as repeats and systemd's own lines fall away
 READ = 300
 LONGEST = 300
-MUTED = "#6b7280"
-LOG_TEXT = "#e6e8ee"
-LOG_TIME = "#8b93a1"
-LOG_LEVELS = {"fail": "#ff9aa8", "warn": "#f1c27d"}
+TEXT = "#111827"
+MUTED = "#6B7280"
+LINE = "#E5E7EB"
+MONO = "SFMono-Regular,Menlo,Consolas,monospace"
+LOG_BACK = "#111827"
+LOG_TEXT = "#E5E7EB"
+LOG_TIME = "#9CA3AF"
+LOG_LEVELS = {"fail": "#FCA5A5", "warn": "#FCD34D"}
+SECTION = f"margin:24px 0 0;padding:20px 0 0;border-top:1px solid {LINE};"
+HEADING = f"padding:0 0 14px;font-size:12px;line-height:16px;font-weight:700;letter-spacing:0.06em;color:{MUTED};"
 # systemd's lines about the unit that only repeat what the mail already says
 NOISE = r": (Deactivated|Scheduled restart|Consumed|Failed with result|Main process exited)"
 ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
@@ -85,20 +91,22 @@ def drilldown(host, unit, fired):
     return f'{config["grafana"]}/a/grafana-lokiexplore-app/explore/unit/{path}/logs?{query}'
 
 
-def section(alert):
-    """One failed unit as (plain text, markup)."""
+def last_output(lines):
+    """The last error in the log, else its last line."""
+    errors = [line for _, line, _, level in lines if level == "fail"]
+    return (errors or [line for _, line, _, _ in lines] or [""])[-1]
+
+
+def section(alert, named):
+    """One failed unit as (plain text, markup, last output, since); named puts the unit in the heading."""
     labels = alert["labels"]
     host, unit = labels.get("host", "?"), labels.get("unit", "?")
     fired = moment(alert["startsAt"])
     since = fired.astimezone().strftime("%a %d.%m. %H:%M")
-    text = [f"{unit} on {host}, since {since}"]
-    markup = [
-        f'<p style="margin:0 0 2px;font-weight:600;">{html.escape(unit)}</p>'
-        f'<p style="margin:0 0 10px;color:{MUTED};font-size:14px;">since {since}</p>'
-    ]
-    if alert["status"] == "resolved":
-        return text, markup
     lines = read_log(host, unit, fired)
+    heading = f"LOG SNAPSHOT · {unit}" if named else "LOG SNAPSHOT"
+    text = [f"{unit} on {host}, since {since}"]
+    markup = [f'<div style="{SECTION}"><div style="{HEADING}">{html.escape(heading)}</div>']
     rows = []
     for stamp, line, count, level in lines:
         when = time.strftime("%H:%M:%S", time.localtime(stamp / 1e9))
@@ -107,57 +115,78 @@ def section(alert):
             shown += f"  (×{count})"
         text.append(f"  {when}  {shown}")
         colour = LOG_LEVELS.get(level, LOG_TEXT)
+        weight = "font-weight:700;" if level == "fail" else ""
         rows.append(
-            f'<span style="color:{LOG_TIME};">{when}</span>  '
-            f'<span style="color:{colour};">{html.escape(shown)}</span>'
+            f'<tr><td style="width:68px;padding:0 12px 0 0;vertical-align:top;color:{LOG_TIME};white-space:nowrap;">{when}</td>'
+            f'<td style="padding:0;color:{colour};{weight}word-break:break-all;">{html.escape(shown)}</td></tr>'
         )
     if rows:
-        body = "\n".join(rows)
         markup.append(
-            f'<pre style="margin:0 0 8px;padding:12px 14px;background:#14161b;color:{LOG_TEXT};'
-            "border-radius:6px;font-family:ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;"
-            f'font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-word;">{body}</pre>'
+            f'<table role="presentation" width="100%" style="width:100%;border-collapse:separate;border-spacing:0;background:{LOG_BACK};border-radius:6px;">'
+            f'<tr><td style="padding:14px 16px;"><table role="presentation" width="100%" style="width:100%;border-collapse:collapse;'
+            f'font-family:{MONO};font-size:12px;line-height:20px;">{"".join(rows)}</table></td></tr></table>'
         )
     else:
         text.append("  nothing in the log")
-        markup.append(f'<p style="margin:0 0 8px;color:{MUTED};font-size:14px;">nothing in the log</p>')
+        markup.append(f'<p style="margin:0;font-size:14px;color:{MUTED};">nothing in the log</p>')
+    markup.append("</div>")
     link = drilldown(host, unit, fired)
+    command = f"journalctl -u {unit}"
+    markup.append(f'<div style="{SECTION}">')
     if link:
         text.append(f"  {link}")
-        markup.append(f'<p style="margin:0 0 18px;font-size:14px;"><a href="{html.escape(link)}">Full log</a></p>')
-    return text, markup
+        markup.append(
+            f'<a href="{html.escape(link)}" style="display:inline-block;padding:11px 18px;border-radius:6px;'
+            f'background:{TEXT};font-size:14px;line-height:18px;font-weight:600;color:#FFFFFF;text-decoration:none;">View full log</a>'
+        )
+    markup.append(
+        f'<p style="margin:{14 if link else 0}px 0 0;font-size:13px;line-height:20px;color:#4B5563;">Or on {html.escape(host)}: '
+        f'<span style="padding:2px 6px;border-radius:4px;background:#F3F4F6;color:{TEXT};font-family:{MONO};font-size:12px;">'
+        f"{html.escape(command)}</span></p></div>"
+    )
+    return text, markup, last_output(lines), since
 
 
 def send(payload):
     alerts = payload["alerts"]
-    resolved = payload["status"] == "resolved"
     host = payload["commonLabels"].get("host", "?")
     units = [alert["labels"].get("unit", "?") for alert in alerts]
     what = units[0] if len(units) == 1 else f"{len(units)} units"
-    text, markup = [], []
+    text, markup, outputs, times = [], [], [], []
     for alert in alerts:
-        part = section(alert)
+        part = section(alert, len(alerts) > 1)
         text += part[0]
         markup += part[1]
+        outputs.append(part[2])
+        times.append(part[3])
 
-    colours = config["levels"]["ok" if resolved else "fail"]
+    lead = ""
+    if len(alerts) == 1 and outputs[0]:
+        lead = (
+            f'<p style="margin:12px 0 0;font-size:15px;line-height:22px;color:{TEXT};">Last output: '
+            f'<span style="font-family:{MONO};font-size:14px;color:{config["levels"]["fail"]["color"]};">'
+            f"{html.escape(outputs[0])}</span></p>"
+        )
+    colours = config["levels"]["fail"]
     page = Path(config["page"]).read_text()
-    for marker, value in {
-        "@label@": "Resolved" if resolved else "Failed",
+    values = {
+        "@preview@": html.escape(f"{what} failed on {host}" + (f": {outputs[0]}" if len(alerts) == 1 and outputs[0] else "")),
+        "@label@": "FAILED",
         "@color@": colours["color"],
         "@tint@": colours["tint"],
-        "@title@": f"<b>{html.escape(what)}</b> failed",
-        "@subtitle@": f"on {html.escape(host)}",
+        "@bar@": colours["bar"],
+        "@title@": f'{html.escape(what)} <span style="font-weight:400;">failed</span>',
+        "@subtitle@": html.escape(f"{host} · since {times[0]}"),
         "@footer@": html.escape(f'Sent by {config["sender"]}'),
-    }.items():
-        page = page.replace(marker, value)
-    # last, so that nothing in a log is taken for a marker
-    page = page.replace("@body@", "".join(markup))
+        "@body@": lead + "".join(markup),
+    }
+    # one pass, so that nothing in a log is taken for a marker
+    page = re.sub(r"@\w+@", lambda match: values.get(match[0], match[0]), page)
 
     message = EmailMessage()
     message["From"] = os.environ["MAIL_FROM"]
     message["To"] = config["to"]
-    message["Subject"] = f"[{host}] {what} failed" + (" (resolved)" if resolved else "")
+    message["Subject"] = f"[{host}] {what} failed"
     message.set_content("\n".join(text) + "\n")
     message.add_alternative(page, subtype="html")
     with smtplib.SMTP(config["smtp"], config["port"], timeout=30) as smtp:

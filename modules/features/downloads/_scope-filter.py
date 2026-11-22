@@ -1,23 +1,22 @@
 """Passes Seerr through, minus the Jellyfin links to items the asking person can't see.
 
-friend-filter.py <port> <seerr url> <jellyfin url> <friend-tags port>
+scope-filter.py <port> <seerr url> <jellyfin url> [<sync url>]
 
 Listens on 127.0.0.1:<port> and hands every request to Seerr and every answer back as it came,
 except a JSON answer to a GET whose `mediaInfo` names Jellyfin items: those the person (found by
 their Seerr session cookie) can't see in Jellyfin lose their id and link, and a movie among them is
 marked unknown again, so the app offers a request instead of a Jellyfin page that fails. Series keep
 their status. If anything in that goes wrong, the answer goes back unchanged. A request from a
-friend (a Jellyfin user whose "Allow items with tags" holds `friend`) also puts the title on their
-Seerr watchlist: Seerr stores no request for a series whose seasons it already knows, and the
-watchlist is what friend-tags then shows them. After any request or watchlist change it calls
-friend-tags' socket, so the title shows up within seconds rather than at the next timer run.
+scoped user (a Jellyfin user whose "Allow items with tags" holds `scoped`) also puts the title on
+their Seerr watchlist: Seerr stores no request for a series whose seasons it already knows, and the
+watchlist is what n8n's Scope tags then shows them. After any request or watchlist change it POSTs
+to <sync url>, so the title shows up within seconds rather than at the next scheduled run.
 
 The Jellyfin API key comes from the unit's credential `jellyfin`.
 """
 import http.client
 import json
 import os
-import socket
 import sys
 import threading
 import time
@@ -39,7 +38,7 @@ DROPPED = {
     "transfer-encoding", "upgrade", "host", "content-length", "accept-encoding", "expect",
 }
 SESSION = "connect.sid"
-MARKER = "friend"
+MARKER = "scoped"
 CACHED = 300
 TIMEOUT = 60
 LOOKUP_TIMEOUT = 5
@@ -92,26 +91,26 @@ class Filter:
             self.users[cookie] = (user, now + CACHED)
         return user
 
-    def is_friend(self, user):
-        """Whether the Jellyfin user carries the friend marker; remembered for CACHED s."""
+    def is_scoped(self, user):
+        """Whether the Jellyfin user carries the scope marker; remembered for CACHED s."""
         now = time.monotonic()
         with self.lock:
-            friend, until = self.marked.get(user, (False, 0))
+            scoped, until = self.marked.get(user, (False, 0))
         if until > now:
-            return friend
+            return scoped
         auth = {"Authorization": f'MediaBrowser Token="{self.key}"'}
         policy = self.lookup(f"{self.jellyfin}/Users/{user}", auth)["Policy"]
-        friend = MARKER in {tag.lower() for tag in policy.get("AllowedTags") or []}
+        scoped = MARKER in {tag.lower() for tag in policy.get("AllowedTags") or []}
         with self.lock:
             self.marked = {k: v for k, v in self.marked.items() if v[1] > now}
-            self.marked[user] = (friend, now + CACHED)
-        return friend
+            self.marked[user] = (scoped, now + CACHED)
+        return scoped
 
     def claim(self, body, headers, cookie):
-        """Puts a friend's requested title on their watchlist, with their own session; a title
+        """Puts a scoped user's requested title on their watchlist, with their own session; a title
         already there (409) is fine."""
         user = self.jellyfin_user(cookie)
-        if not user or not self.is_friend(user):
+        if not user or not self.is_scoped(user):
             return
         asked = json.loads(body)
         watch = {"tmdbId": asked["mediaId"], "mediaType": asked["mediaType"]}
@@ -167,24 +166,24 @@ class Filter:
         return json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode()
 
 
-# a successful change here makes friend-tags run
+# a successful change here calls the sync
 CLAIMS = ("/api/v1/request", "/api/v1/watchlist")
 
 
-def poke(port):
-    """Calls friend-tags' socket; systemd starts the sync, which answers and runs."""
+def sync(url):
+    """Calls the sync; when it doesn't answer, its schedule catches up."""
     try:
-        with socket.create_connection(("127.0.0.1", port), timeout=LOOKUP_TIMEOUT) as connection:
-            connection.sendall(b"POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n")
-            connection.recv(64)
+        urllib.request.urlopen(
+            urllib.request.Request(url, data=b"", method="POST"), timeout=LOOKUP_TIMEOUT
+        ).close()
     except OSError as error:
-        print(f"friend-filter: friend-tags not called: {error!r}", flush=True)
+        print(f"scope-filter: {url} not called: {error!r}", flush=True)
 
 
 class Proxy(BaseHTTPRequestHandler):
-    friends = None
+    scope = None
     upstream = None
-    hook = None
+    sync_url = None
 
     def log_request(self, code="-", size="-"):
         pass
@@ -225,7 +224,7 @@ class Proxy(BaseHTTPRequestHandler):
             response = connection.getresponse()
             payload = response.read()
         except (OSError, http.client.HTTPException) as error:
-            print(f"friend-filter: {self.command} {self.path}: Seerr: {error!r}", flush=True)
+            print(f"scope-filter: {self.command} {self.path}: Seerr: {error!r}", flush=True)
             self.answer(502, b'{"error":"Seerr unreachable"}')
             return
         finally:
@@ -240,16 +239,17 @@ class Proxy(BaseHTTPRequestHandler):
             try:
                 cookie = self.cookies().get(SESSION)
                 if cookie:
-                    self.friends.claim(body, self.headers, cookie)
+                    self.scope.claim(body, self.headers, cookie)
             except Exception as error:
-                print(f"friend-filter: {self.path}: no watchlist entry: {error!r}", flush=True)
+                print(f"scope-filter: {self.path}: no watchlist entry: {error!r}", flush=True)
 
         if (
             self.command in ("POST", "DELETE")
             and urllib.parse.urlsplit(self.path).path.startswith(CLAIMS)
             and 200 <= response.status < 300
+            and self.sync_url
         ):
-            threading.Thread(target=poke, args=(self.hook,), daemon=True).start()
+            threading.Thread(target=sync, args=(self.sync_url,), daemon=True).start()
 
         if (
             self.command == "GET"
@@ -258,9 +258,9 @@ class Proxy(BaseHTTPRequestHandler):
         ):
             try:
                 cookie = self.cookies().get(SESSION)
-                payload = self.friends.apply(payload, cookie) or payload
+                payload = self.scope.apply(payload, cookie) or payload
             except Exception as error:
-                print(f"friend-filter: {self.path}: passed unchanged: {error!r}", flush=True)
+                print(f"scope-filter: {self.path}: passed unchanged: {error!r}", flush=True)
 
         self.send_response_only(response.status, response.reason)
         for name, value in response.getheaders():
@@ -296,17 +296,17 @@ class Proxy(BaseHTTPRequestHandler):
 
 
 def main():
-    if len(sys.argv) != 5:
-        sys.exit("usage: friend-filter.py <port> <seerr url> <jellyfin url> <friend-tags port>")
-    port, seerr, jellyfin, hook = sys.argv[1:]
+    if len(sys.argv) not in (4, 5):
+        sys.exit("usage: scope-filter.py <port> <seerr url> <jellyfin url> [<sync url>]")
+    port, seerr, jellyfin, *rest = sys.argv[1:]
     credentials = os.environ.get("CREDENTIALS_DIRECTORY")
     if not credentials:
-        sys.exit("friend-filter.py: no credentials; run it as friend-filter.service")
+        sys.exit("scope-filter.py: no credentials; run it as scope-filter.service")
     key = (Path(credentials) / "jellyfin").read_text().strip()
     target = urllib.parse.urlsplit(seerr)
     Proxy.upstream = (target.scheme, target.netloc)
-    Proxy.hook = int(hook)
-    Proxy.friends = Filter(seerr, jellyfin, key)
+    Proxy.sync_url = rest[0] if rest else None
+    Proxy.scope = Filter(seerr, jellyfin, key)
     server = ThreadingHTTPServer(("127.0.0.1", int(port)), Proxy)
     server.daemon_threads = True
     server.serve_forever()

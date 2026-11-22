@@ -50,6 +50,9 @@
             bindaddress = "127.0.0.1:${toString port}";
             tls_chain = "${cert}/fullchain.pem";
             tls_key = "${cert}/key.pem";
+            # every caller is Caddy or cloudflared on this host; without this its logs show only
+            # 127.0.0.1. It takes the first address, which a client can set through the tunnel
+            http_client_address_info.x-forward-for = [ "127.0.0.1" ];
             online_backup = {
               # beside the state, not in it: inside, the first switch creates it before the state's
               # mount, which then hides it, and kanidm's sandbox fails to start
