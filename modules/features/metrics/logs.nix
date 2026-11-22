@@ -140,6 +140,7 @@
           }
         ${copy "__journal_priority_keyword" "level"}
         ${copy "__journal_container_name" "container"}
+        ${copy "__journal_syslog_identifier" "identifier"}
         ${derive "__journal_syslog_identifier" "(.+)"}
         ${derive "unit" "([^@]+)(@.*)?\\.service"}
         ${derive "container" "(.+)"}
@@ -162,6 +163,19 @@
 
         loki.process "level" {
           forward_to = [loki.write.monitoring.receiver]
+
+          // systemd's lines about a job that ran fine (timers every few minutes make thousands a
+          // day); its lines about failures stay
+          stage.match {
+            selector = "{identifier=\"systemd\"}"
+            stage.drop {
+              expression = ${lib.toJSON "^(Starting .+\\.\\.\\.|Started .+\\.|Finished .+\\.|.+: Deactivated successfully\\.|.+: Consumed .+)$"}
+              drop_counter_reason = "systemd_routine"
+            }
+          }
+          stage.label_drop {
+            values = ["identifier"]
+          }
 
           // terminal colours some programs print into the journal too; they hide the level
           stage.replace {
