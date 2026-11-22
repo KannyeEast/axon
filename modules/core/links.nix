@@ -20,7 +20,7 @@ in
             };
             group = mkOption {
               type = types.str;
-              default = "Infrastructure";
+              default = "Admin";
               description = "The heading it is listed under; services' group names are taken.";
             };
           };

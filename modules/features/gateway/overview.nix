@@ -19,7 +19,7 @@ in
           icon = "router.svg";
         };
       };
-      description = "More links on the start page, name to url, icon and optionally group (Infrastructure by default): what runs outside the cluster and no feature knows about.";
+      description = "More links on the start page, name to url, icon and optionally group (Admin by default): what runs outside the cluster and no feature knows about.";
     };
   };
 
@@ -258,6 +258,14 @@ in
       };
 
       axon.links = gateway.links;
+
+      # Homepage shows only one of a services group and a link group of the same name
+      assertions = [
+        {
+          assertion = lib.intersectLists linkGroups groups == [ ];
+          message = "axon.links: group ${lib.concatStringsSep ", " (lib.intersectLists linkGroups groups)} is also a services group, so its links don't show; give the links another group";
+        }
+      ];
 
       warnings =
         lib.optional (waiting != [ ])
