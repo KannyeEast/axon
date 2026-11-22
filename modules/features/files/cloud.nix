@@ -167,9 +167,7 @@
         sops.templates."nextcloud.json" = {
           owner = "nextcloud";
           content = lib.toJSON {
-            mail_from_address = mail.user;
-            mail_domain = mail.domain;
-            mail_smtpname = mail.address;
+            mail_smtpname = mail.login;
             mail_smtppassword = mail.token;
           };
         };
@@ -179,6 +177,8 @@
             mail_smtphost = mail.host;
             mail_smtpport = mail.port;
             mail_smtpauth = true;
+            mail_from_address = "cloud";
+            mail_domain = mail.domain;
           };
           secretFile = config.sops.templates."nextcloud.json".path;
         };

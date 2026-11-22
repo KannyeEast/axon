@@ -1,10 +1,29 @@
-# The account mail leaves through: Proton's SMTP with a token, as a home connection can't deliver
-# mail itself. The sender lives in secrets.json (mail/user, mail/domain, mail/token), out of the
-# repo. Alerts, failed units among them, are mailed by Alertmanager on the host running monitoring
-# to srv-alert@ the cluster domain, filed away by a Sieve rule on the local part, in the page in
-# _page.html.
+# The account mail leaves through: an SMTP relay ([smtp] in host.toml), reached with STARTTLS, as
+# a home connection can't deliver mail itself. One login (secrets.json mail/login, mail/token)
+# sends for every service, each from its own address on the cluster domain, so the relay must
+# accept any sender on that domain. Alerts, failed units among them, are mailed by Alertmanager on
+# the host running monitoring to srv-alert@ the cluster domain, filed away by a Sieve rule on the
+# local part, in the page in _page.html.
 { lib, ... }:
+let
+  inherit (lib) mkOption types;
+in
 {
+  axon.schema.mail = {
+    options.smtp = {
+      host = mkOption {
+        type = types.str;
+        example = "smtp.example.com";
+        description = "SMTP relay, reached with STARTTLS; its login goes in secrets.json at mail/login and mail/token.";
+      };
+      port = mkOption {
+        type = types.port;
+        example = 587;
+        description = "SMTP relay port.";
+      };
+    };
+  };
+
   flake.modules.nixos.mail =
     { config, ... }:
     let
@@ -12,18 +31,16 @@
         cluster
         domain
         host
-        mail
+        smtp
         ;
       ph = config.sops.placeholder;
       monitors = lib.filterAttrs (_: data: lib.elem "monitoring" data.host.features) cluster.hosts;
     in
     {
       axon.mail = {
-        host = "smtp.protonmail.ch";
-        port = 587;
-        user = ph."mail/user";
-        domain = ph."mail/domain";
-        address = "${mail.user}@${mail.domain}";
+        inherit (smtp) host port;
+        inherit domain;
+        login = ph."mail/login";
         token = ph."mail/token";
         alert = "srv-alert@${domain}";
         page = lib.readFile ./_page.html;
@@ -47,8 +64,7 @@
       };
 
       sops.secrets = {
-        "mail/user" = { };
-        "mail/domain" = { };
+        "mail/login" = { };
         "mail/token" = { };
       };
 

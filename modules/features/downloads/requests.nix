@@ -1,7 +1,8 @@
 # Seerr takes requests and hands them to Radarr (movies) and Sonarr (shows). It brings its own
 # login and is tailnet only: the family requests from Moonfin, which reaches it through Moonbase on
 # this host. Needs the library the arr stack fills, so it runs where that does. Kept only in its UI
-# (settings.json, backed up): its links to Jellyfin, Radarr and Sonarr, users and override rules.
+# (settings.json, backed up): its links to Jellyfin, Radarr and Sonarr, users, override rules and
+# mail notifications (axon.mail's login, sent from requests@ the cluster domain, entered by hand).
 # A scoped user sees in Jellyfin only what they requested or put on their watchlist here: the owner
 # adds the tag `scoped` to that user's "Allow items with tags" in Jellyfin, and the n8n workflow
 # "Scope tags" (automation) tags those titles for them. It hides titles; it is not access control.

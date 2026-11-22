@@ -1,5 +1,6 @@
-# Contract: axon.mail. The account outgoing mail leaves through, set by the mail feature.
-# Null on a host without it: a consumer then sends nothing and says so if that matters.
+# Contract: axon.mail. The account outgoing mail leaves through and the domain it is sent from,
+# set by the mail feature. Null on a host without it: a consumer then sends nothing and says so if
+# that matters.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -26,10 +27,12 @@ in
               type = types.port;
               description = "SMTP port.";
             };
-            user = secret "Local part of the sender address.";
-            domain = secret "Domain of the sender address.";
-            address = secret "Sender address, also the SMTP login.";
+            login = secret "SMTP login.";
             token = secret "SMTP password.";
+            domain = mkOption {
+              type = types.str;
+              description = "Domain of the senders: a service sends as <its axon.services name>@domain, all with the one login.";
+            };
             alert = mkOption {
               type = types.str;
               description = "Recipient for alerts.";

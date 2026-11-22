@@ -129,6 +129,7 @@
           page = pkgs.writeText "page.html" mail.page;
           inherit (mail) levels port;
           smtp = mail.host;
+          from = "alerts@${mail.domain}";
           to = mail.alert;
           loki = "http://127.0.0.1:${toString config.services.loki.configuration.server.http_listen_port}";
           grafana = if routed then grafana else "";
@@ -233,16 +234,16 @@
           configuration = {
             global = lib.optionalAttrs (mail != null) {
               smtp_smarthost = "${mail.host}:${toString mail.port}";
-              smtp_from = "$MAIL_FROM";
-              smtp_auth_username = "$MAIL_FROM";
+              smtp_from = "alerts@${mail.domain}";
+              smtp_auth_username = "$MAIL_LOGIN";
               smtp_auth_password = "$MAIL_TOKEN";
             };
             route = {
               receiver = receiver.name;
+              # one mail per kind of alert and host, listing every service it hits
               group_by = [
                 "alertname"
                 "host"
-                "service"
               ];
               repeat_interval = "12h";
               routes = [
@@ -268,8 +269,14 @@
                 }
               ];
             };
-            # a service that's down takes its route with it, and one mail says so
             inhibit_rules = [
+              # a host that's gone takes everything else of it along, and one mail says so
+              {
+                source_matchers = [ ''alertname="HostDown"'' ];
+                target_matchers = [ ''alertname!="HostDown"'' ];
+                equal = [ "host" ];
+              }
+              # a service that's down takes its route with it
               {
                 source_matchers = [ ''alertname="ServiceDown"'' ];
                 target_matchers = [ ''alertname="RouteDown"'' ];
@@ -285,7 +292,7 @@
 
       sops.templates."alertmanager.env" = lib.mkIf (mail != null) {
         content = ''
-          MAIL_FROM=${mail.address}
+          MAIL_LOGIN=${mail.login}
           MAIL_TOKEN=${mail.token}
         '';
         restartUnits = [

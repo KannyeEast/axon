@@ -20,8 +20,7 @@
       hasAdmin = lib.hasAttrByPath [ "vaultwarden" "admin-token" ] config.axon.secrets;
       env =
         lib.optionalAttrs (mail != null) {
-          SMTP_FROM = mail.address;
-          SMTP_USERNAME = mail.address;
+          SMTP_USERNAME = mail.login;
           SMTP_PASSWORD = mail.token;
         }
         // lib.optionalAttrs hasAdmin { ADMIN_TOKEN = ph."vaultwarden/admin-token"; }
@@ -45,6 +44,7 @@
         // lib.optionalAttrs (mail != null) {
           SMTP_HOST = mail.host;
           SMTP_PORT = mail.port;
+          SMTP_FROM = "vault@${mail.domain}";
         }
         // lib.optionalAttrs (sso.provider != null) {
           SSO_ENABLED = true;

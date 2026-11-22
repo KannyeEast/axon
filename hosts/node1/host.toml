@@ -62,3 +62,7 @@ group = "Usenet"
 url = "https://nzbfinder.ws/profile"
 icon = "mdi-database-search"
 group = "Usenet"
+
+[smtp]
+host = "smtp.tem.scaleway.com"
+port = 587

@@ -1,7 +1,7 @@
 """Alertmanager's webhook for UnitFailed: mails each failed unit with the last lines of its log
 from Loki and a link to the rest in Logs Drilldown, on the page every mail of ours uses.
 
-unit-mail.py <config>   (SMTP login in $MAIL_FROM and $MAIL_TOKEN)
+unit-mail.py <config>   (SMTP login in $MAIL_LOGIN and $MAIL_TOKEN)
 """
 import html
 import json
@@ -184,14 +184,14 @@ def send(payload):
     page = re.sub(r"@\w+@", lambda match: values.get(match[0], match[0]), page)
 
     message = EmailMessage()
-    message["From"] = os.environ["MAIL_FROM"]
+    message["From"] = config["from"]
     message["To"] = config["to"]
     message["Subject"] = f"[{host}] {what} failed"
     message.set_content("\n".join(text) + "\n")
     message.add_alternative(page, subtype="html")
     with smtplib.SMTP(config["smtp"], config["port"], timeout=30) as smtp:
         smtp.starttls()
-        smtp.login(os.environ["MAIL_FROM"], os.environ["MAIL_TOKEN"])
+        smtp.login(os.environ["MAIL_LOGIN"], os.environ["MAIL_TOKEN"])
         smtp.send_message(message)
 
 

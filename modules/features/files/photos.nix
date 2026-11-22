@@ -8,7 +8,7 @@
   flake.modules.nixos.files =
     { config, ... }:
     let
-      inherit (config.axon) sso;
+      inherit (config.axon) mail sso;
       inherit (config.axon.services.photos) route;
       client = sso.clients.immich;
       data = config.axon.spaces.immich.path;
@@ -45,8 +45,32 @@
             signingAlgorithm = "ES256";
             buttonText = "Login with Kanidm";
           };
+          # shared albums and password resets by mail; without an account it sends none
+          notifications.smtp = lib.mkIf (mail != null) {
+            enabled = true;
+            from = "Immich <photos@${mail.domain}>";
+            transport = {
+              inherit (mail) host port;
+              username._secret = config.sops.templates."immich-mail-login".path;
+              password._secret = config.sops.templates."immich-mail-token".path;
+            };
+          };
         };
       };
+
+      # the login and token are sops placeholders, so they reach Immich's settings as files
+      sops.templates = lib.mkIf (mail != null) (
+        lib.mapAttrs
+          (_: content: {
+            inherit content;
+            owner = "immich";
+            restartUnits = [ "immich-server.service" ];
+          })
+          {
+            "immich-mail-login" = mail.login;
+            "immich-mail-token" = mail.token;
+          }
+      );
 
       axon.sso.clients.immich = {
         displayName = "Immich";
