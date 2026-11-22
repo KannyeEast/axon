@@ -80,6 +80,8 @@
           N8N_PROXY_HOPS = 1;
           # its AI workflow builder, on by default, asks for a model; none is set up
           N8N_DISABLED_MODULES = "instance-ai";
+          # its text lines carry no level, so its warnings and errors would count as info
+          N8N_LOG_FORMAT = "json";
           # workflow nodes read the API keys and addresses below as {{ $env.X }}
           N8N_BLOCK_ENV_ACCESS_IN_NODE = false;
           AXON_HOST = host.name;
