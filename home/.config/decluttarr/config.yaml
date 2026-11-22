@@ -1,0 +1,22 @@
+# Decluttarr (downloads/cleanup.nix): every 10 minutes it looks at the queues; an item stuck
+# for 3 runs is removed, blocklisted and searched again; the app deletes it in SABnzbd. test_run
+# only logs what it would do.
+general:
+  test_run: false
+  timer: 10
+
+jobs:
+  # finished but not importable (RAR not unpacked, no eligible files, not an upgrade, ...): any message
+  remove_failed_imports:
+  remove_failed_downloads:
+  # in the queue for a movie or series that is gone
+  remove_orphans:
+
+instances:
+  radarr:
+    - base_url: "http://127.0.0.1:7878"
+      api_key: !ENV RADARR_API_KEY
+  sonarr:
+    - base_url: "http://127.0.0.1:8989"
+      api_key: !ENV SONARR_API_KEY
+

@@ -1,13 +1,13 @@
 # Seerr takes requests and hands them to Radarr (movies) and Sonarr (shows). It brings its own
 # login and is tailnet only: the family requests from Moonfin, which reaches it through Moonbase on
-# this host. Needs the library the arr stack fills, so it runs where that does.
-# A friend sees in Jellyfin only what they requested or put on their watchlist here: the owner adds
-# the tag `friend` to that user's "Allow items with tags" in Jellyfin, and _friend-tags.py tags
-# those titles for them. It runs on a call to 127.0.0.1:8097 (Jellyfin's Webhook plugin on Item
-# Added, and the filter below on a request or watchlist change) and every 2 minutes for what calls
-# nothing (stars in Seerr's web UI). It hides titles; it is not access control.
-# Moonbase's Seerr URL is 127.0.0.1:8098, _friend-filter.py in front of Seerr: it drops the link to a
-# Jellyfin item the person can't see (a movie becomes requestable), so Moonfin opens Seerr's page.
+# this host. Needs the library the arr stack fills, so it runs where that does. Kept only in its UI
+# (settings.json, backed up): its links to Jellyfin, Radarr and Sonarr, users and override rules.
+# A scoped user sees in Jellyfin only what they requested or put on their watchlist here: the owner
+# adds the tag `scoped` to that user's "Allow items with tags" in Jellyfin, and the n8n workflow
+# "Scope tags" (automation) tags those titles for them. It hides titles; it is not access control.
+# Moonbase's Seerr URL is 127.0.0.1:8098, _scope-filter.py in front of Seerr: it drops the link to a
+# Jellyfin item the person can't see (a movie becomes requestable), so Moonfin opens Seerr's page,
+# and calls the workflow on a request or watchlist change.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
@@ -15,16 +15,17 @@
     let
       inherit (config.axon) host routes;
       port = 5055;
-      hook = 8097;
       filter = 8098;
       state = "/var/lib/seerr";
       id = 400;
+      # the workflow reads both from n8n's environment, the filter Jellyfin's
       keys = {
         seerr = "dashboard/requests/key";
         jellyfin = "dashboard/jellyfin/key";
       };
       hasKey = secret: lib.hasAttrByPath (lib.splitString "/" secret) config.axon.secrets;
       missing = lib.filter (secret: !hasKey secret) (lib.attrValues keys);
+      filtered = routes ? jellyfin && hasKey keys.jellyfin;
     in
     lib.mkIf (config.axon.volumes ? media) (
       lib.mkMerge [
@@ -34,7 +35,11 @@
             inherit port;
           };
           systemd.services.seerr = {
-            environment.HOST = "127.0.0.1";
+            environment = {
+              HOST = "127.0.0.1";
+              # its default is debug
+              LOG_LEVEL = "info";
+            };
             # a static user with a fixed id owns the state: as a DynamicUser, systemd would move
             # /var/lib/seerr into /var/lib/private, which fails on the persisted mount there
             serviceConfig = {
@@ -65,10 +70,7 @@
             units = [
               "seerr"
             ]
-            ++ lib.optionals (routes ? jellyfin && missing == [ ]) [
-              "friend-filter"
-              "friend-tags"
-            ];
+            ++ lib.optional filtered "scope-filter";
             route.port = port;
             dashboard = {
               name = "Seerr";
@@ -83,47 +85,30 @@
           };
         }
 
-        (lib.mkIf (routes ? jellyfin && missing != [ ]) {
-          warnings = [
-            "hosts/${host.name}/secrets.json: no ${lib.concatStringsSep ", " missing}, so friend-tags and friend-filter don't run and Jellyfin users marked friend see nothing; add them with `just secrets ${host.name}`"
-          ];
+        (lib.mkIf (routes ? jellyfin) {
+          warnings =
+            lib.optional (missing != [ ])
+              "hosts/${host.name}/secrets.json: no ${lib.concatStringsSep ", " missing}, so ${
+                lib.optionalString (!filtered) "scope-filter and "
+              }Scope tags don't run and Jellyfin users marked scoped see nothing; add them with `just secrets ${host.name}`"
+            ++
+              lib.optional (!routes ? automation)
+                "hosts/${host.name}/host.toml: no automation on this host, so nothing sets scope tags and Jellyfin users marked scoped see nothing; list automation here to set them";
         })
 
-        (lib.mkIf (routes ? jellyfin && missing == [ ]) {
-          sops.secrets = lib.genAttrs (lib.attrValues keys) (_: { });
+        (lib.mkIf filtered {
+          sops.secrets.${keys.jellyfin} = { };
 
-          systemd.services.friend-tags = {
-            description = "Tag what friends asked for in Seerr, for Jellyfin";
-            serviceConfig = {
-              Type = "oneshot";
-              DynamicUser = true;
-              LoadCredential = lib.mapAttrsToList (
-                name: secret: "${name}:${config.sops.secrets.${secret}.path}"
-              ) keys;
-              ExecStart = "${lib.getExe' pkgs.python3 "python3"} ${./_friend-tags.py} ${routes.requests.route.internal} ${routes.jellyfin.route.internal}";
-            };
-          };
-          # a call here starts friend-tags.service, which answers it before it syncs
-          systemd.sockets.friend-tags = {
-            wantedBy = [ "sockets.target" ];
-            listenStreams = [ "127.0.0.1:${toString hook}" ];
-          };
-          systemd.timers.friend-tags = {
-            wantedBy = [ "timers.target" ];
-            timerConfig = {
-              # a switch that adds the timer runs it at once: boot plus 5m is past by then
-              OnBootSec = "5m";
-              OnUnitActiveSec = "2m";
-            };
-          };
-          systemd.services.friend-filter = {
+          systemd.services.scope-filter = {
             description = "Seerr for Moonbase, without links to Jellyfin items the person can't see";
             wantedBy = [ "multi-user.target" ];
             serviceConfig = {
               DynamicUser = true;
               Restart = "on-failure";
               LoadCredential = "jellyfin:${config.sops.secrets.${keys.jellyfin}.path}";
-              ExecStart = "${lib.getExe' pkgs.python3 "python3"} ${./_friend-filter.py} ${toString filter} ${routes.requests.route.internal} ${routes.jellyfin.route.internal} ${toString hook}";
+              ExecStart = "${lib.getExe' pkgs.python3 "python3"} ${./_scope-filter.py} ${toString filter} ${routes.requests.route.internal} ${routes.jellyfin.route.internal}${
+                lib.optionalString (routes ? automation) " ${routes.automation.route.internal}/webhook/scope-sync"
+              }";
             };
           };
         })

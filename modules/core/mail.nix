@@ -36,11 +36,11 @@ in
             };
             page = mkOption {
               type = types.str;
-              description = "The HTML around a mail's content, for the sender to fill in: @label@, @color@, @tint@, @title@, @subtitle@, @footer@ and @body@.";
+              description = "The HTML around a mail's content, for the sender to fill in: @preview@ (the inbox's preview line), @label@, @color@, @tint@, @bar@, @title@, @subtitle@, @body@ and @footer@. Sections in @body@ follow the page's style: a rule above, a small uppercase heading.";
             };
             levels = mkOption {
               type = types.attrsOf (types.attrsOf types.str);
-              description = "The label's colours per level (ok, fail): a color and a tint.";
+              description = "Colours per level (ok, info, fail): the label's color and tint, and the bar across the top.";
             };
           };
         }

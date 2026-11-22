@@ -24,6 +24,7 @@ To change one, change it here in the same commit, with the new reason.
 | Loki (monitoring/logs.nix) takes pushes and queries on the tailnet without a login | every host's Alloy pushes to it machine to machine; the tailnet is the owner's alone, and people read the logs in Grafana |
 | Jellyfin keeps its own login, and Seerr, which logs in with Jellyfin accounts, follows it | TV and native apps can't do OpenID Connect; they sign in with Quick Connect |
 | Vaultwarden's master password stays separate from Kanidm | it encrypts the vault; a login elsewhere can't replace it |
+| n8n (automation/workflows.nix), unfree under its Sustainable Use License, keeps its own login behind the gate, and its workflow nodes may read its environment, where the API keys are | single sign-on is a paid feature; workflows are files in the checkout that take keys as `$env`, not credentials kept in the UI |
 | People and their group memberships are made with the kanidm CLI, never in the repository | names and mail addresses of the family stay private |
 | The second factor (passkey or TOTP) for `admins` is a Kanidm account policy set once by hand | Kanidm's provisioning has no account policies |
 
@@ -55,6 +56,7 @@ To change one, change it here in the same commit, with the new reason.
 | Radarr's and Sonarr's quality profiles and custom formats are a dotfile for Recyclarr (downloads/profiles.nix); indexers, download clients and root folders stay in the UIs | profiles are choices worth keeping in git; the rest holds credentials or rarely changes |
 | qBittorrent's hardlinks into the library fail (it writes 0644) | btrfs shares the data anyway, so no space is lost |
 | One service server per cluster for now: the gateway (gateway/proxy.nix) and Kanidm (gateway/accounts.nix) take only their own host's services; another server's routed services get no route or login, and a warning says so (server/headless.nix) | there is no contract yet for services on other hosts |
+| Glue between services (an event or a schedule calling their APIs) is an n8n workflow in `home/.config/n8n/workflows`, such as Scope tags; systemd keeps always-on servers and proxies (scope-filter), what alerting depends on (unit-mail), and host-local probes and metrics (vpn-check, space-metrics, gpu-metrics) | one place to see, run and debug the glue, with its failures mailed through the Alerts workflow; what must work when n8n is down, or reads the host itself, stays in systemd |
 | Nextcloud is file storage only | no calendar, contacts or other apps |
 | A tile's space use comes from its btrfs qgroup (metrics/spaces.nix), not from the app's own widget | apps show the whole volume's size, as btrfs limits don't change what statfs reports |
 | Avahi only comes with printing | nothing else needs it since the `.local` names went |

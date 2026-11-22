@@ -213,6 +213,13 @@ in
                   description = "Its systemd services, by name without .service: helpers, timers' jobs, its own Redis and its container's unit included. Their logs, a container's own lines too, go under its name.";
                 };
 
+                logStart = mkOption {
+                  type = types.nullOr types.str;
+                  default = null;
+                  example = "^\\[(Trace|Debug|Info|Warn|Error|Fatal)\\]";
+                  description = "A regular expression for the first line of an entry in its units' logs; the lines after it that don't match, such as a stack trace, join that entry.";
+                };
+
                 backup = {
                   paths = mkOption {
                     type = types.listOf types.str;

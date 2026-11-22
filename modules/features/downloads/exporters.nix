@@ -33,6 +33,8 @@
               inherit port;
               url = routes.${name}.route.internal;
               apiKeyFile = config.sops.secrets.${secret name}.path;
+              # at info it logs every API call it makes
+              environment.LOG_LEVEL = "warn";
             }
           ) keyed;
           sops.secrets = lib.mapAttrs' (
@@ -58,6 +60,7 @@
               PORT = toString sabnzbd;
               URL = routes.usenet.route.internal;
               API_KEY_FILE = "%d/api-key";
+              LOG_LEVEL = "warn";
             };
             after = [ "network.target" ];
             serviceConfig = {

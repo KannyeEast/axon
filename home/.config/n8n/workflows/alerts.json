@@ -1,0 +1,52 @@
+{
+  "id": "workflowAlerts01",
+  "name": "Alerts",
+  "nodes": [
+    {
+      "id": "7defdd77-75b8-57c6-b5a2-cbbfacc0a377",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "4623c914-323b-5490-8414-7bf1464f6fb1",
+      "name": "Mail through Alertmanager",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ALERTMANAGER_URL }}/api/v2/alerts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify([{ labels: { alertname: 'WorkflowFailed', host: $env.AXON_HOST, service: 'automation', workflow: $json.workflow.name }, annotations: { summary: `${$json.workflow.name} failed: ${$json.execution?.error?.message ?? 'unknown error'}`, link: $json.execution?.url ?? '' } }]) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Mail through Alertmanager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": true
+}

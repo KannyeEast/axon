@@ -1,5 +1,5 @@
 # Alert rules over Prometheus' metrics, and Alertmanager to mail them through axon.mail: one
-# mail when an alert fires, again every 12 hours while it lasts, and one when it's resolved. A
+# mail when an alert fires and again every 12 hours while it lasts; none when it's over. A
 # failed service on any host listing metrics is one (UnitFailed), mailed by _unit-mail.py with the
 # end of its log from Loki and a link to the rest. Watchdog always fires, so a mail comes once a
 # week. Without an account alerts only show in Alertmanager's UI, at alerts.<domain> where
@@ -29,24 +29,35 @@
         annotations.summary = summary;
       };
 
-      # the page from axon.mail; whether the alert is over is only known when it's sent. The
-      # weekly Watchdog mail is good news, so it looks like a resolved one
-      status =
-        firing: resolved:
-        ''{{ if or (eq .Status "resolved") (eq .CommonLabels.alertname "Watchdog") }}${resolved}{{ else }}${firing}{{ end }}'';
-      level = field: status mail.levels.fail.${field} mail.levels.ok.${field};
-      alertTimes = ''since {{ .StartsAt.Local.Format "Mon 02.01. 15:04" }}{{ if eq .Status "resolved" }}, resolved {{ .EndsAt.Local.Format "Mon 02.01. 15:04" }}{{ end }}'';
+      # the page from axon.mail, by level. Watchdog always fires: its weekly mail is good news; a
+      # Reminder (pushed by an n8n workflow) is news; the rest fail
+      byLevel =
+        {
+          ok,
+          info,
+          fail,
+        }:
+        ''{{ if eq .CommonLabels.alertname "Watchdog" }}${ok}{{ else if eq .CommonLabels.alertname "Reminder" }}${info}{{ else }}${fail}{{ end }}'';
+      level = field: byLevel (lib.mapAttrs (_: colors: colors.${field}) mail.levels);
+      since = ''since {{ .StartsAt.Local.Format "Mon 02.01. 15:04" }}'';
       # an alert's unit in Logs Drilldown, from an hour before it fired. html/template escapes the
       # html part's values by itself; the text part's go through urlquery
       logs =
         escape:
         "${grafana}/a/grafana-lokiexplore-app/explore/unit/{{ ${escape ".Labels.unit"} }}/logs?var-filters=unit%7C%3D%7C{{ ${escape ".Labels.unit"} }}&var-filters=host%7C%3D%7C{{ ${escape ".Labels.host"} }}&from={{ (.StartsAt.Add -3600000000000).UnixMilli }}&to=now";
-      # below an alert's summary: its unit's logs where Grafana is routed, and its link annotation
-      htmlLinks =
-        lib.optionalString routed ''{{ if .Labels.unit }}<p style="margin:0 0 2px;font-size:14px;"><a href="${
-          lib.replaceStrings [ "&" ] [ "&amp;" ] (logs lib.id)
-        }">Logs of {{ .Labels.unit }}</a></p>{{ end }}''
-        + ''{{ with .Annotations.link }}<p style="margin:0 0 2px;font-size:14px;"><a href="{{ . }}">{{ . }}</a></p>{{ end }}'';
+      htmlLogs = lib.replaceStrings [ "&" ] [ "&amp;" ] (logs lib.id);
+      # an alert's links: its unit's logs where Grafana is routed, and its link annotation
+      hasLinks = if routed then "or .Labels.unit .Annotations.link" else ".Annotations.link";
+      button =
+        href: text:
+        ''<a href="${href}" style="display:inline-block;margin:0 8px 0 0;padding:11px 18px;border-radius:6px;background:#111827;font-size:14px;line-height:18px;font-weight:600;color:#FFFFFF;text-decoration:none;">${text}</a>'';
+      buttons =
+        lib.optionalString routed "{{ if .Labels.unit }}${button htmlLogs "View logs"}{{ end }}"
+        + "{{ with .Annotations.link }}${button "{{ . }}" "Details"}{{ end }}";
+      smallLinks =
+        lib.optionalString routed ''{{ if .Labels.unit }} · <a href="${htmlLogs}" style="color:#111827;">Logs</a>{{ end }}''
+        + ''{{ with .Annotations.link }} · <a href="{{ . }}" style="color:#111827;">Details</a>{{ end }}'';
+      section = "margin:24px 0 0;padding:20px 0 0;border-top:1px solid #E5E7EB;";
       textLinks =
         lib.optionalString routed "{{ if .Labels.unit }}Logs: ${
           logs (field: "${field} | urlquery")
@@ -62,37 +73,51 @@
             email_configs = [
               {
                 to = mail.alert;
-                send_resolved = true;
-                headers.Subject = ''[{{ .CommonLabels.host }}] {{ or .CommonAnnotations.summary .CommonLabels.alertname }}{{ if eq .Status "resolved" }} (resolved){{ end }}'';
+                headers.Subject = "[{{ .CommonLabels.host }}] {{ or .CommonAnnotations.summary .CommonLabels.alertname }}";
                 html =
                   lib.replaceStrings
                     [
+                      "@preview@"
                       "@label@"
                       "@color@"
                       "@tint@"
+                      "@bar@"
                       "@title@"
                       "@subtitle@"
                       "@footer@"
                       "@body@"
                     ]
                     [
-                      ''{{ if eq .CommonLabels.alertname "Watchdog" }}Working{{ else }}${status "Firing" "Resolved"}{{ end }}''
+                      "{{ .CommonLabels.alertname }} on {{ .CommonLabels.host }}{{ with .CommonAnnotations.summary }}: {{ . }}{{ end }}"
+                      (byLevel {
+                        ok = "WORKING";
+                        info = "REMINDER";
+                        fail = "FIRING";
+                      })
                       (level "color")
                       (level "tint")
-                      "<b>{{ .CommonLabels.alertname }}</b>"
-                      "on {{ .CommonLabels.host }}"
+                      (level "bar")
+                      "{{ .CommonLabels.alertname }}"
+                      "{{ .CommonLabels.host }} · {{ with index .Alerts 0 }}${since}{{ end }}"
                       "Sent by ${host.name}"
                       ''
+                        {{ if eq (len .Alerts) 1 }}{{ with index .Alerts 0 }}
+                        <p style="margin:12px 0 0;font-size:15px;line-height:22px;color:#111827;">{{ .Annotations.summary }}</p>
+                        {{ if ${hasLinks} }}<div style="${section}">${buttons}</div>{{ end }}
+                        {{ end }}{{ else }}
+                        <div style="${section}">
+                        <div style="padding:0 0 14px;font-size:12px;line-height:16px;font-weight:700;letter-spacing:0.06em;color:#6B7280;">{{ len .Alerts }} {{ if eq .CommonLabels.alertname "Reminder" }}REMINDERS{{ else }}ALERTS{{ end }}</div>
                         {{ range .Alerts }}
-                        <p style="margin:0 0 2px;font-weight:600;">{{ .Annotations.summary }}</p>
-                        ${htmlLinks}
-                        <p style="margin:0 0 14px;color:#6b7280;font-size:14px;">${alertTimes}</p>
+                        <p style="margin:0;font-size:15px;line-height:22px;color:#111827;">{{ .Annotations.summary }}</p>
+                        <p style="margin:0 0 12px;font-size:13px;line-height:20px;color:#6B7280;">${since}${smallLinks}</p>
+                        {{ end }}
+                        </div>
                         {{ end }}''
                     ]
                     mail.page;
                 text = ''
                   {{ range .Alerts }}{{ .Labels.alertname }} on {{ .Labels.host }}: {{ .Annotations.summary }}
-                  ${textLinks}${alertTimes}
+                  ${textLinks}${since}
 
                   {{ end }}'';
               }
@@ -237,7 +262,7 @@
               webhook_configs = [
                 {
                   url = "http://127.0.0.1:${toString hook}/";
-                  send_resolved = true;
+                  send_resolved = false;
                 }
               ];
             };

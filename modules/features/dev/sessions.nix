@@ -22,13 +22,16 @@
           && lib.elem name (cluster.ssh.${host.name} or [ ])
         ) cluster.hosts
       );
-      # build output and caches stay on each machine
+      # build output and caches stay on each machine, and git's locks: synced, git on the other
+      # machine would see a stale one
       ignored = [
         "result"
         "result-*"
         "target"
         "node_modules"
         ".direnv"
+        ".git/*.lock"
+        ".git/**/*.lock"
       ];
 
       session = pkgs.writeShellApplication {
