@@ -21,9 +21,13 @@
     in
     lib.mkIf (databases != [ ]) {
       services.postgresql.ensureUsers = [ { name = "pgweb"; } ];
-      # ensureUsers has no role memberships
+      # ensureUsers has no role memberships; reading isn't connecting, and Nextcloud's install takes
+      # that right from everyone else on its database
       systemd.services.postgresql-setup.script = lib.mkAfter ''
         psql -tAc 'GRANT pg_read_all_data TO pgweb'
+        ${lib.concatMapStrings (database: ''
+          psql -tAc 'GRANT CONNECT ON DATABASE "${database}" TO pgweb'
+        '') config.axon.databases}
       '';
 
       systemd.services.pgweb = {

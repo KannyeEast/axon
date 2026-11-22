@@ -237,10 +237,17 @@ html[data-start-view="compact"] #layout-groups .service-container:not(:has(ifram
 #start-page .start-attention-items > a:hover {
   color: #ffffff;
 }
-/* on a phone the amber bar says it; its dot would take a line of its own */
+/* on a phone the dot sits in the bar's top right corner, where it takes no line of its own */
 @media (max-width: 640px) {
+  #start-page .start-attention {
+    position: relative;
+    padding-right: 28px;
+  }
   #start-page .start-attention-count {
-    display: none;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 0;
   }
 }
 
