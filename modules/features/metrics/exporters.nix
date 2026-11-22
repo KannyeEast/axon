@@ -34,7 +34,11 @@
             "--collector.systemd.unit-include=.+[.]service"
           ];
         };
-        smartctl.enable = true;
+        smartctl = {
+          enable = true;
+          # at info it logs every disk it finds on each rescan, every few minutes
+          extraFlags = [ "--log.level=warn" ];
+        };
       };
       systemd.tmpfiles.rules = [ "d ${dir} 0755 root root -" ];
 

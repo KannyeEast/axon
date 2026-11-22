@@ -320,6 +320,13 @@
           };
           # read-only without its own login; the start page's frames need it
           "auth.anonymous".enabled = true;
+          # at info it logs each search index build and panel query; the search's manifest watcher
+          # warns on every poll that there are no app manifests, and an expired session cookie
+          # (Grafana then goes on anonymously) is a warning too
+          log = {
+            level = "warn";
+            filters = "search-manifest-watcher:error authn.service:error";
+          };
           # endpoints and claims as Kanidm names them; with no login attribute the login is the
           # mail address, so it can't collide with the local admin's name
           "auth.generic_oauth" = lib.mkIf (sso.provider != null) {
@@ -351,6 +358,10 @@
               type = "loki";
               uid = "loki";
               url = "http://127.0.0.1:${toString config.services.loki.configuration.server.http_listen_port}";
+              # Loki without auth still wants a tenant on some endpoints (Logs Drilldown's limits);
+              # "fake" is the one it uses for all others
+              jsonData.httpHeaderName1 = "X-Scope-OrgID";
+              secureJsonData.httpHeaderValue1 = "fake";
             }
           ];
           dashboards.settings.providers = [
