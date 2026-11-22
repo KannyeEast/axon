@@ -6,6 +6,7 @@
 #   nextcloud-occ user:add <you> && nextcloud-occ group:adduser admin <you>
 # With a login provider (axon.sso) the family logs in there too; the password form stays.
 # Major versions upgrade one at a time: bump the package by one, switch, repeat.
+# Kept only in its UI (database and app state, backed up): users, groups, shares.
 { lib, ... }:
 {
   flake.modules.nixos.files =
@@ -24,6 +25,9 @@
     in
     lib.mkMerge [
       (lib.mkIf (config.axon.host.class == "server") {
+        # at notice it logs each of its snapshots, every few minutes
+        services.redis.servers.nextcloud.logLevel = "warning";
+
         services.nextcloud = {
           enable = true;
           package = pkgs.nextcloud35;
