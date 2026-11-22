@@ -115,7 +115,7 @@
         };
         dashboard = {
           name = "Forgejo";
-          group = "Code";
+          group = "Infrastructure";
           description = "Git repositories";
           icon = "forgejo.svg";
         };

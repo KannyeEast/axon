@@ -411,7 +411,7 @@
           instances = {
             Grafana = {
               description = "Dashboards and logs";
-              group = "Monitoring";
+              group = "Infrastructure";
             };
           }
           // lib.listToAttrs (

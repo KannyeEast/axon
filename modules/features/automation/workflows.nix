@@ -171,7 +171,7 @@
         };
         dashboard = {
           name = "n8n";
-          group = "Code";
+          group = "Infrastructure";
           description = "Workflows";
           icon = "n8n.svg";
         };

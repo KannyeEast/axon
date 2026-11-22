@@ -21,7 +21,7 @@
         route.port = port;
         dashboard = {
           name = "IT Tools";
-          group = "Code";
+          group = "Infrastructure";
           description = "Developer utilities";
           icon = "it-tools.svg";
         };

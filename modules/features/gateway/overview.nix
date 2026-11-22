@@ -148,8 +148,7 @@ in
         "Media"
         "Files"
         "Home"
-        "Network"
-        "Code"
+        "Infrastructure"
       ];
       # groups of graphs: last, two per row, so they get the width
       wide = [ "System" ];

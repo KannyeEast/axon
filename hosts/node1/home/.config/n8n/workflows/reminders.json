@@ -31,7 +31,7 @@
         0
       ],
       "parameters": {
-        "jsCode": "// add one per line: date 'yyyy-MM-dd'; repeat 'once' (that date), 'monthly' (its day) or 'yearly' (its day and month)\nconst reminders = [\n  { date: '2028-01-13', repeat: 'once', text: 'Eweka renews on 2028-02-13 at 71.88/yr: ask for a cheaper renewal' },\n];\nconst today = $now.toFormat('yyyy-MM-dd');\nconst due = {\n  once: r => r.date === today,\n  monthly: r => r.date.slice(8) === today.slice(8),\n  yearly: r => r.date.slice(5) === today.slice(5),\n};\nreturn reminders.filter(r => due[r.repeat](r)).map(r => ({ json: r }));"
+        "jsCode": "// add one per line: date 'yyyy-MM-dd'; repeat 'once' (that date), 'monthly' (its day) or 'yearly' (its day and month)\nconst reminders = [\n  { date: '2028-01-13', repeat: 'once', text: 'Eweka renews on 2028-02-13 at 71.88/yr: ask for a cheaper renewal' },\n  { date: '2026-11-23', repeat: 'once', text: 'Test: reminders reach you by mail (delete this line)' },\n  { date: '2027-01-18', repeat: 'once', text: 'Claude Max renews on 2027-01-22: cancel it or go back to Pro' },\n];\nconst today = $now.toFormat('yyyy-MM-dd');\nconst due = {\n  once: r => r.date === today,\n  monthly: r => r.date.slice(8) === today.slice(8),\n  yearly: r => r.date.slice(5) === today.slice(5),\n};\nreturn reminders.filter(r => due[r.repeat](r)).map(r => ({ json: r }));"
       }
     },
     {

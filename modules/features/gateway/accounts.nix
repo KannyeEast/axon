@@ -127,7 +127,7 @@
         };
         dashboard = {
           name = "Kanidm";
-          group = "Network";
+          group = "Infrastructure";
           description = "Accounts and login";
           icon = "kanidm.svg";
         };
