@@ -1,6 +1,5 @@
 # The desktop class: niri behind GDM, plus the plumbing apps expect.
 # Which bar, launcher and keybinds run is taste: each host's hosts/<name>/home/.config/niri.
-{ ... }:
 {
   flake.modules.nixos.desktop =
     { pkgs, ... }:
@@ -9,9 +8,6 @@
       services.displayManager.gdm.enable = true;
 
       services.speechd.enable = false;
-
-      # the account picture on the login screen
-      axon.persist.directories = [ "/var/lib/AccountsService" ];
 
       environment.sessionVariables = {
         NIXOS_OZONE_WL = "1";
@@ -46,5 +42,8 @@
 
       # the password prompt for anything that asks polkit (mounting, virt-manager, …)
       security.soteria.enable = true;
+
+      # the account picture on the login screen
+      axon.persist.directories = [ "/var/lib/AccountsService" ];
     };
 }

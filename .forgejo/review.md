@@ -39,95 +39,33 @@ You report findings; you never edit, commit or push.
 
 ## What to check
 
-### Every change
-
 - **CI.** A failed `nix flake check` or build is the first finding: the cause read from the log,
   the file and line it comes from, and the fix.
-- **The rules in AGENTS.md**, each of them. The ones most often missed:
+- **Everything in AGENTS.md** applies to the changed lines and what they touch: the file's kind
+  and slots (Structure), the way each need is met (One way per need), and the Rules. This guide
+  doesn't repeat them. The ones most often missed:
   - a setting equal to the upstream default, an option nothing sets, a helper with one caller,
-    a package nothing runs (Only what changes something)
+    a package nothing runs (Only what changes something; Nix only, not the dotfiles)
   - a custom script or wrapper where a module setting, a nixpkgs package or a common add-on does
     the job (Use what exists before building it)
-  - comments that tell history or reasoning instead of what the code does
-  - errors not shaped `<file or option>: <what is wrong>`; values aligned with extra spaces
-  - a dependency that fails or asserts where it could fall back (A dependency is a hard need or
-    an extra)
+  - comments over the kind's limits, or telling history or reasoning (Comments are short and few)
+  - state a service writes that isn't persisted; a unit writing to a volume without
+    `RequiresMountsFor` (One way per need)
 - **References left behind** (A change takes its references with it): for anything renamed,
   replaced or removed, search the repository, dotfiles in `home/` and `hosts/*/home` included,
   for its old name, path or id. A leftover is a **should**.
 - **Not your call:** whether a change fits the title or belongs in another pull request; the
   owner's yes for changes in `hosts/`, secrets or flake inputs (the pull request is the owner's,
   so it is given; the "Ask first" boundary is for the author in a conversation); anything about
-  hosts that don't exist (`hosts/_old` is never built).
-
-### A new or changed service
-
-- **Route** through `axon.services.<name>.route`; the gateway's login stands in front of every
-  tailnet route (`gate`, off only for clients that can't follow a browser login), and the tunnel
-  bypasses it, so `public = true` only for a service with its own login. A service that has a login registers in `axon.sso` and logs
-  in there when `axon.sso.provider` isn't null.
-- **Listening**: on `127.0.0.1` or inside the VPN namespace; the gateway proxies. Ports for other
-  machines only through `axon.overlay`, never `networking.firewall` directly.
-- **State**: every directory the service writes survives the reboot, listed in the same file
-  (`axon.persist.state.directories` for a feature). Root is wiped on every boot: missing
-  persistence loses data, which is **blocking**. `DynamicUser` services keep state in
-  `/var/lib/private/<name>`.
-- **User data** (files, photos, documents) in its own `axon.spaces` entry, with `units` naming
-  every systemd unit that uses it.
-- **Data disks mount with `nofail`**: a unit writing to a volume needs `RequiresMountsFor`, or it
-  writes to the root filesystem while the disk is missing.
-- **Backup**: `backup.paths` for what can't be rebuilt, `exclude` for what can (thumbnails,
-  caches); a database is backed up through a dump, not its live files: a Postgres one is listed in
-  `axon.databases`.
-- **Start page**: a `dashboard` entry with name, group, icon, and a widget where Homepage has one;
-  every `secrets` key it names exists in the gateway host's `secrets.json` (evaluation warns
-  otherwise).
-- **VPN**: a service that talks to torrent trackers or peers lists itself in `axon.vpn.confined`;
-  Usenet indexers and providers are plain HTTPS and need no tunnel.
-- **Mail and other contracts are extras**: the service works when `axon.mail` is null or the
-  host has no gateway (`axon.routed` false).
-- **Class**: parts for only one class check `config.axon.host.class` inside the feature.
-- **Containers** (`virtualisation.oci-containers`, Docker on servers): the image fully qualified
-  and pinned on one `image = "<registry>/<name>:<tag>@sha256:<digest>"` line, which Renovate
-  updates; never `latest` or a tag alone. Ports published on `127.0.0.1` only, or host networking
-  with the service itself bound to `127.0.0.1`. Every host path it writes persisted (and backed
-  up where it can't be rebuilt). Secrets only through sops templates in `environmentFiles`,
-  never in `environment`. Route and tile through `axon.services`.
-
-### host.toml and cluster.toml
-
-- A new field is an option in `axon.schema.<bundle>` with a type, a default where one makes
-  sense, and a description. It is a field only if it differs per host and is a choice; detectable
-  values come from facter, behaviour is a feature.
-
-### Features and contracts
-
-- A new feature has `feature.nix` with `description`, `classes` and `requires` where it has a hard
-  need. It is an area, not a program: a service that fits an existing feature goes there.
-- A feature reads contracts, never another feature's options or names (the feature lists in
-  `cluster.hosts` excepted). A new contract needs two consumers or a realistic swap.
-
-### Dotfiles
-
-- Nix never reads `home/` or `hosts/<name>/home`, and modules don't write dotfiles.
-- A file in `home/` works on every host: it must not assume a feature is there. `home/` holds only
-  the terminal; the rest is each host's own in `hosts/<name>/home`, so the same file in several
-  hosts is deliberate, not a finding.
-- Several sections get the ruler from AGENTS.md.
-
-### Inputs and packages
-
-- A new flake input follows `nixpkgs` (and `home-manager`) where it takes them.
-- A JetBrains plugin is checked for a cast to `JarURLConnection` before it is added
-  (`unzip -p <plugin jars> | grep -ac java/net/JarURLConnection` must print 0): such plugins break
-  every file lookup when installed into the store.
+  folders that are never built (`hosts/_<name>/`); the same dotfile in several hosts (each host's
+  own copy is deliberate).
 
 ## Severity
 
 - **blocking**: evaluation or a build fails; a service can't start (two claim one port); data or
-  state is lost; a service, port or secret is
-  exposed beyond what the route says; a Boundary is crossed without the owner's yes. The review
-  requests changes.
+  state is lost (a written directory not persisted: root is wiped on every boot); a service, port
+  or secret is exposed beyond what the route says; a Boundary is crossed without the owner's yes.
+  The review requests changes.
 - **should**: breaks a rule in AGENTS.md. It works, but drifts from how the repository is built.
 
 Nothing else: no notes, questions or reminders, no optional improvements, no praise, no summary
@@ -139,7 +77,7 @@ Short and factual, like a maintainer's review comment: the fact, the evidence, t
 problem per finding, on the line it is about; three lines at most.
 
 ```
-**blocking** · State lives next to the module that creates it
+**blocking** · State, `DynamicUser`
 `/var/lib/private/uptime-kuma` isn't persisted; root is wiped on every boot.
 Fix: `axon.persist.state.directories = [ "/var/lib/private/uptime-kuma" ];`
 ```
@@ -150,8 +88,9 @@ Fix: `axon.persist.state.directories = [ "/var/lib/private/uptime-kuma" ];`
 Fix: delete the line.
 ```
 
-- First line: the severity, then exactly one rule, named as in AGENTS.md's bold rule names (or
-  `CI`, `Boundaries`, `Decisions`). Two broken rules are two findings.
+- First line: the severity, then exactly one rule, named as in AGENTS.md: a bold rule name, a
+  "One way per need" row by its need, `Structure` (with the kind), or `CI`, `Boundaries`,
+  `Decisions`. Two broken rules are two findings.
 - Second line: what is wrong and the evidence (a source line, a command's output). Add the
   consequence only when it isn't obvious from the rule.
 - Third line: `Fix:` and the change, as code where it fits on the line.

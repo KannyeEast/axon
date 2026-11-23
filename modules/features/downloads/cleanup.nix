@@ -1,29 +1,27 @@
-# Decluttarr clears what hangs in Radarr's and Sonarr's queues (a download that can't be imported,
-# a failed one, one whose item is gone), blocklists it and lets the app search again. Its settings
-# are .config/decluttarr/config.yaml from the checkout (hosts/<name>/home wins over home/), read on
-# start and again when the file changes; it reads the keys as !ENV RADARR_API_KEY and
-# SONARR_API_KEY.
+# Decluttarr clears what hangs in Radarr's and Sonarr's queues, blocklists it and searches again, as
+# .config/decluttarr/config.yaml says (keys as !ENV RADARR_API_KEY, SONARR_API_KEY). No state.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) user;
-      state = "/var/lib/decluttarr";
-      files = map (home: "${home}/.config/decluttarr/config.yaml") config.axon.dotfiles;
-      keys = lib.filterAttrs (_: key: lib.hasAttrByPath (lib.splitString "/" key) config.axon.secrets) {
-        radarr = "dashboard/radarr/key";
-        sonarr = "dashboard/sonarr/key";
-      };
-
+      inherit (config.axon)
+        hasSecret
+        home
+        host
+        services
+        ;
+      # it reads ./config/config.yaml and writes ./logs
+      runtime = "/run/decluttarr";
+      file = "${home}/.config/decluttarr/config.yaml";
       src = pkgs.fetchFromGitHub {
         owner = "ManiMatter";
         repo = "decluttarr";
-        rev = "0c4851d19514f570eb6a5dd026b51310ee07aaee";
-        hash = "sha256-r783B1NaEmA4wCxawU+OppNIc6mubckXYzLssczEVZU=";
+        # v2.2.0
+        rev = "193725099875819b48c9a4f6316253b4051944b2";
+        hash = "sha256-36XOEnNE5aJg9QkVK2nI8xK3RiugNH3Xjhswt3dhj+s=";
       };
       python = pkgs.python3.withPackages (ps: [
-        ps.demjson3
         ps.packaging
         ps.python-dateutil
         ps.pyyaml-env-tag
@@ -31,53 +29,61 @@
         ps.watchdog
       ]);
 
-      run = pkgs.writeShellApplication {
-        name = "decluttarr";
-        text = ''
-          ${lib.concatMapStrings (app: ''
-            ${lib.toUpper app}_API_KEY=$(<"$CREDENTIALS_DIRECTORY/${app}")
-            export ${lib.toUpper app}_API_KEY
-          '') (lib.attrNames keys)}
-          # it reads ./config/config.yaml
-          mkdir -p config
-          for file in ${lib.escapeShellArgs files}; do
-            if [ -e "$file" ]; then
-              ln -sfn "$file" config/config.yaml
-              exec ${lib.getExe python} ${src}/main.py
-            fi
-          done
-          echo "no .config/decluttarr/config.yaml in the checkout, nothing to do"
-        '';
+      secrets = {
+        radarr = services.radarr.apiKey;
+        sonarr = services.sonarr.apiKey;
       };
+      missing = lib.filter (key: !hasSecret key) (lib.attrValues secrets);
     in
-    lib.mkIf (config.axon.volumes ? media && keys ? radarr && keys ? sonarr) {
-      systemd.services.decluttarr = {
-        description = "Clear stuck downloads from Radarr's and Sonarr's queues";
-        wantedBy = [ "multi-user.target" ];
-        after = [
-          "radarr.service"
-          "sonarr.service"
-        ];
-        serviceConfig = {
-          User = user.name;
-          StateDirectory = "decluttarr";
-          WorkingDirectory = state;
-          LoadCredential = lib.mapAttrsToList (app: key: "${app}:${config.sops.secrets.${key}.path}") keys;
-          ExecStart = lib.getExe run;
-          Restart = "on-failure";
+    lib.mkIf (config.axon.volumes ? media) {
+      # ── units ────────
+      systemd.services = lib.mkIf (missing == [ ]) {
+        decluttarr = {
+          description = "Clear stuck downloads from Radarr's and Sonarr's queues";
+          wantedBy = [ "multi-user.target" ];
+          after = [
+            "radarr.service"
+            "sonarr.service"
+          ];
+          unitConfig.ConditionPathExists = file;
+          serviceConfig = {
+            DynamicUser = true;
+            RuntimeDirectory = "decluttarr";
+            WorkingDirectory = runtime;
+            EnvironmentFile = config.sops.templates."decluttarr.env".path;
+            # its DynamicUser can't read the user's 0700 home; the manager mounts the file in as root
+            BindReadOnlyPaths = [ "-${file}:${runtime}/config/config.yaml" ];
+            ExecStart = "${lib.getExe python} ${src}/main.py";
+            Restart = "on-failure";
+          };
+        };
+        decluttarr-config = {
+          description = "Restart Decluttarr on a new config";
+          serviceConfig = {
+            Type = "oneshot";
+            # also starts it when the file appears after it found none
+            ExecStart = "${pkgs.systemd}/bin/systemctl restart decluttarr.service";
+          };
         };
       };
-      systemd.paths.decluttarr-config = {
+      systemd.paths.decluttarr-config = lib.mkIf (missing == [ ]) {
         wantedBy = [ "paths.target" ];
-        pathConfig.PathChanged = files;
+        pathConfig.PathChanged = [ file ];
       };
-      systemd.services.decluttarr-config = {
-        description = "Restart Decluttarr on a new config";
-        serviceConfig = {
-          Type = "oneshot";
-          # also starts it when the file appears after it found none
-          ExecStart = "${pkgs.systemd}/bin/systemctl restart decluttarr.service";
-        };
+
+      # ── secrets ────────
+      sops.secrets = lib.mkIf (missing == [ ]) (lib.genAttrs (lib.attrValues secrets) (_: { }));
+      sops.templates."decluttarr.env" = lib.mkIf (missing == [ ]) {
+        content = lib.concatStrings (
+          lib.mapAttrsToList (
+            app: key: "${lib.toUpper app}_API_KEY=${config.sops.placeholder.${key}}\n"
+          ) secrets
+        );
       };
+
+      # ── checks ────────
+      warnings =
+        lib.optional (missing != [ ])
+          "hosts/${host.name}/secrets.json: no ${lib.concatStringsSep ", " missing}, so Decluttarr doesn't run; add them with `just secrets ${host.name}`";
     };
 }

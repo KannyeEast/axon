@@ -1,27 +1,24 @@
-# Immich at photos.<domain> on servers: phone photo backup with face and place search. Originals
-# on the data volume (or in the state folder without one), database in the host's Postgres,
-# machine learning on the CPU. Each account is its own library, shared through albums or partner
-# sharing; the first one made in the web UI is the admin. Settings come from here, read-only in
-# the UI. With a login provider (axon.sso) the family logs in there, matched by mail address.
+# Immich at photos.<domain>: phone photo backup with face and place search.
+# Reach: public, its own login and axon.sso's (matched by mail address) where there is one.
+# In its UI only: accounts, albums and sharing, in its database, backed up; settings come from here.
+# By hand: the first account made in the web UI is the admin.
 { lib, ... }:
 {
   flake.modules.nixos.files =
     { config, ... }:
     let
-      inherit (config.axon) mail sso;
+      inherit (config.axon) domain mail sso;
       inherit (config.axon.services.photos) route;
+      port = 2283;
       client = sso.clients.immich;
       data = config.axon.spaces.immich.path;
-      port = 2283;
       generated = lib.optionals (config.axon.volumes ? state && config.axon.spaces.immich.onVolume) [
         "thumbs"
         "encoded-video"
       ];
     in
     lib.mkIf (config.axon.host.class == "server") {
-      # at notice it logs each of its snapshots, every few minutes
-      services.redis.servers.immich.logLevel = "warning";
-
+      # ── service ────────
       services.immich = {
         enable = true;
         # "localhost" binds to ::1 only, and the gateway proxies to 127.0.0.1
@@ -48,7 +45,7 @@
           # shared albums and password resets by mail; without an account it sends none
           notifications.smtp = lib.mkIf (mail != null) {
             enabled = true;
-            from = "Immich <photos@${mail.domain}>";
+            from = "Immich <photos@${domain}>";
             transport = {
               inherit (mail) host port;
               username._secret = config.sops.templates."immich-mail-login".path;
@@ -58,6 +55,13 @@
         };
       };
 
+      # ── units ────────
+      systemd.services.immich-server.unitConfig.RequiresMountsFor = map (dir: "${data}/${dir}") generated;
+      # systemd sets these on every start, over the mode the folders were made with
+      systemd.services.immich-server.serviceConfig.StateDirectoryMode = "0700";
+      systemd.services.immich-machine-learning.serviceConfig.CacheDirectoryMode = "0700";
+
+      # ── secrets ────────
       # the login and token are sops placeholders, so they reach Immich's settings as files
       sops.templates = lib.mkIf (mail != null) (
         lib.mapAttrs
@@ -72,25 +76,18 @@
           }
       );
 
+      # ── login ────────
       axon.sso.clients.immich = {
-        displayName = "Immich";
-        landing = route.url;
+        service = "photos";
         redirects = [
           "${route.url}/auth/login"
           "${route.url}/user-settings"
           "app.immich:///oauth-callback"
         ];
-        inherit (config.axon.services.photos.dashboard) icon;
       };
 
-      axon.spaces.immich = {
-        user = "immich";
-        group = "immich";
-        units = [ "immich-server" ];
-      };
-
-      # thumbnails and transcoded videos, which the timeline loads by the hundred,
-      # stay on the state volume
+      # ── data ────────
+      # thumbnails and videos the timeline loads by the hundred stay on the state volume
       fileSystems = lib.listToAttrs (
         map (dir: {
           name = "${data}/${dir}";
@@ -107,13 +104,16 @@
           };
         }) generated
       );
-      systemd.services.immich-server.unitConfig.RequiresMountsFor = map (dir: "${data}/${dir}") generated;
+      axon.spaces.immich = {
+        user = "immich";
+        group = "immich";
+        units = [ "immich-server" ];
+      };
 
       axon.databases = [ "immich" ];
 
-      # the models in /var/cache/immich, so they aren't downloaded on every boot; the generated
-      # folders as entries of their own, as a tmpfiles rule inside /var/lib/immich runs before its
-      # mount on a switch and ends up hidden under it
+      # the models persist, so they aren't downloaded on every boot; the generated folders get their
+      # own entries, as a tmpfiles rule inside /var/lib/immich runs before its mount and is hidden
       axon.persist.state.directories =
         map
           (directory: {
@@ -128,11 +128,10 @@
               "/var/cache/immich"
             ]
             ++ map (dir: "/var/lib/immich/${dir}") generated
-          )
-        ++ [ "/var/lib/redis-immich" ];
+          );
 
+      # ── registration ────────
       axon.services.photos = {
-        space = "immich";
         units = [
           "immich-machine-learning"
           "immich-server"
@@ -147,6 +146,7 @@
           group = "Files";
           description = "Photos and videos";
           icon = "immich.svg";
+          space = "immich";
           widget = {
             type = "immich";
             version = 2;

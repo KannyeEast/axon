@@ -1,5 +1,6 @@
-# Nautilus, with a preview on the space bar, video thumbnails and "Open in Terminal". Recent files
-# are off for every GTK app, which also takes Recent out of the sidebar.
+# Nautilus: files, with a space-bar preview, video thumbnails and "Open in Terminal".
+# Settings: ~/.config/gtk-3.0/bookmarks.
+# Windows: org.gnome.Nautilus, its Open and Save dialogs float. Key: Mod+E.
 {
   flake.modules.nixos.desktop =
     { pkgs, ... }:
@@ -8,16 +9,15 @@
         pkgs.nautilus
         pkgs.ffmpegthumbnailer
       ];
-
-      services.gnome.sushi.enable = true;
-
-      programs.dconf.profiles.user.databases = [
-        { settings."org/gnome/desktop/privacy".remember-recent-files = false; }
-      ];
-
       programs.nautilus-open-any-terminal = {
         enable = true;
         terminal = "alacritty";
       };
+
+      services.gnome.sushi.enable = true;
+      # off for every GTK app, which also takes Recent out of the sidebar
+      programs.dconf.profiles.user.databases = [
+        { settings."org/gnome/desktop/privacy".remember-recent-files = false; }
+      ];
     };
 }

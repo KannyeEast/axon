@@ -4,8 +4,7 @@
 let
   inherit (lib) mkOption types;
 
-  # git@codeberg.org:me/axon.git and https://codeberg.org/me/axon.git -> [ "codeberg.org" "me/axon.git" ];
-  # null for any other form
+  # git@host:path and https://host/path -> [ host path ]; null for any other form
   partsOf =
     url:
     let
@@ -27,6 +26,7 @@ in
         };
     in
     {
+      # ── contract ────────
       options.axon.remotes = mkOption {
         readOnly = true;
         default = lib.mapAttrs (
@@ -51,18 +51,30 @@ in
         type = types.attrsOf (
           types.submodule {
             options = {
-              host = mkOption { type = types.nullOr types.str; };
-              web = mkOption { type = types.nullOr types.str; };
-              origin = mkOption { type = types.bool; };
-              mirror = mkOption { type = types.bool; };
+              host = mkOption {
+                type = types.nullOr types.str;
+                description = "The forge's host name; null when the url is neither ssh nor https.";
+              };
+              web = mkOption {
+                type = types.nullOr types.str;
+                description = "The repository's web address; null when the url is neither ssh nor https.";
+              };
+              origin = mkOption {
+                type = types.bool;
+                description = "Whether it is [repo] origin.";
+              };
+              mirror = mkOption {
+                type = types.bool;
+                description = "Whether it is a mirror: any other remote with a web address.";
+              };
             };
           }
         );
       };
 
       config = {
-        # the checkout's remotes live here alone: a clone keeps none of its own, as a second url
-        # on a remote makes git push to both
+        # ── settings ────────
+        # the remotes live here alone: a second url on a clone's own remote makes git push to both
         programs.git.enable = true;
         programs.git.config = lib.mkIf (repo.remotes != { }) {
           includeIf."gitdir:${config.axon.repo}/".path = "${pkgs.writeText "axon-remotes" (
@@ -75,13 +87,7 @@ in
           )}";
         };
 
-        assertions = [
-          {
-            assertion = repo.remotes == { } || (repo.origin != null && repo.remotes ? ${repo.origin});
-            message = "cluster.toml: [repo] origin must be one of the names under [repo.remotes] (${lib.concatStringsSep ", " (lib.attrNames repo.remotes)})";
-          }
-        ];
-
+        # ── contracts ────────
         axon.links = lib.mapAttrs' (
           name: remote:
           lib.nameValuePair (lib.toSentenceCase name) {
@@ -90,6 +96,14 @@ in
             group = "Mirrors";
           }
         ) (lib.filterAttrs (_: remote: remote.mirror && !own remote) remotes);
+
+        # ── checks ────────
+        assertions = [
+          {
+            assertion = repo.remotes == { } || (repo.origin != null && repo.remotes ? ${repo.origin});
+            message = "cluster.toml: [repo] origin must be one of the names under [repo.remotes] (${lib.concatStringsSep ", " (lib.attrNames repo.remotes)})";
+          }
+        ];
       };
     };
 }

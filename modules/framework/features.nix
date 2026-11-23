@@ -1,5 +1,4 @@
-# The registry: every class and feature the framework knows about, and the pieces of
-# host.toml each of them owns. hosts.nix, the docs and the installer all read these.
+# The registry: every class and feature, and the host.toml tables each of them owns.
 { config, lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -14,6 +13,7 @@ in
           options = {
             description = mkOption {
               type = types.str;
+              description = "What it is for, in a line.";
             };
           };
         }
@@ -28,6 +28,7 @@ in
           options = {
             description = mkOption {
               type = types.str;
+              description = "What it is for, in a line.";
             };
             classes = mkOption {
               type = types.nonEmptyListOf (types.enum (lib.attrNames config.axon.classes));
@@ -38,12 +39,35 @@ in
               default = [ ];
               description = "Features that must also be listed on the host";
             };
+            metrics = mkOption {
+              type = types.attrsOf (
+                types.submodule {
+                  options = {
+                    port = mkOption {
+                      type = types.port;
+                      description = "The port its exporter answers on.";
+                    };
+                    volume = mkOption {
+                      type = types.nullOr types.str;
+                      default = null;
+                      description = "A volume the host must mount for the exporter to run there.";
+                    };
+                  };
+                }
+              );
+              default = { };
+              description = "Exporters it runs on a host that also lists metrics, by job name; the host running monitoring scrapes them.";
+            };
+            alerts = mkOption {
+              type = types.listOf types.attrs;
+              default = [ ];
+              description = "Its Prometheus alert rules, loaded where monitoring runs while a host listing metrics lists the feature.";
+            };
           };
         }
       );
     };
 
-    # a host.toml table owned by a feature the host doesn't list is an error
     schema = mkOption {
       type = types.attrsOf types.deferredModule;
       default = { };
@@ -58,7 +82,7 @@ in
   };
 
   config = {
-    # for the installer's lists of classes, features and storage profiles
+    # read by install.sh for its lists of classes, features and storage profiles
     flake.axon = {
       inherit (config.axon) classes features profiles;
     };

@@ -1,6 +1,6 @@
 [host]
 class = "server"
-features = ["automation", "backup", "dev", "downloads", "files", "forge", "gateway", "mail", "media", "metrics", "monitoring", "passwords", "sync", "terminal", "vpn", "family"]
+features = ["automation", "backup", "dev", "downloads", "family", "files", "forge", "gateway", "mail", "media", "metrics", "monitoring", "passwords", "sync", "terminal", "vpn"]
 state = "26.11" # written once at install, never changed
 key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKMXrIta7SmDEzxW21OIxtMNb1M6t5EVHNOyowknN/1G root@node1"
 
@@ -11,7 +11,6 @@ key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGrql6SdjHjUzi21L6ZnN1WL7MUYWdx/ciEg4
 
 [locale]
 timezone = "Europe/Berlin"
-keyboard = "us"
 
 [disk.boot]
 devices = ["/dev/disk/by-id/nvme-nvme.1987-4134343930373935304238393030393238323839-5669706572204d2e322056504e313030-00000001"]

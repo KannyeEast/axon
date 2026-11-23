@@ -1,6 +1,5 @@
-# One encrypted file per host. The SSH host key is the age identity (sops-nix finds it through
-# services.openssh.hostKeys), so there is no key file to lose. The user's private key is itself a
-# secret, so the user edits secrets.json with no extra key material.
+# One encrypted secrets.json per host, opened with the SSH host key as age identity: no key file
+# to lose. The user's private key is a secret in it too, so editing needs no extra key material.
 { inputs, lib, ... }:
 {
   flake.modules.nixos.core =
@@ -13,6 +12,7 @@
     {
       imports = [ inputs.sops-nix.nixosModules.sops ];
 
+      # ── contract ────────
       options.axon.secrets = lib.mkOption {
         type = lib.types.raw;
         readOnly = true;
@@ -20,12 +20,42 @@
         defaultText = "the key structure of secrets.json";
         description = ''
           The shape of secrets.json. sops encrypts values, not keys, so evaluation can see
-          which secrets exist. Read it for data (which networks, which backup targets, which widget keys),
-          never to decide whether something is enabled.
+          which secrets exist. Read it for data (which networks, which backup targets, which API keys);
+          an extra that switches on with its secret reads axon.hasSecret. A hard need declares its
+          sops.secrets, and evaluation lists what is missing.
         '';
       };
 
+      options.axon.hasSecret = lib.mkOption {
+        type = lib.types.functionTo lib.types.bool;
+        readOnly = true;
+        default = name: lib.hasAttrByPath (lib.splitString "/" name) config.axon.secrets;
+        defaultText = "whether secrets.json holds the secret";
+        description = "Whether secrets.json holds the secret of this name (area/name), for extras that switch on with their secret.";
+      };
+
       config = {
+        # ── settings ────────
+        sops = {
+          defaultSopsFile = file;
+          # JSON is YAML; sops-nix's JSON reader rejects nested keys these files use
+          defaultSopsFormat = "yaml";
+          validateSopsFiles = false;
+        };
+        environment.sessionVariables.SOPS_AGE_KEY_CMD = "ssh-to-age -private-key -i ${home}/.ssh/id_ed25519";
+        environment.systemPackages = [
+          pkgs.sops
+          pkgs.ssh-to-age
+        ];
+
+        # ── secrets ────────
+        sops.secrets."user/private-key" = {
+          path = "${home}/.ssh/id_ed25519";
+          owner = user.name;
+          mode = "0600";
+        };
+
+        # ── checks ────────
         # sops-nix finds a missing key only at boot and then installs none of the host's secrets
         # (Tailscale's among them), so evaluation, and install.sh before it wipes, fails first
         assertions =
@@ -33,9 +63,7 @@
             ours = lib.filter (secret: secret.sopsFile == file && secret.key != "") (
               lib.attrValues config.sops.secrets
             );
-            missing = lib.filter (
-              secret: !lib.hasAttrByPath (lib.splitString "/" secret.key) config.axon.secrets
-            ) ours;
+            missing = lib.filter (secret: !config.axon.hasSecret secret.key) ours;
           in
           [
             {
@@ -49,25 +77,6 @@
               }; add them with `just secrets ${host.name}` (a/b is {\"a\": {\"b\": …}})";
             }
           ];
-
-        sops = {
-          defaultSopsFile = file;
-          # JSON is YAML; sops-nix's JSON reader rejects nested keys these files use
-          defaultSopsFormat = "yaml";
-          validateSopsFiles = false;
-
-          secrets."user/private-key" = {
-            path = "${home}/.ssh/id_ed25519";
-            owner = user.name;
-            mode = "0600";
-          };
-        };
-
-        environment.sessionVariables.SOPS_AGE_KEY_CMD = "ssh-to-age -private-key -i ${home}/.ssh/id_ed25519";
-        environment.systemPackages = [
-          pkgs.sops
-          pkgs.ssh-to-age
-        ];
       };
     };
 }

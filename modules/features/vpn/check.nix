@@ -1,13 +1,10 @@
-# Looks through the tunnel every hour. Its unit stays active even when nothing gets through, say
-# once the subscription has run out, and everything inside just stalls. A failure here is mailed
-# like any other.
+# Looks through the tunnel every hour: its unit stays active when nothing gets through (the
+# subscription ran out), and everything inside just stalls.
 { lib, ... }:
 {
   flake.modules.nixos.vpn =
     { config, pkgs, ... }:
     lib.mkIf (config.axon.host.class == "server") {
-      axon.vpn.confined.vpn-check = { };
-
       systemd.services.vpn-check = {
         description = "Check that the tunnel reaches the internet";
         serviceConfig = {
@@ -24,5 +21,7 @@
           RandomizedDelaySec = "5m";
         };
       };
+
+      axon.vpn.confined.vpn-check = { };
     };
 }

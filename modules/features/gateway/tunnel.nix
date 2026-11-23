@@ -1,8 +1,5 @@
-# Public services (route.public) are reachable from the internet through a Cloudflare Tunnel:
-# this host dials out, so no router port is opened and the home IP stays hidden. The tunnel is
-# created once by hand (cloudflared tunnel create); its id goes in host.toml [gateway], its
-# credentials file in secrets.json as cloudflare/tunnel. Each public route needs a DNS record at
-# Cloudflare, made by hand (cloudflared tunnel route dns); tailnet-only routes need none.
+# Cloudflare Tunnel for public routes: the host dials out, so no router port opens and its IP hides.
+# By hand: `cloudflared tunnel create`; its id into [gateway], its credentials as cloudflare/tunnel.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -19,16 +16,11 @@ in
   flake.modules.nixos.gateway =
     { config, ... }:
     let
-      inherit (config.axon) host routes gateway;
+      inherit (config.axon) gateway host routes;
       public = lib.filterAttrs (_: service: service.route.public) routes;
     in
     {
-      warnings =
-        lib.optional (public != { } && gateway.tunnel == null)
-          "hosts/${host.name}/host.toml: ${lib.concatStringsSep ", " (lib.attrNames public)} would be public, but [gateway] has no tunnel yet";
-
-      sops.secrets."cloudflare/tunnel" = lib.mkIf (gateway.tunnel != null) { };
-
+      # ── service ────────
       services.cloudflared = lib.mkIf (gateway.tunnel != null && public != { }) {
         enable = true;
         tunnels.${gateway.tunnel} = {
@@ -43,5 +35,13 @@ in
           ) public;
         };
       };
+
+      # ── secrets ────────
+      sops.secrets."cloudflare/tunnel" = lib.mkIf (gateway.tunnel != null) { };
+
+      # ── checks ────────
+      warnings =
+        lib.optional (public != { } && gateway.tunnel == null)
+          "hosts/${host.name}/host.toml: ${lib.concatStringsSep ", " (lib.attrNames public)} would be public, but [gateway] has no tunnel yet";
     };
 }

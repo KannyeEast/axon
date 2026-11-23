@@ -1,6 +1,5 @@
-# A Stream Deck as a control surface. A daemon runs commands from its dials and keys and draws
-# their state on the deck. What each control does lives in the dotfiles, in
-# .config/control-surface/layout.toml, which the daemon reloads when saved.
+# Control surface: a daemon runs commands from a Stream Deck's dials and keys and draws their state.
+# Settings: ~/.config/control-surface/layout.toml, reloaded on save.
 { lib, ... }:
 {
   flake.modules.nixos.deck =
@@ -12,13 +11,6 @@
       ]);
     in
     {
-      # uaccess has to sort before 73-seat-late, which services.udev.extraRules doesn't
-      services.udev.packages = [
-        (pkgs.writeTextDir "lib/udev/rules.d/70-stream-deck.rules" ''
-          SUBSYSTEM=="usb", ATTR{idVendor}=="0fd9", TAG+="uaccess"
-        '')
-      ];
-
       systemd.user.services.control-surface = {
         description = "Stream Deck control surface";
         wantedBy = [ "graphical-session.target" ];
@@ -32,5 +24,12 @@
           RestartSec = 5;
         };
       };
+
+      # uaccess has to sort before 73-seat-late, which services.udev.extraRules doesn't
+      services.udev.packages = [
+        (pkgs.writeTextDir "lib/udev/rules.d/70-stream-deck.rules" ''
+          SUBSYSTEM=="usb", ATTR{idVendor}=="0fd9", TAG+="uaccess"
+        '')
+      ];
     };
 }

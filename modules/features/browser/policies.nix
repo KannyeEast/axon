@@ -8,7 +8,6 @@
       inherit (osConfig.axon.cluster) domain;
     in
     {
-      # about:policies#documentation
       programs.zen-browser.policies = {
         AIControls.Default.Value = "blocked";
         AutofillAddressEnabled = false;
@@ -47,10 +46,7 @@
           Fallback = true;
         };
         DontCheckDefaultBrowser = true;
-        EnableTrackingProtection = {
-          Category = "strict";
-          BaselineExceptions = true;
-        };
+        EnableTrackingProtection.Category = "standard";
         FirefoxSuggest = {
           WebSuggestions = false;
           SponsoredSuggestions = false;

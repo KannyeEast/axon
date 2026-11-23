@@ -19,8 +19,7 @@
       # the tree wrapper: bare nixfmt only formats the files it's given
       formatter = pkgs.nixfmt-tree;
 
-      # the host.toml and cluster.toml reference, generated from the schema pieces: per field its
-      # description, then name = default and type, TOML-like so `just docs` can highlight it
+      # the host.toml and cluster.toml reference, TOML-like so `just docs` can highlight it
       packages.options =
         let
           doc = pkgs.nixosOptionsDoc {

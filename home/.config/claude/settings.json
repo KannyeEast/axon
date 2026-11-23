@@ -37,16 +37,30 @@
     ]
   },
   "extraKnownMarketplaces": {
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
+    },
     "claude-code-workflows": {
       "source": {
         "source": "github",
         "repo": "wshobson/agents"
       }
+    },
+    "impeccable": {
+      "source": {
+        "source": "github",
+        "repo": "pbakaus/impeccable"
+      }
     }
   },
   "enabledPlugins": {
+    "caveman@caveman": true,
     "claude-md-management@claude-plugins-official": true,
-    "hookify@claude-plugins-official": true
+    "hookify@claude-plugins-official": true,
+    "impeccable@impeccable": true
   },
   "statusLine": {
     "type": "command",
@@ -60,7 +74,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(jq -r .transcript_path); node ~/.claude/plugins/synced/*/caveman/src/hooks/caveman-stats.js --session-file \"$f\" >/dev/null 2>&1 || true",
+            "command": "f=$(jq -r .transcript_path); node ~/.claude/plugins/cache/caveman/caveman/*/src/hooks/caveman-stats.js --session-file \"$f\" >/dev/null 2>&1 || true",
             "timeout": 10
           }
         ]

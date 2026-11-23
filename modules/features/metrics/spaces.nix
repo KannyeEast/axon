@@ -1,7 +1,5 @@
-# How full each volume or space capped by [limits] is, for Prometheus: every 5 minutes a service
-# reads its btrfs qgroup's use and limit into a textfile the node exporter serves (exporters.nix),
-# as axon_space_used_bytes and axon_space_limit_bytes with the label space. A name whose
-# subvolume or qgroup doesn't exist yet is left out.
+# Use and limit of each volume or space in [limits], from its btrfs qgroup, into a textfile the
+# node exporter serves; a subvolume or qgroup that doesn't exist yet is left out.
 { lib, ... }:
 {
   flake.modules.nixos.metrics =

@@ -4,6 +4,7 @@
   flake.modules.nixos.dev =
     { config, pkgs, ... }:
     lib.mkIf (config.axon.host.class == "desktop") {
+      # ── service ────────
       virtualisation.libvirtd = {
         enable = true;
         onBoot = "ignore";
@@ -15,13 +16,16 @@
           vhostUserPackages = [ pkgs.virtiofsd ];
         };
       };
+
+      # ── program ────────
       programs.virt-manager.enable = true;
 
+      # ── system ────────
       users.users.${config.axon.user.name}.extraGroups = [ "libvirtd" ];
-
-      axon.persist.state.directories = [ "/var/lib/libvirt" ];
-
       # guests on libvirt's NAT bridge get DHCP and DNS from the host; the firewall drops them otherwise
       networking.firewall.trustedInterfaces = [ "virbr0" ];
+
+      # ── data ────────
+      axon.persist.state.directories = [ "/var/lib/libvirt" ];
     };
 }

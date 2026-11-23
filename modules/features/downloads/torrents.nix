@@ -1,23 +1,21 @@
-# qBittorrent, locked into the VPN. Finished downloads go next to the library on the media volume
-# so imports are instant (else into its state folder), unfinished ones on the scratch volume if
-# any. The module rewrites qBittorrent.conf on every start, so what the UI changes doesn't last.
+# qBittorrent at downloads.<domain>: torrents, locked into the VPN.
+# Reach: tailnet, the gateway's login only.
+# In its UI only: nothing that lasts; the module rewrites qBittorrent.conf on every start.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
-    { config, pkgs, ... }:
+    { config, ... }:
     let
       inherit (config.axon) volumes vpn;
+      port = 8081;
       state = "/var/lib/qBittorrent";
+      # next to the library, so imports are instant
       finished = "${volumes.media or state}/downloads";
       incomplete = "${volumes.scratch}/torrents";
-      port = 8081;
       folders = [ finished ] ++ lib.optional (volumes ? scratch) incomplete;
     in
     {
-      users.groups.media = { };
-
-      axon.vpn.confined.qbittorrent.ports = [ port ];
-
+      # ── service ────────
       services.qbittorrent = {
         enable = true;
         group = "media";
@@ -27,8 +25,7 @@
           BitTorrent.Session = {
             DefaultSavePath = finished;
             GlobalMaxRatio = 0; # stop as soon as it's done: nothing seeds
-            # a whole series queues up and works through by itself; a torrent without peers doesn't
-            # hold up the rest
+            # a series queues up and works through by itself; a torrent without peers blocks nothing
             QueueingSystemEnabled = true;
             IgnoreSlowTorrentsForQueueing = true;
             MaxActiveDownloads = 5;
@@ -38,29 +35,29 @@
             TempPathEnabled = true;
             TempPath = incomplete;
           };
-          # no password: the UI is reached only from the tailnet, through the gateway, and nothing
-          # else inside the namespace can reach it
+          # no password: only the gateway reaches the UI, and nothing else is in the namespace
           WebUI = {
             AuthSubnetWhitelistEnabled = true;
             AuthSubnetWhitelist = "${vpn.network.subnet}, 127.0.0.1/32";
           };
         };
       };
+      users.groups.media = { };
 
-      # the folders may be on data disks that are missing at boot (nofail): wait for them, and
-      # make the folders once they're mounted (tmpfiles may run before that)
-      systemd.services.qbittorrent = {
-        unitConfig.RequiresMountsFor = folders;
-        serviceConfig = {
-          ExecStartPre = map (
-            dir: "+${lib.getExe' pkgs.coreutils "install"} -d -o root -g media -m 2775 ${dir}"
-          ) folders;
-          # downloads group-writable: Radarr and Sonarr may only hardlink, move or delete what they
-          # can write (fs.protected_hardlinks); read-only, the import fails
-          UMask = "0002";
-        };
-      };
+      # ── units ────────
+      # downloads group-writable: Radarr and Sonarr may only hardlink, move or delete what they
+      # can write (fs.protected_hardlinks); read-only, the import fails
+      systemd.services.qbittorrent.serviceConfig.UMask = "0002";
 
+      # ── data ────────
+      axon.folders = lib.genAttrs folders (_: {
+        user = "root";
+        group = "media";
+        mode = "2775";
+        units = [ "qbittorrent" ];
+      });
+
+      # no StateDirectory, and its module's tmpfiles make only subfolders: impermanence makes this one
       axon.persist.state.directories = [
         {
           directory = state;
@@ -70,6 +67,10 @@
         }
       ];
 
+      # ── contracts ────────
+      axon.vpn.confined.qbittorrent.ports = [ port ];
+
+      # ── registration ────────
       axon.services.downloads = {
         units = [ "qbittorrent" ];
         route = {

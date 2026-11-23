@@ -16,12 +16,15 @@ To change one, change it here in the same commit, with the new reason.
 | No Watchtower or Portainer: container images change only through Renovate's pull requests | every image is pinned to a digest, so what runs is what the repository says, reviewed like any other change |
 | JetBrains IDEs trust every project (`idea.trust.all.projects`) | chosen by the owner; there is no per-path setting |
 | The KeeShare key in `hosts/tower/home/.config/keepassxc/keepassxc.ini` | KeeShare is unused; KeePassXC generates the key itself |
+| DeArrow's `licenseKey` in `hosts/<name>/home/.config/zen/default/declared/storage-sync/deArrow@ajay.app.json` | it is the extension's free key, not a secret |
 | Hardcoded domain in dotfiles (Zen's pins and space routes, in each desktop's `hosts/<name>/home`), machine names only inside `hosts/<name>/` | dotfiles are the owner's files for their own cluster, not part of the framework, so the cluster's domain may appear in them; only the modules stay generic |
 | Kanidm (gateway/accounts.nix) is the one login for every service that has a login; there is no other identity provider | one account and one passkey per person for everything |
 | Tailnet routes get the gateway's login by default (`route.gate`); without login.nix's secrets they stay open, with a warning | the tailnet is the owner's alone, so a missing login is an extra lost, not a hole |
 | Public routes, and git, docs, cache and Home Assistant, never get the gateway's login (`route.gate`, gateway/login.nix) | the tunnel bypasses the gateway, so on a public route it would guard only the tailnet; git, nix, Paperless's apps and the HA Companion app reach the other four without a browser and can't follow a login |
 | The tailnet logs in through Kanidm (gateway/tailnet-login.nix), which runs on a tailnet member | one login for everything; Tailscale needs Kanidm only to log in, so with key expiry off on the gateway an outage blocks new logins, not the network |
 | Loki (monitoring/logs.nix) takes pushes and queries on the tailnet without a login | every host's Alloy pushes to it machine to machine; the tailnet is the owner's alone, and people read the logs in Grafana |
+| Prometheus (monitoring/metrics.nix) takes queries on the tailnet without a login and has no route | Grafana and the start page read it machine to machine; the tailnet is the owner's alone |
+| Scoping a user (downloads/requests.nix, `_scope-filter.py`, the Scope tags workflow) only hides titles in Jellyfin, and their Jellyfin links in Seerr | it shows a scoped user what they requested or put on their watchlist; it is not access control |
 | Jellyfin keeps its own login, and Seerr, which logs in with Jellyfin accounts, follows it | TV and native apps can't do OpenID Connect; they sign in with Quick Connect |
 | Vaultwarden's master password stays separate from Kanidm | it encrypts the vault; a login elsewhere can't replace it |
 | n8n (automation/workflows.nix), unfree under its Sustainable Use License, keeps its own login behind the gate, and its workflow nodes may read its environment, where the API keys are | single sign-on is a paid feature; workflows are files in the checkout that take keys as `$env`, not credentials kept in the UI |
@@ -48,7 +51,7 @@ To change one, change it here in the same commit, with the new reason.
 
 | Decision | Why |
 |---|---|
-| Kanidm, Jellyfin, Immich, Nextcloud, Vaultwarden and Home Assistant are public through the Cloudflare tunnel | family devices have no Tailscale; the risk under Cloudflare's terms (video streaming) is accepted |
+| Kanidm, Jellyfin, Immich, Nextcloud and Vaultwarden are public through the Cloudflare tunnel | family devices have no Tailscale; the risk under Cloudflare's terms (video streaming) is accepted |
 | Home Assistant (family/hub.nix) runs as root in its container, against the rule of one user per container | the official image's process supervisor needs root; the NixOS module would run it as a user but can't install HACS, which the household cards come from |
 | Home Assistant (family/hub.nix) has no Kanidm login (axon.sso), only its own accounts with TOTP | the only add-on (hass-oidc-auth) can't log in inside the Companion app (a code entered in the browser instead), its button fails on HA 2026.10+ (issue #446), and roles follow Kanidm only at first login |
 | DNS records for public routes are made by hand at Cloudflare | not managed from this repo; a new public route needs its tunnel record (`cloudflared tunnel route dns`), a tailnet-only one none |
@@ -62,14 +65,12 @@ To change one, change it here in the same commit, with the new reason.
 | Postgres and SQLite are the only databases, no MySQL or MariaDB. Postgres (axon.databases) where many users or processes write at once, the app requires it, or the data is long-lived and important: Immich, Nextcloud, Paperless, Forgejo. SQLite where one process writes little and it is the app's default: the arr apps, Seerr, Bazarr, Grafana, Vaultwarden, n8n, Home Assistant, and Jellyfin and Kanidm, which support nothing else | two engines to run, back up and know; Postgres takes concurrent writers and dumps while running, SQLite needs no server where the load is light |
 | A tile's space use comes from its btrfs qgroup (metrics/spaces.nix), not from the app's own widget | apps show the whole volume's size, as btrfs limits don't change what statfs reports |
 | Avahi only comes with printing | nothing else needs it since the `.local` names went |
-| `onShutdown = "shutdown"` for libvirt | a saved state with virtiofs attached can't be restored |
 
 ## Backups and monitoring
 
 | Decision | Why |
 |---|---|
 | No backup targets in any `secrets.json`; the backup feature only warns | waiting for a second server or a hosting service |
-| The `local`/`proton` names of restic targets | renaming a target loses its history |
 | No watchdog outside the cluster | the server stands next to its owner; a future second server would watch node1 |
 
 ## Desktop

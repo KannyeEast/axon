@@ -1,6 +1,6 @@
-# JetBrains IDEs on desktops: Rider and WebStorm. .NET is installed globally, so Rider loads
-# projects however it's started. Plugins are unpacked into the store, so one that casts to
-# JarURLConnection to find its own jar breaks every file lookup: check before adding one.
+# JetBrains Rider and WebStorm: IDEs on desktops.
+# Settings: ~/.ideavimrc.
+# Windows: jetbrains-rider, jetbrains-webstorm; their Welcome windows float.
 { inputs, lib, ... }:
 {
   flake.modules.nixos.dev =
@@ -10,8 +10,7 @@
       # the 1xx band: its analyzers' quick fixes are built against the Roslyn Rider bundles (5.0);
       # later bands need a newer one, and Rider fails to load them
       dotnet = pkgs.dotnetCorePackages.sdk_10_0_1xx;
-      # every project trusted: no prompt, its build scripts and .envrc run on open. Read on top of
-      # the IDE's bundled options; overrides nixpkgs' empty default
+      # read on top of the IDE's bundled options, in place of nixpkgs' empty file
       vmOptions = pkgs.writeText "jetbrains.vmoptions" "-Didea.trust.all.projects=true\n";
       common = [
         "nix-idea"
@@ -23,6 +22,7 @@
       ];
     in
     lib.mkIf (config.axon.host.class == "desktop") {
+      # installed globally, so Rider loads projects however it's started
       environment.systemPackages = [
         dotnet
         (withPlugins "rider" common)

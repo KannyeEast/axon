@@ -5,7 +5,7 @@
   flake.modules.nixos.core =
     { config, ... }:
     let
-      inherit (config.axon) host user cluster;
+      inherit (config.axon) cluster host user;
 
       inbound = lib.attrNames (lib.filterAttrs (_: targets: lib.elem host.name targets) cluster.ssh);
 
@@ -34,8 +34,8 @@
       };
 
       users.users.root.openssh.authorizedKeys.keys = keys;
+      security.sudo.extraConfig = "Defaults lecture=never";
 
       sops.secrets."user/password".neededForUsers = true;
-      security.sudo.extraConfig = "Defaults lecture=never";
     };
 }

@@ -1,16 +1,10 @@
-# Home Assistant at ha.<domain>, tailnet only: the household's hub, with the Companion app on the
-# phones. Its own login guards it (TOTP per user, a ban after failed logins), not the gateway's. The official
-# container on the host's network, listening on 127.0.0.1. Its configuration is HA's own, made in
-# its UI; a first one is seeded only when none exists, with what the gateway needs. The image runs
-# as root inside: its process supervisor requires it.
+# Home Assistant at ha.<domain>: the household's hub, with the Companion app on the phones.
+# Reach: tailnet, its own login (TOTP per user, a ban after failed logins), not the gateway's.
+# In its UI only: its whole configuration, backed up with its state folder.
+{ lib, ... }:
 {
   flake.modules.nixos.family =
-    {
-      config,
-      lib,
-      pkgs,
-      ...
-    }:
+    { config, pkgs, ... }:
     let
       port = 8123;
       state = "/var/lib/home-assistant";
@@ -25,9 +19,8 @@
         script: !include scripts.yaml
         scene: !include scenes.yaml
       '';
-      # HA's own store for its network settings (Settings > System > Network). An http: block in
-      # the YAML would only be taken over as a trial that reverts unless confirmed in the UI within
-      # five minutes; the store takes every field, defaults included.
+      # HA's store for Settings > System > Network: an http: block in the YAML is only a trial that
+      # reverts unless confirmed in the UI within five minutes; the store takes every field
       network = {
         server_host = [ "127.0.0.1" ];
         server_port = port;
@@ -54,18 +47,9 @@
           };
         }
       );
-      seeding = pkgs.writeShellScript "home-assistant-seed" ''
-        cd ${state}
-        [ -e configuration.yaml ] && exit 0
-        install -m 0644 ${seed} configuration.yaml
-        install -D -m 0600 ${networkStore} .storage/http
-        echo '[]' > automations.yaml
-        echo '{}' > scripts.yaml
-        echo '[]' > scenes.yaml
-        mkdir -p themes
-      '';
     in
     {
+      # ── service ────────
       virtualisation.oci-containers.containers.home-assistant = {
         image = "ghcr.io/home-assistant/home-assistant:2026.11.2@sha256:493a07e8f6530fc640223f4a0a5248f20a61ca2f718bb1d31efbf08a2c5ea28f";
         # finds devices on the network by broadcast
@@ -74,8 +58,29 @@
         volumes = [ "${state}:/config" ];
       };
 
-      systemd.services.docker-home-assistant.serviceConfig.ExecStartPre = [ "${seeding}" ];
+      # ── units ────────
+      # a first configuration, each file only while it is missing; HA edits them from then on
+      systemd.tmpfiles.settings.home-assistant = {
+        "${state}/configuration.yaml".C = {
+          mode = "0644";
+          argument = "${seed}";
+        };
+        "${state}/.storage".d = { };
+        "${state}/.storage/http".C = {
+          mode = "0600";
+          argument = "${networkStore}";
+        };
+        "${state}/automations.yaml".f.argument = "[]";
+        "${state}/scripts.yaml".f.argument = "{}";
+        "${state}/scenes.yaml".f.argument = "[]";
+        "${state}/themes".d = { };
+      };
+      # the state volume may mount after tmpfiles ran at boot
+      systemd.services.docker-home-assistant.serviceConfig.ExecStartPre = [
+        "${config.systemd.package}/bin/systemd-tmpfiles --create --prefix=${state}"
+      ];
 
+      # ── data ────────
       axon.persist.state.directories = [
         {
           directory = state;
@@ -83,6 +88,7 @@
         }
       ];
 
+      # ── registration ────────
       axon.services.ha = {
         units = [ "docker-home-assistant" ];
         # its log entries' first line; a traceback follows it

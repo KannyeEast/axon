@@ -1,6 +1,4 @@
-# Consumer of axon.services: every routed service gets <service>.<domain> on the tailnet, proxied
-# as is; with gate (all but public ones by default) the login at login.<domain> (login.nix) stands
-# in front. Public ones are on the tunnel as well.
+# Caddy: every routed service at <name>.<domain> on the tailnet, behind the login where gated.
 # One wildcard certificate from Let's Encrypt via a Cloudflare DNS challenge covers them all.
 { lib, ... }:
 {
@@ -8,51 +6,21 @@
     { config, ... }:
     let
       inherit (config.axon)
-        user
-        cluster
         domain
+        hostsWith
         routes
+        user
         ;
 
       ph = config.sops.placeholder;
       login = config.axon.services.login.route;
-      gateways = lib.attrNames (
-        lib.filterAttrs (_: data: lib.elem "gateway" data.host.features) cluster.hosts
-      );
+      gateways = lib.attrNames (hostsWith "gateway");
     in
     {
-      axon.routed = true;
-
-      assertions = [
-        {
-          assertion = lib.length gateways == 1;
-          message = "${
-            lib.concatMapStringsSep ", " (name: "hosts/${name}/host.toml") gateways
-          }: only one host may list the gateway feature; keep it on one";
-        }
-      ];
-
-      sops.secrets."cloudflare/dns-token" = { };
-      sops.templates."cloudflare.env".content = ''
-        CF_DNS_API_TOKEN=${ph."cloudflare/dns-token"}
-      '';
-
-      security.acme = {
-        acceptTerms = true;
-        defaults.email = user.email;
-        certs.${domain} = {
-          inherit domain;
-          extraDomainNames = [ "*.${domain}" ];
-          dnsProvider = "cloudflare";
-          dnsResolver = "1.1.1.1:53";
-          environmentFile = config.sops.templates."cloudflare.env".path;
-        };
-      };
-
+      # ── service ────────
       services.caddy = {
         enable = true;
         virtualHosts = {
-          # anything not routed below
           "*.${domain}" = {
             useACMEHost = domain;
             extraConfig = "abort";
@@ -63,8 +31,8 @@
           lib.nameValuePair service.route.host {
             useACMEHost = domain;
             extraConfig =
-              lib.optionalString (service.route.gate && config.services.oauth2-proxy.enable) ''
-                forward_auth ${login.endpoint} {
+              lib.optionalString service.route.gated ''
+                forward_auth ${login.address}:${toString login.port} {
                   uri /oauth2/auth
                   @login status 401
                   handle_response @login {
@@ -88,6 +56,38 @@
         ) routes;
       };
 
+      security.acme = {
+        acceptTerms = true;
+        defaults.email = user.email;
+        certs.${domain} = {
+          inherit domain;
+          extraDomainNames = [ "*.${domain}" ];
+          dnsProvider = "cloudflare";
+          dnsResolver = "1.1.1.1:53";
+          environmentFile = config.sops.templates."cloudflare.env".path;
+        };
+      };
+
+      # ── secrets ────────
+      sops.secrets."cloudflare/dns-token" = { };
+      sops.templates."cloudflare.env".content = ''
+        CF_DNS_API_TOKEN=${ph."cloudflare/dns-token"}
+      '';
+
+      # ── data ────────
+      axon.persist.state.directories = [
+        {
+          directory = "/var/lib/caddy";
+          user = "caddy";
+          group = "caddy";
+          mode = "0700";
+        }
+        "/var/lib/acme"
+      ];
+
+      # ── contracts ────────
+      axon.routed = true;
+
       axon.overlay.tcpPorts = [
         80
         443
@@ -98,14 +98,14 @@
         icon = "cloudflare.svg";
       };
 
-      axon.persist.state.directories = [
+      # ── checks ────────
+      assertions = [
         {
-          directory = "/var/lib/caddy";
-          user = "caddy";
-          group = "caddy";
-          mode = "0700";
+          assertion = lib.length gateways == 1;
+          message = "${
+            lib.concatMapStringsSep ", " (name: "hosts/${name}/host.toml") gateways
+          }: only one host may list the gateway feature; keep it on one";
         }
-        "/var/lib/acme"
       ];
     };
 }

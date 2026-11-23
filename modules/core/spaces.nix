@@ -1,8 +1,6 @@
-# Contract: axon.spaces. A service's own space: the btrfs subvolume <data>/<name> on a host with
-# a data volume, which host.toml [limits] can cap; /var/lib/<name> without one. A unit per space
-# creates it before the service starts; storage-limits applies [limits], so a changed limit takes
-# effect on the next switch without moving data. A plain folder holding files is left alone with
-# a warning in its unit's log; an empty one (from the service's tmpfiles) becomes a subvolume.
+# Contract: axon.spaces. A service's own space: the btrfs subvolume <data>/<name>, which [limits]
+# can cap, or /var/lib/spaces/<name> on a host without a data volume. Its unit creates it before
+# the services in `units` start.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -32,7 +30,6 @@ in
       btrfs = lib.getExe' pkgs.btrfs-progs "btrfs";
 
       onVolume = lib.filterAttrs (_: space: space.onVolume) spaces;
-      # what [limits] may name: whole volumes and the spaces on them
       limitable = lib.attrNames volumes ++ lib.attrNames onVolume;
       paths = volumes // lib.mapAttrs' (name: space: lib.nameValuePair name space.path) onVolume;
 
@@ -67,8 +64,7 @@ in
             ''
         );
 
-      # quotas are switched on, per filesystem, only where something is limited: through the volume
-      # it lives on, which is mounted even while a space doesn't exist yet
+      # quotas go on only where something is limited, through the volume: it exists before the space
       limited = lib.filterAttrs (name: _: paths ? ${name}) limits;
       volumeOf = name: volumes.${name} or volumes.data;
       applyLimits = pkgs.writeShellScript "storage-limits" ''
@@ -89,6 +85,7 @@ in
       '';
     in
     {
+      # ── contract ────────
       options.axon.spaces = mkOption {
         default = { };
         description = "Service name to its own space on a volume.";
@@ -97,8 +94,14 @@ in
             { name, ... }:
             {
               options = {
-                user = mkOption { type = types.str; };
-                group = mkOption { type = types.str; };
+                user = mkOption {
+                  type = types.str;
+                  description = "Owner of the space.";
+                };
+                group = mkOption {
+                  type = types.str;
+                  description = "Group of the space.";
+                };
                 units = mkOption {
                   type = types.listOf types.str;
                   default = [ ];
@@ -108,11 +111,16 @@ in
                   type = types.bool;
                   readOnly = true;
                   default = volumes ? data;
+                  defaultText = "whether the host has a data volume";
+                  description = "Whether it is a subvolume on the data volume.";
                 };
                 path = mkOption {
                   type = types.str;
                   readOnly = true;
-                  default = "${volumes.data or "/var/lib"}/${name}";
+                  # not /var/lib/<name>: that is often the service's own state folder
+                  default = "${volumes.data or "/var/lib/spaces"}/${name}";
+                  defaultText = "<data volume>/<name>, else /var/lib/spaces/<name>";
+                  description = "Where the space is.";
                 };
               };
             }
@@ -121,20 +129,7 @@ in
       };
 
       config = {
-        # a space on a volume persists with it; the fallback in /var/lib is persisted here
-        axon.persist.state.directories = lib.mkAfter (
-          lib.mapAttrsToList (_: space: {
-            directory = space.path;
-            inherit (space) user group;
-            mode = "0750";
-          }) (lib.filterAttrs (_: space: !space.onVolume) spaces)
-        );
-
-        assertions = lib.mapAttrsToList (name: _: {
-          assertion = paths ? ${name};
-          message = "hosts/${host.name}/host.toml: [limits] names ${name}, which is neither a volume nor a service's space on one (${lib.concatStringsSep ", " limitable})";
-        }) limits;
-
+        # ── units ────────
         systemd.services = lib.mkMerge (
           [
             (lib.mapAttrs' (
@@ -177,6 +172,20 @@ in
             }) spaces.${name}.units
           ) (lib.attrNames spaces)
         );
+
+        # ── data ────────
+        # a space on a volume persists with it; only the /var/lib fallback is listed
+        axon.persist.state.directories = lib.mapAttrsToList (_: space: {
+          directory = space.path;
+          inherit (space) user group;
+          mode = "0750";
+        }) (lib.filterAttrs (_: space: !space.onVolume) spaces);
+
+        # ── checks ────────
+        assertions = lib.mapAttrsToList (name: _: {
+          assertion = paths ? ${name};
+          message = "hosts/${host.name}/host.toml: [limits] names ${name}, which is neither a volume nor a service's space on one (${lib.concatStringsSep ", " limitable})";
+        }) limits;
       };
     };
 }
