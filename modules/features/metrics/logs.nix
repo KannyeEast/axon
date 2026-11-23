@@ -5,13 +5,11 @@
   flake.modules.nixos.metrics =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) cluster host services;
+      inherit (config.axon) host hostsWith services;
       containers = config.virtualisation.oci-containers;
       # Loki's port on the monitoring hosts
       port = 3100;
-      monitors = lib.attrNames (
-        lib.filterAttrs (_: data: lib.elem "monitoring" data.host.features) cluster.hosts
-      );
+      monitors = lib.attrNames (hostsWith "monitoring");
       address = name: if name == host.name then "127.0.0.1" else name;
 
       # the attached `docker run` in a container's unit logs each line a second time; dropped, the

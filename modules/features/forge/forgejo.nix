@@ -54,7 +54,7 @@
       # secret is on the command line while it runs: the command takes it no other way
       systemd.services.forgejo = lib.mkIf (sso.provider != null) {
         # the client's discovery document only exists once the provider made it
-        after = lib.optional (sso.unit != null) sso.unit;
+        after = [ sso.provider.unit ];
         path = [ pkgs.gawk ];
         preStart = lib.mkAfter ''
           login_source() {

@@ -15,14 +15,11 @@
   flake.modules.nixos.dev =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) cluster host;
+      inherit (config.axon) cluster host hostsWith;
       servers = lib.attrNames (
         lib.filterAttrs (
-          name: data:
-          data.host.class == "server"
-          && lib.elem "dev" data.host.features
-          && lib.elem name (cluster.ssh.${host.name} or [ ])
-        ) cluster.hosts
+          name: data: data.host.class == "server" && lib.elem name (cluster.ssh.${host.name} or [ ])
+        ) (hostsWith "dev")
       );
       # build output and caches stay on each machine; a synced git lock looks stale on the other
       ignored = [

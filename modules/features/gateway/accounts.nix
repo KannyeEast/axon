@@ -21,9 +21,16 @@
       };
     in
     {
-      axon.sso.provider = url;
-      # provisioning runs in the unit's start, so clients exist once it's up
-      axon.sso.unit = "kanidm.service";
+      axon.sso.provider = {
+        authorize = "${url}/ui/oauth2";
+        token = "${url}/oauth2/token";
+        userinfo = client: "${url}/oauth2/openid/${client}/userinfo";
+        issuer = client: "${url}/oauth2/openid/${client}";
+        # Kanidm lists groups as <name>@<its domain>
+        group = group: "${group}@${host}";
+        # provisioning runs in the unit's start, so clients exist once it's up
+        unit = "kanidm.service";
+      };
 
       sops.secrets = {
         "kanidm/admin-password".owner = "kanidm";

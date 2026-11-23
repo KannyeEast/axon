@@ -6,13 +6,13 @@
     { config, pkgs, ... }:
     let
       inherit (config.axon)
-        cluster
         host
+        hostsWith
         routed
         routes
         ;
       exporters = config.services.prometheus.exporters;
-      scraped = lib.filterAttrs (_: data: lib.elem "metrics" data.host.features) cluster.hosts;
+      scraped = hostsWith "metrics";
       # files and forge keep their databases (axon.databases) on servers, so Postgres runs there
       databases = lib.filterAttrs (
         _: data:

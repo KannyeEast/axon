@@ -57,11 +57,7 @@
             route.address
           ];
         auth = {
-          method =
-            if config.axon.services.${name}.route.gate && config.services.oauth2-proxy.enable then
-              "External"
-            else
-              "Forms";
+          method = if services.${name}.route.gated then "External" else "Forms";
           required = "DisabledForLocalAddresses";
           trustCgnatIpAddresses = true;
         };

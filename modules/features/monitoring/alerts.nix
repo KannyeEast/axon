@@ -7,9 +7,9 @@
     { config, pkgs, ... }:
     let
       inherit (config.axon)
-        cluster
         domain
         host
+        hostsWith
         mail
         routed
         services
@@ -18,9 +18,9 @@
       hook = 9096;
       n8n.url = "http://127.0.0.1:${toString config.services.n8n.environment.N8N_PORT}/webhook/alerts";
       grafana = services.grafana.route.url;
-      downloads = lib.any (
-        data: lib.elem "metrics" data.host.features && lib.elem "downloads" data.host.features
-      ) (lib.attrValues cluster.hosts);
+      downloads = lib.any (data: lib.elem "downloads" data.host.features) (
+        lib.attrValues (hostsWith "metrics")
+      );
       # its own local part, so a rule at the mailbox can file alerts away
       recipient = "srv-alert@${domain}";
       page = lib.readFile ./_page.html;

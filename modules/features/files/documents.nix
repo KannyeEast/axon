@@ -87,7 +87,7 @@
                   provider_id = provider;
                   name = "Kanidm";
                   client_id = client.id;
-                  secret = config.sops.placeholder."sso/${client.id}";
+                  secret = client.placeholder;
                   settings = {
                     server_url = client.issuer;
                     # the provider requires it; allauth leaves it off

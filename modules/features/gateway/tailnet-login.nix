@@ -13,7 +13,6 @@
         ;
       port = 8099;
       secret = "sso/tailscale";
-      issuer = "${sso.provider}/oauth2/openid/tailscale";
       active = sso.provider != null && gateway.tunnel != null && hasSecret secret;
       # the address is echoed back, so only plain ones are answered
       address = "^acct:[A-Za-z0-9._+-]+@${lib.replaceStrings [ "." ] [ "[.]" ] domain}$";
@@ -22,7 +21,7 @@
         links = [
           {
             rel = "http://openid.net/specs/connect/1.0/issuer";
-            href = issuer;
+            href = sso.provider.issuer "tailscale";
           }
         ];
       };

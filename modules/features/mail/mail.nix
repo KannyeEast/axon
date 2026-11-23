@@ -24,12 +24,12 @@ in
     { config, ... }:
     let
       inherit (config.axon)
-        cluster
         host
+        hostsWith
         smtp
         ;
       ph = config.sops.placeholder;
-      monitors = lib.filterAttrs (_: data: lib.elem "monitoring" data.host.features) cluster.hosts;
+      monitors = hostsWith "monitoring";
     in
     {
       axon.mail = {

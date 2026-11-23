@@ -9,13 +9,14 @@ in
   flake.modules.nixos.core =
     { config, ... }:
     let
-      inherit (config.axon) cluster host overlay;
+      inherit (config.axon)
+        cluster
+        host
+        hostsWith
+        overlay
+        ;
       lists = feature: lib.elem feature host.features;
-      othersList =
-        feature:
-        lib.any (data: lib.elem feature data.host.features) (
-          lib.attrValues (removeAttrs cluster.hosts [ host.name ])
-        );
+      othersList = feature: removeAttrs (hostsWith feature) [ host.name ] != { };
       member =
         lib.elem host.name (
           lib.attrNames cluster.ssh

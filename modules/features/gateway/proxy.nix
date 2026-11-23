@@ -6,17 +6,15 @@
     { config, ... }:
     let
       inherit (config.axon)
-        user
-        cluster
         domain
+        hostsWith
         routes
+        user
         ;
 
       ph = config.sops.placeholder;
       login = config.axon.services.login.route;
-      gateways = lib.attrNames (
-        lib.filterAttrs (_: data: lib.elem "gateway" data.host.features) cluster.hosts
-      );
+      gateways = lib.attrNames (hostsWith "gateway");
     in
     {
       axon.routed = true;
@@ -60,7 +58,7 @@
           lib.nameValuePair service.route.host {
             useACMEHost = domain;
             extraConfig =
-              lib.optionalString (service.route.gate && config.services.oauth2-proxy.enable) ''
+              lib.optionalString service.route.gated ''
                 forward_auth ${login.address}:${toString login.port} {
                   uri /oauth2/auth
                   @login status 401

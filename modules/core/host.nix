@@ -212,5 +212,14 @@ in
         defaultText = "<home>/axon";
         description = "Where the checkout lives on the machine. Convention, not configuration.";
       };
+
+      options.axon.hostsWith = mkOption {
+        type = types.functionTo (types.attrsOf types.raw);
+        readOnly = true;
+        default =
+          feature: lib.filterAttrs (_: data: lib.elem feature data.host.features) config.axon.cluster.hosts;
+        defaultText = "feature: the cluster's hosts that list it";
+        description = "A feature to the cluster's hosts that list it, by name.";
+      };
     };
 }

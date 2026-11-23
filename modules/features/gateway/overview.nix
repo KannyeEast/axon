@@ -24,10 +24,10 @@ in
     { config, ... }:
     let
       inherit (config.axon)
-        cluster
         gateway
         hasSecret
         host
+        hostsWith
         limits
         links
         routes
@@ -46,9 +46,7 @@ in
         lib.filter (service: service.dashboard.key && hasSecret service.apiKey) (lib.attrValues tiles)
       );
 
-      monitors = lib.attrNames (
-        lib.filterAttrs (_: data: lib.elem "monitoring" data.host.features) cluster.hosts
-      );
+      monitors = lib.attrNames (hostsWith "monitoring");
       prometheus =
         if !lib.elem "metrics" host.features || monitors == [ ] then
           null

@@ -7,7 +7,7 @@
     { config, ... }:
     let
       inherit (config.axon) databases volumes;
-      dumps = "${volumes.data or "/var/backup"}/postgresql";
+      dumps = "${config.axon.dumps}/postgresql";
     in
     {
       options.axon.databases = lib.mkOption {

@@ -105,6 +105,14 @@ in
         description = "This host's data disks, name to mountpoint. A feature that can't work without a volume asserts it; one that can falls back to its state folder.";
       };
 
+      options.axon.dumps = mkOption {
+        type = types.str;
+        readOnly = true;
+        default = config.axon.volumes.data or "/var/backup";
+        defaultText = "volumes.data, else /var/backup";
+        description = "The folder for dumps and exports a backup reads: the data volume, else /var/backup on the state disk.";
+      };
+
       config = {
         assertions = lib.mapAttrsToList (label: fs: {
           assertion = lib.length fs.devices >= minimum.${fs.profile};

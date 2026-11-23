@@ -6,7 +6,7 @@
     { config, pkgs, ... }:
     let
       inherit (config.axon)
-        cluster
+        hostsWith
         services
         sso
         user
@@ -123,7 +123,7 @@
       # tunnels and bridges carry the same traffic a second time
       physical = ''device=~"en.*|eth.*|wl.*"'';
 
-      scraped = lib.filterAttrs (_: data: lib.elem "metrics" data.host.features) cluster.hosts;
+      scraped = hostsWith "metrics";
       disks = lib.concatMap (
         name:
         let
@@ -358,13 +358,12 @@
             client_id = client.id;
             client_secret = "$__file{${client.secret}}";
             scopes = "openid profile email groups";
-            auth_url = "${sso.provider}/ui/oauth2";
-            token_url = "${sso.provider}/oauth2/token";
-            api_url = "${client.issuer}/userinfo";
+            auth_url = sso.provider.authorize;
+            token_url = sso.provider.token;
+            api_url = sso.provider.userinfo client.id;
             use_pkce = true;
             use_refresh_token = true;
-            # Kanidm lists groups as <name>@<its domain>
-            role_attribute_path = "contains(groups[*], '${client.group}@${lib.removePrefix "https://" sso.provider}') && 'Admin' || 'Viewer'";
+            role_attribute_path = "contains(groups[*], '${client.groupClaim}') && 'Admin' || 'Viewer'";
           };
         };
         provision = {

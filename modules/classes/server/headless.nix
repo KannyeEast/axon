@@ -5,14 +5,12 @@
     { config, ... }:
     let
       inherit (config.axon)
-        cluster
         host
+        hostsWith
         routed
         routes
         ;
-      gateways = lib.attrNames (
-        lib.filterAttrs (_: data: lib.elem "gateway" data.host.features) cluster.hosts
-      );
+      gateways = lib.attrNames (hostsWith "gateway");
       names = lib.concatStringsSep ", " (lib.attrNames routes);
     in
     {

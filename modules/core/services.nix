@@ -35,6 +35,12 @@ in
         description = "Set by the gateway: this host serves the routes in axon.services. Consumers fall back when it doesn't.";
       };
 
+      options.axon.gated = mkOption {
+        type = types.bool;
+        default = false;
+        description = "Set by the gateway: its login is in effect on this host.";
+      };
+
       options.axon.routes = mkOption {
         type = types.attrsOf types.raw;
         readOnly = true;
@@ -118,6 +124,13 @@ in
                           default = !route.config.public;
                           defaultText = "!public";
                           description = "The gateway's login (oauth2-proxy) in front of the route; false for what can't follow a browser login.";
+                        };
+                        gated = mkOption {
+                          type = types.bool;
+                          readOnly = true;
+                          default = route.config.gate && config.axon.gated;
+                          defaultText = "gate, where the gateway's login is in effect";
+                          description = "The gateway's login is in front of the route.";
                         };
                         health = mkOption {
                           type = types.str;

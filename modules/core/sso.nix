@@ -15,15 +15,38 @@ in
     {
       options.axon.sso = {
         provider = mkOption {
-          type = types.nullOr types.str;
           default = null;
-          description = "The login provider's base URL, set by the provider. Consumers must work with null.";
-        };
-
-        unit = mkOption {
-          type = types.nullOr types.str;
-          default = null;
-          description = "The provider's systemd unit on this host, started once its clients exist; for consumers that reach it while starting.";
+          description = "The login provider's facts, set by the provider; consumers must work with null.";
+          type = types.nullOr (
+            types.submodule {
+              options = {
+                authorize = mkOption {
+                  type = types.str;
+                  description = "The URL of the authorization endpoint.";
+                };
+                token = mkOption {
+                  type = types.str;
+                  description = "The URL of the token endpoint.";
+                };
+                userinfo = mkOption {
+                  type = types.functionTo types.str;
+                  description = "Client id to the URL of its userinfo endpoint.";
+                };
+                issuer = mkOption {
+                  type = types.functionTo types.str;
+                  description = "Client id to its OpenID Connect issuer.";
+                };
+                group = mkOption {
+                  type = types.functionTo types.str;
+                  description = "Group name to its value in the groups claim.";
+                };
+                unit = mkOption {
+                  type = types.str;
+                  description = "The provider's systemd unit on this host, started once its clients exist; for consumers that reach it while starting.";
+                };
+              };
+            }
+          );
         };
 
         clients = mkOption {
@@ -101,8 +124,8 @@ in
                   issuer = mkOption {
                     type = types.nullOr types.str;
                     readOnly = true;
-                    default = if provider != null then "${provider}/oauth2/openid/${name}" else null;
-                    defaultText = "<provider>/oauth2/openid/<name>, null without a provider";
+                    default = if provider != null then provider.issuer name else null;
+                    defaultText = "provider.issuer <name>, null without a provider";
                     description = "The client's OpenID Connect issuer; the provider has one per client.";
                   };
                   secret = mkOption {
@@ -111,6 +134,20 @@ in
                     default = config.sops.secrets."sso/${name}".path;
                     defaultText = "the path of the sops secret sso/<name>";
                     description = "The client secret, from secrets.json; readable by the provider and user.";
+                  };
+                  placeholder = mkOption {
+                    type = types.str;
+                    readOnly = true;
+                    default = config.sops.placeholder."sso/${name}";
+                    defaultText = "the sops placeholder of sso/<name>";
+                    description = "The client secret's placeholder in a sops template.";
+                  };
+                  groupClaim = mkOption {
+                    type = types.nullOr types.str;
+                    readOnly = true;
+                    default = if provider != null then provider.group client.config.group else null;
+                    defaultText = "provider.group <group>, null without a provider";
+                    description = "The allowed group as the provider lists it in the groups claim.";
                   };
                 };
               }

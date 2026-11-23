@@ -6,17 +6,15 @@
     { config, pkgs, ... }:
     let
       inherit (config.axon)
-        cluster
         hasSecret
         host
+        hostsWith
         routes
         services
         ;
       secret = name: services.${name}.apiKey;
       hasKey = name: hasSecret (secret name);
-      scraped =
-        lib.elem "metrics" host.features
-        && lib.any (data: lib.elem "monitoring" data.host.features) (lib.attrValues cluster.hosts);
+      scraped = lib.elem "metrics" host.features && hostsWith "monitoring" != { };
 
       # monitoring/metrics.nix scrapes these same ports
       arr = lib.optionalAttrs (config.axon.volumes ? media) {

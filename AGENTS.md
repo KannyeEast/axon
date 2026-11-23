@@ -152,7 +152,7 @@ One vocabulary for all kinds, always in this order:
 | `secrets` | every `sops.secrets` and `sops.templates` entry the file reads |
 | `login` | `axon.sso.clients.<name>` |
 | `data` | `axon.databases`, `axon.persist…`, `axon.spaces` |
-| `contracts` | what the file adds to other contracts (`axon.overlay`, `axon.vpn.confined`, `axon.links`, `axon.browser`), or the value it produces (`axon.mail`, `axon.sso.provider`, `axon.routed`) |
+| `contracts` | what the file adds to other contracts (`axon.overlay`, `axon.vpn.confined`, `axon.links`, `axon.browser`), or the value it produces (`axon.mail`, `axon.sso.provider`, `axon.routed`, `axon.gated`) |
 | `registration` | `axon.services.<name>`: route, tile, units, logs, backup |
 | `checks` | `warnings`, `assertions` |
 
@@ -263,7 +263,8 @@ use it.
 | Its own address in its settings | `route.origin` |
 | An address registered elsewhere (redirects) | `route.url` |
 | Calling it from the same host | `route.internal` |
-| A login | `axon.sso.clients.<name>` with `service`, which fills its name, icon and landing; the service logs in there when `axon.sso.provider` isn't null and keeps its own login otherwise |
+| Is the gateway's login in front of it | `route.gated` |
+| A login | `axon.sso.clients.<name>` with `service`, which fills its name, icon and landing; the service logs in there when `axon.sso.provider` isn't null and keeps its own login otherwise; `client.placeholder` puts its secret into a sops template, `client.groupClaim` is its group as the provider's groups claim lists it |
 | Mail | `axon.mail`; the service works when it is null. The sender is `<service name>@<domain>` |
 | A secret the file can't do without | declare its `sops.secrets`; evaluation lists what is missing. Every file declares each secret it reads |
 | An extra that switches on with its secret | `config.axon.hasSecret "<area>/<name>"`; without the secret the extra is off, with one warning naming the secret |
@@ -279,11 +280,12 @@ use it.
 | User data (files, photos, documents) | its own `axon.spaces` entry, with `units` naming every unit that uses it |
 | Writing to a volume | `RequiresMountsFor` on the unit: data disks mount with `nofail`, and without it the unit writes to root |
 | Backup | `backup.paths` for what can't be rebuilt, `exclude` for what can; a database through its dump or export, never its live files |
+| A dump or export a backup reads | `"${config.axon.dumps}/<name>"` |
 | The start page | a `dashboard` entry: name, group, icon, a widget where Homepage has one, and the `space` its tile shows |
 | Logs | every unit of the file in the service's `units`; a program that prints no level gets a log-format or log-level setting; entries spanning lines set `logStart` |
 | Traffic that must not leave in the open | `axon.vpn.confined` |
 | A container | only where DECISIONS gives its reason. `virtualisation.oci-containers`, the image on one `image = "<registry>/<name>:<tag>@sha256:<digest>"` line, ports on `127.0.0.1`, every host path it writes persisted |
-| Something on another host | the feature lists in `config.axon.cluster.hosts`; never a host name |
+| Something on another host | `config.axon.hostsWith "<feature>"`, from the feature lists in `config.axon.cluster.hosts`; never a host name |
 | A program that runs with the desktop session | a `systemd.user.services` unit on `graphical-session.target`. The shell's own parts (bar, wallpaper, idle) start from the owner's `startup.kdl` |
 | Glue between services | an n8n workflow in `hosts/<name>/home/.config/n8n/workflows`; systemd only for what DECISIONS lists |
 
@@ -301,8 +303,9 @@ use it.
   `axon.volumes`, `axon.spaces` (a service's own subvolume, capped by `[limits]`), `axon.mail`,
   `axon.sso` (single sign-on), `axon.vpn`, `axon.overlay`, `axon.browser`, `axon.links` (admin
   links on the start page), `axon.databases` (Postgres databases, dumped nightly). Derived values
-  core exposes: `axon.domain`, `axon.routed`, `axon.routes`, `axon.secrets`, `axon.hasSecret`,
-  `axon.dotfiles`, `axon.remotes`, `axon.home`, `axon.repo`, `axon.laptop`, `axon.nvidia`.
+  core exposes: `axon.domain`, `axon.routed`, `axon.gated`, `axon.routes`, `axon.secrets`, `axon.hasSecret`,
+  `axon.dumps`, `axon.hostsWith`, `axon.dotfiles`, `axon.remotes`, `axon.home`, `axon.repo`,
+  `axon.laptop`, `axon.nvidia`.
 - **Only what changes something.** Don't restate an upstream default (read the module's source),
   and don't add an option nothing sets, a helper with one caller or a package nothing runs. The
   framework (`modules/`, published on `main`) serves any machine, not only these hosts: what a

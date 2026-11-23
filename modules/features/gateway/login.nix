@@ -67,15 +67,17 @@
           cookie-samesite = "lax";
           skip-provider-button = true;
           whitelist-domain = ".${domain}";
-          # Kanidm lists groups as <name>@<its domain>
-          allowed-group = "${client.group}@${lib.removePrefix "https://" sso.provider}";
+          allowed-group = client.groupClaim;
         };
       };
 
       # it exits when the provider's discovery document isn't there yet, so it retries
       systemd.services.oauth2-proxy = lib.mkIf active (
         let
-          units = [ "caddy.service" ] ++ lib.optional (sso.unit != null) sso.unit;
+          units = [
+            "caddy.service"
+            sso.provider.unit
+          ];
         in
         {
           wants = units;
@@ -92,6 +94,8 @@
         group = "admins";
         user = "oauth2-proxy";
       };
+
+      axon.gated = active;
 
       axon.services.login = {
         units = lib.mkIf active [ "oauth2-proxy" ];

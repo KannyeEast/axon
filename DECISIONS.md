@@ -65,14 +65,12 @@ To change one, change it here in the same commit, with the new reason.
 | Postgres and SQLite are the only databases, no MySQL or MariaDB. Postgres (axon.databases) where many users or processes write at once, the app requires it, or the data is long-lived and important: Immich, Nextcloud, Paperless, Forgejo. SQLite where one process writes little and it is the app's default: the arr apps, Seerr, Bazarr, Grafana, Vaultwarden, n8n, Home Assistant, and Jellyfin and Kanidm, which support nothing else | two engines to run, back up and know; Postgres takes concurrent writers and dumps while running, SQLite needs no server where the load is light |
 | A tile's space use comes from its btrfs qgroup (metrics/spaces.nix), not from the app's own widget | apps show the whole volume's size, as btrfs limits don't change what statfs reports |
 | Avahi only comes with printing | nothing else needs it since the `.local` names went |
-| `onShutdown = "shutdown"` for libvirt | a saved state with virtiofs attached can't be restored |
 
 ## Backups and monitoring
 
 | Decision | Why |
 |---|---|
 | No backup targets in any `secrets.json`; the backup feature only warns | waiting for a second server or a hosting service |
-| The `local`/`proton` names of restic targets | renaming a target loses its history |
 | No watchdog outside the cluster | the server stands next to its owner; a future second server would watch node1 |
 
 ## Desktop
