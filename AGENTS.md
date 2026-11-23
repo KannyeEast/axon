@@ -144,9 +144,9 @@ One vocabulary for all kinds, always in this order:
 |---|---|
 | `contract` | `options.axon.<name>`: the contract a core file declares |
 | `settings` | plain NixOS settings of a core or class file |
-| `service` | `services.<name>` through its NixOS module, or its `virtualisation.oci-containers` entry |
+| `service` | `services.<name>` through its NixOS module, or its `virtualisation.oci-containers` entry; the user and group it runs as |
 | `program` | packages and `programs.<name>` |
-| `units` | `systemd.services`, `systemd.timers`: changes to the service's units, then the file's own units |
+| `units` | `systemd.services`, `systemd.timers`, `systemd.paths`, `systemd.tmpfiles`: changes to the service's units, then the file's own units |
 | `session` | `systemd.user.services`: what starts with the desktop session |
 | `system` | what only Nix can wire for a desktop program: D-Bus, udev, portals, PAM, dconf defaults |
 | `secrets` | every `sops.secrets` and `sops.templates` entry the file reads |

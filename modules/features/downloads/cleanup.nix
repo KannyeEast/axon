@@ -12,13 +12,6 @@
         ;
       # it reads ./config/config.yaml and writes ./logs
       runtime = "/run/decluttarr";
-      files = map (home: "${home}/.config/decluttarr/config.yaml") config.axon.dotfiles;
-      secrets = {
-        radarr = services.radarr.apiKey;
-        sonarr = services.sonarr.apiKey;
-      };
-      missing = lib.filter (key: !hasSecret key) (lib.attrValues secrets);
-
       src = pkgs.fetchFromGitHub {
         owner = "ManiMatter";
         repo = "decluttarr";
@@ -33,6 +26,13 @@
         ps.requests
         ps.watchdog
       ]);
+
+      files = map (home: "${home}/.config/decluttarr/config.yaml") config.axon.dotfiles;
+      secrets = {
+        radarr = services.radarr.apiKey;
+        sonarr = services.sonarr.apiKey;
+      };
+      missing = lib.filter (key: !hasSecret key) (lib.attrValues secrets);
 
       # its DynamicUser can't read the checkout under the user's 0700 home: root copies the file
       # here first
@@ -61,45 +61,41 @@
         '';
       };
     in
-    lib.mkIf (config.axon.volumes ? media) (
-      lib.mkMerge [
-        {
-          warnings =
-            lib.optional (missing != [ ])
-              "hosts/${host.name}/secrets.json: no ${lib.concatStringsSep ", " missing}, so Decluttarr doesn't run; add them with `just secrets ${host.name}`";
-        }
+    lib.mkIf (config.axon.volumes ? media) {
+      systemd.services = lib.mkIf (missing == [ ]) {
+        decluttarr = {
+          description = "Clear stuck downloads from Radarr's and Sonarr's queues";
+          wantedBy = [ "multi-user.target" ];
+          after = [
+            "radarr.service"
+            "sonarr.service"
+          ];
+          serviceConfig = {
+            DynamicUser = true;
+            RuntimeDirectory = "decluttarr";
+            WorkingDirectory = runtime;
+            LoadCredential = lib.mapAttrsToList (app: key: "${app}:${config.sops.secrets.${key}.path}") secrets;
+            ExecStartPre = "+${lib.getExe copy}";
+            ExecStart = lib.getExe run;
+            Restart = "on-failure";
+          };
+        };
+        decluttarr-config = {
+          description = "Restart Decluttarr on a new config";
+          serviceConfig = {
+            Type = "oneshot";
+            # also starts it when the file appears after it found none
+            ExecStart = "${pkgs.systemd}/bin/systemctl restart decluttarr.service";
+          };
+        };
+      };
+      systemd.paths.decluttarr-config = lib.mkIf (missing == [ ]) {
+        wantedBy = [ "paths.target" ];
+        pathConfig.PathChanged = files;
+      };
 
-        (lib.mkIf (missing == [ ]) {
-          systemd.services.decluttarr = {
-            description = "Clear stuck downloads from Radarr's and Sonarr's queues";
-            wantedBy = [ "multi-user.target" ];
-            after = [
-              "radarr.service"
-              "sonarr.service"
-            ];
-            serviceConfig = {
-              DynamicUser = true;
-              RuntimeDirectory = "decluttarr";
-              WorkingDirectory = runtime;
-              LoadCredential = lib.mapAttrsToList (app: key: "${app}:${config.sops.secrets.${key}.path}") secrets;
-              ExecStartPre = "+${lib.getExe copy}";
-              ExecStart = lib.getExe run;
-              Restart = "on-failure";
-            };
-          };
-          systemd.paths.decluttarr-config = {
-            wantedBy = [ "paths.target" ];
-            pathConfig.PathChanged = files;
-          };
-          systemd.services.decluttarr-config = {
-            description = "Restart Decluttarr on a new config";
-            serviceConfig = {
-              Type = "oneshot";
-              # also starts it when the file appears after it found none
-              ExecStart = "${pkgs.systemd}/bin/systemctl restart decluttarr.service";
-            };
-          };
-        })
-      ]
-    );
+      warnings =
+        lib.optional (missing != [ ])
+          "hosts/${host.name}/secrets.json: no ${lib.concatStringsSep ", " missing}, so Decluttarr doesn't run; add them with `just secrets ${host.name}`";
+    };
 }

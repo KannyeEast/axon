@@ -45,6 +45,9 @@
         ];
       };
 
+      # the first line of a log entry in the .NET apps; a stack trace follows it
+      logStart = "^\\[(Trace|Debug|Info|Warn|Error|Fatal)\\]";
+
       # they insist on a login method: External behind the gateway's login, else Forms, off for
       # local addresses with the tailnet's 100.64.0.0/10 counted local (config.xml only, not the UI)
       settings = name: {
@@ -62,9 +65,6 @@
           trustCgnatIpAddresses = true;
         };
       };
-
-      # the first line of a log entry in the .NET apps; a stack trace follows it
-      logStart = "^\\[(Trace|Debug|Info|Warn|Error|Fatal)\\]";
 
       # without its key in secrets.json, an app keeps the one it made itself
       secret = name: services.${name}.apiKey;
@@ -100,6 +100,7 @@
       };
     in
     lib.mkIf (config.axon.volumes ? media) {
+      # ── service ────────
       services.radarr = {
         enable = true;
         group = "media";
@@ -125,18 +126,7 @@
         environmentFiles = envFile "prowlarr";
       };
 
-      sops.secrets = lib.listToAttrs (
-        map (name: lib.nameValuePair (secret name) { restartUnits = [ "${name}.service" ]; }) keyed
-      );
-      sops.templates = lib.listToAttrs (
-        map (
-          name:
-          lib.nameValuePair "${name}-key.env" {
-            content = "${lib.toUpper name}__AUTH__APIKEY=${config.sops.placeholder.${secret name}}\n";
-          }
-        ) (lib.remove "bazarr" keyed)
-      );
-
+      # ── units ────────
       systemd.services = lib.mkMerge [
         (lib.genAttrs [ "radarr" "sonarr" "bazarr" ] (_: {
           unitConfig.RequiresMountsFor = [ media ];
@@ -165,6 +155,20 @@
       # refuses the unsafe step from radarr's folder into it: Radarr is never created
       systemd.tmpfiles.rules = [ "d /var/lib/radarr/.config 0750 radarr media -" ];
 
+      # ── secrets ────────
+      sops.secrets = lib.listToAttrs (
+        map (name: lib.nameValuePair (secret name) { restartUnits = [ "${name}.service" ]; }) keyed
+      );
+      sops.templates = lib.listToAttrs (
+        map (
+          name:
+          lib.nameValuePair "${name}-key.env" {
+            content = "${lib.toUpper name}__AUTH__APIKEY=${config.sops.placeholder.${secret name}}\n";
+          }
+        ) (lib.remove "bazarr" keyed)
+      );
+
+      # ── data ────────
       axon.persist.state.directories =
         map (
           app:
@@ -177,6 +181,7 @@
         ) (lib.attrNames apps)
         ++ [ "/var/lib/private/prowlarr" ];
 
+      # ── registration ────────
       axon.services =
         lib.mapAttrs (name: app: {
           units = [ name ];

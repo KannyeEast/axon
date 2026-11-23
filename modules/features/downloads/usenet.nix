@@ -12,10 +12,11 @@
         services
         volumes
         ;
+      inherit (config.axon.services.usenet) route;
+      port = 8080;
       state = "/var/lib/sabnzbd";
       finished = "${volumes.media or state}/downloads";
       incomplete = "${volumes.scratch or state}/usenet";
-      port = 8080;
       # without it in secrets.json, SABnzbd keeps the key it made itself
       key = services.usenet.apiKey;
       folders = [
@@ -24,6 +25,7 @@
       ];
     in
     {
+      # ── service ────────
       services.sabnzbd = {
         enable = true;
         group = "media";
@@ -33,7 +35,7 @@
             inherit port;
             # only the tailnet reaches the UI; SABnzbd only checks the name it's reached by. It
             # listens on loopback, so the forwarded address (tailnet, not local to it) adds nothing
-            host_whitelist = lib.optionalString routed services.usenet.route.host;
+            host_whitelist = lib.optionalString routed route.host;
             verify_xff_header = false;
             download_dir = incomplete;
             complete_dir = finished;
@@ -59,12 +61,7 @@
         secretValues = lib.mkIf (hasSecret key) { "@api_key@" = config.sops.secrets.${key}.path; };
       };
 
-      # read by its preStart, which runs as sabnzbd
-      sops.secrets.${key} = lib.mkIf (hasSecret key) {
-        owner = config.services.sabnzbd.user;
-        restartUnits = [ "sabnzbd.service" ];
-      };
-
+      # ── units ────────
       # the folders may be on data disks that are missing at boot (nofail): wait for them, and
       # make the folders once they're mounted (tmpfiles may run before that)
       systemd.services.sabnzbd = {
@@ -82,6 +79,14 @@
         };
       };
 
+      # ── secrets ────────
+      # read by its preStart, which runs as sabnzbd
+      sops.secrets.${key} = lib.mkIf (hasSecret key) {
+        owner = config.services.sabnzbd.user;
+        restartUnits = [ "sabnzbd.service" ];
+      };
+
+      # ── data ────────
       axon.persist.state.directories = [
         {
           directory = state;
@@ -91,6 +96,7 @@
         }
       ];
 
+      # ── registration ────────
       axon.services.usenet = {
         units = [ "sabnzbd" ];
         route = { inherit port; };

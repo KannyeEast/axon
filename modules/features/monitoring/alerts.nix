@@ -223,9 +223,9 @@
                   (rule "DownloadsPaused" "sabnzbd_queue_length > 0 and sabnzbd_paused == 1" "2h"
                     "{{ $value }} queued, paused"
                   )
-                  # the apps' own health checks; their updates come with the system
+                  # the apps' own health checks; updates and upstream notices come with the system
                   (rule "ArrUnhealthy"
-                    ''{__name__=~"(sonarr|radarr|prowlarr)_system_health_issues",type=~"warning|error",source!="UpdateCheck"} == 1''
+                    ''{__name__=~"(sonarr|radarr|prowlarr)_system_health_issues",type=~"warning|error",source!~"UpdateCheck|ServerSideNotificationService"} == 1''
                     "1h"
                     "{{ $labels.job }}: {{ $labels.message }}"
                   )
