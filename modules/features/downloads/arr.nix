@@ -51,14 +51,18 @@
       # they insist on a login method: External behind the gateway's login, else Forms, off for
       # local addresses with the tailnet's 100.64.0.0/10 counted local (config.xml only, not the UI)
       settings = name: {
-        server.allowedHosts =
+        server =
           let
-            inherit (config.axon.services.${name}) route;
+            inherit (services.${name}) route;
           in
-          lib.concatStringsSep "," [
-            route.host
-            route.address
-          ];
+          {
+            # their default is every address
+            bindaddress = route.address;
+            allowedHosts = lib.concatStringsSep "," [
+              route.host
+              route.address
+            ];
+          };
         auth = {
           method = if services.${name}.route.gated then "External" else "Forms";
           required = "DisabledForLocalAddresses";
@@ -118,7 +122,11 @@
       services.bazarr = {
         enable = true;
         group = "media";
-        settings = lib.optionalAttrs (hasKey "bazarr") {
+        settings = {
+          # its default is every address
+          general.ip = services.bazarr.route.address;
+        }
+        // lib.optionalAttrs (hasKey "bazarr") {
           auth.apikey._secret = config.sops.secrets.${secret "bazarr"}.path;
         };
       };
