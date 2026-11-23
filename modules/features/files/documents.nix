@@ -64,9 +64,6 @@
       # its default 3000 is AdGuard's
       services.gotenberg.port = 3002;
 
-      # at notice it logs each of its snapshots, every few minutes
-      services.redis.servers.paperless.logLevel = "warning";
-
       # ── units ────────
       # it pushes OpenTelemetry data to a collector on localhost by default and logs every failure
       systemd.services.gotenberg.environment = {
@@ -142,8 +139,7 @@
           [
             config.services.paperless.dataDir
             "${config.services.paperless.dataDir}/index"
-          ]
-        ++ [ "/var/lib/redis-paperless" ];
+          ];
 
       # ── registration ────────
       axon.services.docs = {

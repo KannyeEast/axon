@@ -32,14 +32,6 @@ in
       cfg = config.axon.persist;
       device = config.fileSystems."/".device;
       state = config.axon.volumes.state or null;
-      # a space without its volume is /var/lib/<name>, which its service may list too; impermanence
-      # refuses a path twice, so the first entry wins (spaces add theirs last)
-      pathOf = entry: if lib.isString entry then entry else entry.directory;
-      stateDirectories = lib.attrValues (
-        lib.foldl' (
-          seen: entry: if seen ? ${pathOf entry} then seen else seen // { ${pathOf entry} = entry; }
-        ) { } cfg.state.directories
-      );
     in
     {
       imports = [ inputs.impermanence.nixosModules.impermanence ];
@@ -67,13 +59,13 @@ in
           "/persist" = {
             hideMounts = true;
             files = [ "/etc/machine-id" ];
-            directories = cfg.directories ++ lib.optionals (state == null) stateDirectories;
+            directories = cfg.directories ++ lib.optionals (state == null) cfg.state.directories;
           };
         }
         // lib.optionalAttrs (state != null) {
           ${state} = {
             hideMounts = true;
-            directories = stateDirectories;
+            directories = cfg.state.directories;
           };
         };
 

@@ -1,6 +1,6 @@
 # Contract: axon.spaces. A service's own space: the btrfs subvolume <data>/<name>, which [limits]
-# can cap, or /var/lib/<name> on a host without a data volume. Its unit creates it before the
-# services in `units` start.
+# can cap, or /var/lib/spaces/<name> on a host without a data volume. Its unit creates it before
+# the services in `units` start.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -117,8 +117,9 @@ in
                 path = mkOption {
                   type = types.str;
                   readOnly = true;
-                  default = "${volumes.data or "/var/lib"}/${name}";
-                  defaultText = "<data volume>/<name>, else /var/lib/<name>";
+                  # not /var/lib/<name>: that is often the service's own state folder
+                  default = "${volumes.data or "/var/lib/spaces"}/${name}";
+                  defaultText = "<data volume>/<name>, else /var/lib/spaces/<name>";
                   description = "Where the space is.";
                 };
               };
@@ -174,13 +175,11 @@ in
 
         # ── data ────────
         # a space on a volume persists with it; only the /var/lib fallback is listed
-        axon.persist.state.directories = lib.mkAfter (
-          lib.mapAttrsToList (_: space: {
-            directory = space.path;
-            inherit (space) user group;
-            mode = "0750";
-          }) (lib.filterAttrs (_: space: !space.onVolume) spaces)
-        );
+        axon.persist.state.directories = lib.mapAttrsToList (_: space: {
+          directory = space.path;
+          inherit (space) user group;
+          mode = "0750";
+        }) (lib.filterAttrs (_: space: !space.onVolume) spaces);
 
         # ── checks ────────
         assertions = lib.mapAttrsToList (name: _: {

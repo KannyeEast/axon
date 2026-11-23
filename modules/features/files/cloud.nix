@@ -78,9 +78,6 @@
         }
       ];
 
-      # at notice it logs each of its snapshots, every few minutes
-      services.redis.servers.nextcloud.logLevel = "warning";
-
       # ── units ────────
       # updated on every setup run; --unique-uid=0 keeps the short name, so a login lands in the
       # account of that name; Nextcloud's own second factor is asked only on the password form
@@ -131,7 +128,6 @@
           group = "nextcloud";
           mode = "0750";
         }
-        "/var/lib/redis-nextcloud"
       ];
 
       # ── registration ────────

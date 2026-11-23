@@ -55,9 +55,6 @@
         };
       };
 
-      # at notice it logs each of its snapshots, every few minutes
-      services.redis.servers.immich.logLevel = "warning";
-
       # ── units ────────
       systemd.services.immich-server.unitConfig.RequiresMountsFor = map (dir: "${data}/${dir}") generated;
       # systemd sets these on every start, over the mode the folders were made with
@@ -131,8 +128,7 @@
               "/var/cache/immich"
             ]
             ++ map (dir: "/var/lib/immich/${dir}") generated
-          )
-        ++ [ "/var/lib/redis-immich" ];
+          );
 
       # ── registration ────────
       axon.services.photos = {
