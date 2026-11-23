@@ -103,6 +103,8 @@
       # ── service ────────
       services.radarr = {
         enable = true;
+        # its default, .config/Radarr inside the state folder, has tmpfiles make .config root's
+        dataDir = "/var/lib/radarr";
         group = "media";
         settings = settings "radarr";
         environmentFiles = envFile "radarr";
@@ -138,10 +140,6 @@
         # StateDirectory, and Bazarr's module makes its folder 0700 by tmpfiles
         { sonarr.serviceConfig.StateDirectoryMode = "0750"; }
       ];
-
-      # Radarr's module only declares .config/Radarr, so tmpfiles makes .config root's and then
-      # refuses the unsafe step from radarr's folder into it: Radarr is never created
-      systemd.tmpfiles.rules = [ "d /var/lib/radarr/.config 0750 radarr media -" ];
 
       # ── secrets ────────
       sops.secrets = lib.listToAttrs (
@@ -200,7 +198,7 @@
           directory = "/var/lib/radarr";
           user = "radarr";
           group = "media";
-          mode = "0750";
+          mode = "0700";
         }
         "/var/lib/sonarr"
         "/var/lib/private/prowlarr"
