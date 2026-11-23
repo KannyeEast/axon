@@ -4,7 +4,7 @@
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
-    { config, pkgs, ... }:
+    { config, ... }:
     let
       inherit (config.axon) hasSecret services;
       inherit (config.axon.volumes) media;
@@ -134,18 +134,6 @@
           # stays group-writable; forced over their modules' 0022
           serviceConfig.UMask = lib.mkForce "0002";
         }))
-        # the library folders, made once the disk is mounted (tmpfiles may run before that)
-        (lib.mapAttrs
-          (_: dir: {
-            serviceConfig.ExecStartPre = [
-              "+${lib.getExe' pkgs.coreutils "install"} -d -o root -g media -m 2775 ${media}/${dir}"
-            ];
-          })
-          {
-            radarr = "movies";
-            sonarr = "shows";
-          }
-        )
         # systemd sets it on every start, over the mode the folder was made with; Radarr has no
         # StateDirectory, and Bazarr's module makes its folder 0700 by tmpfiles
         { sonarr.serviceConfig.StateDirectoryMode = "0750"; }
@@ -169,17 +157,54 @@
       );
 
       # ── data ────────
-      axon.persist.state.directories =
-        map (
-          app:
+      # the library folders; Bazarr writes subtitles into both, and both apps import from downloads
+      axon.folders =
+        lib.mapAttrs'
+          (
+            app: dir:
+            lib.nameValuePair "${media}/${dir}" {
+              user = "root";
+              group = "media";
+              mode = "2775";
+              units = [
+                app
+                "bazarr"
+              ];
+            }
+          )
           {
-            directory = "/var/lib/${app}";
-            user = app;
-            group = "media";
+            radarr = "movies";
+            sonarr = "shows";
           }
-          // lib.optionalAttrs (app != "bazarr") { mode = "0750"; }
-        ) (lib.attrNames apps)
-        ++ [ "/var/lib/private/prowlarr" ];
+        // {
+          "${media}/downloads" = {
+            user = "root";
+            group = "media";
+            mode = "2775";
+            units = [
+              "radarr"
+              "sonarr"
+            ];
+          };
+        };
+
+      # Radarr has no StateDirectory and Bazarr's folder comes from tmpfiles, so impermanence makes
+      # theirs with owner and mode
+      axon.persist.state.directories = [
+        {
+          directory = "/var/lib/bazarr";
+          user = "bazarr";
+          group = "media";
+        }
+        {
+          directory = "/var/lib/radarr";
+          user = "radarr";
+          group = "media";
+          mode = "0750";
+        }
+        "/var/lib/sonarr"
+        "/var/lib/private/prowlarr"
+      ];
 
       # ── registration ────────
       axon.services =

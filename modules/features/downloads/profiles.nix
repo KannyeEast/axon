@@ -81,13 +81,7 @@
 
       # ── data ────────
       # which custom formats it made, so it can remove the ones a file no longer lists
-      axon.persist.state.directories = lib.mkIf (missing == [ ]) [
-        {
-          directory = state;
-          user = user.name;
-          mode = "0700";
-        }
-      ];
+      axon.persist.state.directories = lib.mkIf (missing == [ ]) [ state ];
 
       # ── checks ────────
       warnings =

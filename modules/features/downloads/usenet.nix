@@ -4,7 +4,7 @@
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
-    { config, pkgs, ... }:
+    { config, ... }:
     let
       inherit (config.axon)
         hasSecret
@@ -62,21 +62,13 @@
       };
 
       # ── units ────────
-      # the folders may be on data disks that are missing at boot (nofail): wait for them, and
-      # make the folders once they're mounted (tmpfiles may run before that)
-      systemd.services.sabnzbd = {
-        unitConfig.RequiresMountsFor = folders;
-        serviceConfig = {
-          ExecStartPre = map (
-            dir: "+${lib.getExe' pkgs.coreutils "install"} -d -o root -g media -m 2775 ${dir}"
-          ) folders;
-          # the module forks it (-d); in the foreground it also logs to the journal, not only to
-          # its own file
-          Type = lib.mkForce "simple";
-          ExecStart = lib.mkForce "${lib.getExe config.services.sabnzbd.package} -f ${state}/sabnzbd.ini";
-          # systemd sets it on every start, over the mode the folder was made with
-          StateDirectoryMode = "0750";
-        };
+      systemd.services.sabnzbd.serviceConfig = {
+        # the module forks it (-d); in the foreground it also logs to the journal, not only to
+        # its own file
+        Type = lib.mkForce "simple";
+        ExecStart = lib.mkForce "${lib.getExe config.services.sabnzbd.package} -f ${state}/sabnzbd.ini";
+        # systemd sets it on every start, over the mode the folder was made with
+        StateDirectoryMode = "0750";
       };
 
       # ── secrets ────────
@@ -87,14 +79,14 @@
       };
 
       # ── data ────────
-      axon.persist.state.directories = [
-        {
-          directory = state;
-          user = "sabnzbd";
-          group = "media";
-          mode = "0750";
-        }
-      ];
+      axon.folders = lib.genAttrs folders (_: {
+        user = "root";
+        group = "media";
+        mode = "2775";
+        units = [ "sabnzbd" ];
+      });
+
+      axon.persist.state.directories = [ state ];
 
       # ── registration ────────
       axon.services.usenet = {

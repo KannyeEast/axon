@@ -13,7 +13,7 @@ in
   };
 
   flake.modules.nixos.sync =
-    { config, pkgs, ... }:
+    { config, ... }:
     let
       inherit (config.axon)
         home
@@ -46,6 +46,7 @@ in
       onVolumes = lib.filter (folder: volumes ? ${folder}) folders;
     in
     {
+      # ── service ────────
       services.syncthing = {
         enable = true;
         user = user.name;
@@ -78,23 +79,18 @@ in
         };
       };
 
-      systemd.services.syncthing = lib.mkMerge [
-        {
-          # the level as a syslog prefix, which journald reads; INF/WRN in the text count as info
-          environment.STLOGFORMATLEVELSYSLOG = "true";
-        }
-        # volumes mount nofail: without this Syncthing would fill the bare mountpoint on root;
-        # the volume mounts as root, so the folder is handed to the user once the disk is there
-        (lib.mkIf (onVolumes != [ ]) {
-          unitConfig.RequiresMountsFor = map pathOf onVolumes;
-          serviceConfig.ExecStartPre = map (
-            folder:
-            "+${lib.getExe' pkgs.coreutils "install"} -d -o ${user.name} -g users -m 0700 ${pathOf folder}"
-          ) onVolumes;
-        })
-      ];
+      # ── units ────────
+      # the level as a syslog prefix, which journald reads; INF/WRN in the text count as info
+      systemd.services.syncthing.environment.STLOGFORMATLEVELSYSLOG = "true";
 
-      axon.overlay.tcpPorts = [ peerPort ];
+      # ── data ────────
+      # a volume mounts as root, so its folder is handed to the user
+      axon.folders = lib.genAttrs (map pathOf onVolumes) (_: {
+        user = user.name;
+        group = "users";
+        mode = "0700";
+        units = [ "syncthing" ];
+      });
 
       axon.persist.state.directories = [
         {
@@ -105,6 +101,10 @@ in
         }
       ];
 
+      # ── contracts ────────
+      axon.overlay.tcpPorts = [ peerPort ];
+
+      # ── registration ────────
       axon.services.sync = {
         units = [
           "syncthing"

@@ -4,7 +4,7 @@
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
-    { config, pkgs, ... }:
+    { config, ... }:
     let
       inherit (config.axon) volumes vpn;
       port = 8081;
@@ -45,21 +45,19 @@
       users.groups.media = { };
 
       # ── units ────────
-      # the folders may be on data disks that are missing at boot (nofail): wait for them, and
-      # make the folders once they're mounted (tmpfiles may run before that)
-      systemd.services.qbittorrent = {
-        unitConfig.RequiresMountsFor = folders;
-        serviceConfig = {
-          ExecStartPre = map (
-            dir: "+${lib.getExe' pkgs.coreutils "install"} -d -o root -g media -m 2775 ${dir}"
-          ) folders;
-          # downloads group-writable: Radarr and Sonarr may only hardlink, move or delete what they
-          # can write (fs.protected_hardlinks); read-only, the import fails
-          UMask = "0002";
-        };
-      };
+      # downloads group-writable: Radarr and Sonarr may only hardlink, move or delete what they
+      # can write (fs.protected_hardlinks); read-only, the import fails
+      systemd.services.qbittorrent.serviceConfig.UMask = "0002";
 
       # ── data ────────
+      axon.folders = lib.genAttrs folders (_: {
+        user = "root";
+        group = "media";
+        mode = "2775";
+        units = [ "qbittorrent" ];
+      });
+
+      # no StateDirectory, and its module's tmpfiles make only subfolders: impermanence makes this one
       axon.persist.state.directories = [
         {
           directory = state;

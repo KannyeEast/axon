@@ -151,7 +151,7 @@ One vocabulary for all kinds, always in this order:
 | `system` | what only Nix can wire for a desktop program: D-Bus, udev, portals, PAM, dconf defaults |
 | `secrets` | every `sops.secrets` and `sops.templates` entry the file reads |
 | `login` | `axon.sso.clients.<name>` |
-| `data` | `axon.databases`, `axon.persist…`, `axon.spaces` |
+| `data` | `axon.databases`, `axon.persist…`, `axon.spaces`, `axon.folders` |
 | `contracts` | what the file adds to other contracts (`axon.overlay`, `axon.vpn.confined`, `axon.links`, `axon.browser`), or the value it produces (`axon.mail`, `axon.sso.provider`, `axon.routed`, `axon.gated`) |
 | `registration` | `axon.services.<name>`: route, tile, units, logs, backup |
 | `checks` | `warnings`, `assertions` |
@@ -278,7 +278,7 @@ use it.
 | State, a subfolder upstream creates with tmpfiles | its own persist entry |
 | Which persist list | a service's state: `axon.persist.state.directories` (the state volume where a host has one); the system's own: `axon.persist.directories` (the boot disk). In the file that creates the state |
 | User data (files, photos, documents) | its own `axon.spaces` entry, with `units` naming every unit that uses it |
-| Writing to a volume | `RequiresMountsFor` on the unit: data disks mount with `nofail`, and without it the unit writes to root |
+| Writing to a volume | `RequiresMountsFor` on the unit: data disks mount with `nofail`, and without it the unit writes to root. A folder there the service needs: an `axon.folders` entry, with `units` naming every unit that uses it |
 | Backup | `backup.paths` for what can't be rebuilt, `exclude` for what can; a database through its dump or export, never its live files |
 | A dump or export a backup reads | `"${config.axon.dumps}/<name>"` |
 | The start page | a `dashboard` entry: name, group, icon, a widget where Homepage has one, and the `space` its tile shows |
@@ -300,7 +300,8 @@ use it.
   Features read contracts, not each other's options or names. Producers set a contract
   unconditionally; consumers handle an empty set or null.
 - **Contracts are declared in core**: `axon.services` (routes, backup paths), `axon.persist`,
-  `axon.volumes`, `axon.spaces` (a service's own subvolume, capped by `[limits]`), `axon.mail`,
+  `axon.volumes`, `axon.spaces` (a service's own subvolume, capped by `[limits]`), `axon.folders`
+  (folders services need, made once their disk is mounted), `axon.mail`,
   `axon.sso` (single sign-on), `axon.vpn`, `axon.overlay`, `axon.browser`, `axon.links` (admin
   links on the start page), `axon.databases` (Postgres databases, dumped nightly). Derived values
   core exposes: `axon.domain`, `axon.routed`, `axon.gated`, `axon.routes`, `axon.secrets`, `axon.hasSecret`,
