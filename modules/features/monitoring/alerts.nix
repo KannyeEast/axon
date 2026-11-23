@@ -25,7 +25,6 @@
       );
       # its own local part, so a rule at the mailbox can file alerts away
       recipient = "srv-alert@${domain}";
-      page = lib.readFile ./_page.html;
       levels = {
         ok = {
           color = "#15803D";
@@ -50,101 +49,23 @@
         annotations.summary = summary;
       };
 
-      # Watchdog always fires, so its weekly mail is good news; a Reminder (from n8n) is news
-      byLevel =
-        {
-          ok,
-          info,
-          fail,
-        }:
-        ''{{ if eq .CommonLabels.alertname "Watchdog" }}${ok}{{ else if eq .CommonLabels.alertname "Reminder" }}${info}{{ else }}${fail}{{ end }}'';
-      level = field: byLevel (lib.mapAttrs (_: colors: colors.${field}) levels);
-      since = ''since {{ .StartsAt.Local.Format "Mon 02.01. 15:04" }}'';
-      # html/template escapes the html part's values itself; the text part's need urlquery
-      logs =
-        escape:
-        "${grafana}/a/grafana-lokiexplore-app/explore/unit/{{ ${escape ".Labels.unit"} }}/logs?var-filters=unit%7C%3D%7C{{ ${escape ".Labels.unit"} }}&var-filters=host%7C%3D%7C{{ ${escape ".Labels.host"} }}&from={{ (.StartsAt.Add -3600000000000).UnixMilli }}&to=now";
-      htmlLogs = lib.replaceStrings [ "&" ] [ "&amp;" ] (logs lib.id);
-      hasLinks = if routed then "or .Labels.unit .Annotations.link" else ".Annotations.link";
-      button =
-        href: text:
-        ''<a href="${href}" style="display:inline-block;margin:0 8px 0 0;padding:11px 18px;border-radius:6px;background:#111827;font-size:14px;line-height:18px;font-weight:600;color:#FFFFFF;text-decoration:none;">${text}</a>'';
-      buttons =
-        lib.optionalString routed "{{ if .Labels.unit }}${button htmlLogs "View logs"}{{ end }}"
-        + "{{ with .Annotations.link }}${button "{{ . }}" "Details"}{{ end }}";
-      smallLinks =
-        lib.optionalString routed ''{{ if .Labels.unit }} · <a href="${htmlLogs}" style="color:#111827;">Logs</a>{{ end }}''
-        + ''{{ with .Annotations.link }} · <a href="{{ . }}" style="color:#111827;">Details</a>{{ end }}'';
-      section = "margin:24px 0 0;padding:20px 0 0;border-top:1px solid #E5E7EB;";
-      textLinks =
-        lib.optionalString routed "{{ if .Labels.unit }}Logs: ${
-          logs (field: "${field} | urlquery")
-        }\n{{ end }}"
-        + "{{ with .Annotations.link }}{{ . }}\n{{ end }}";
-
       receiver =
         if mail == null then
           { name = "none"; }
         else
           {
             name = "mail";
-            email_configs = [
+            webhook_configs = [
               {
-                to = recipient;
-                headers.Subject = "[{{ .CommonLabels.host }}] {{ or .CommonAnnotations.summary .CommonLabels.alertname }}";
-                html =
-                  lib.replaceStrings
-                    [
-                      "@preview@"
-                      "@label@"
-                      "@color@"
-                      "@tint@"
-                      "@bar@"
-                      "@title@"
-                      "@subtitle@"
-                      "@footer@"
-                      "@body@"
-                    ]
-                    [
-                      "{{ .CommonLabels.alertname }} on {{ .CommonLabels.host }}{{ with .CommonAnnotations.summary }}: {{ . }}{{ end }}"
-                      (byLevel {
-                        ok = "WORKING";
-                        info = "REMINDER";
-                        fail = "FIRING";
-                      })
-                      (level "color")
-                      (level "tint")
-                      (level "bar")
-                      "{{ .CommonLabels.alertname }}"
-                      "{{ .CommonLabels.host }} · {{ with index .Alerts 0 }}${since}{{ end }}"
-                      "Sent by ${host.name}"
-                      ''
-                        {{ if eq (len .Alerts) 1 }}{{ with index .Alerts 0 }}
-                        <p style="margin:12px 0 0;font-size:15px;line-height:22px;color:#111827;">{{ .Annotations.summary }}</p>
-                        {{ if ${hasLinks} }}<div style="${section}">${buttons}</div>{{ end }}
-                        {{ end }}{{ else }}
-                        <div style="${section}">
-                        <div style="padding:0 0 14px;font-size:12px;line-height:16px;font-weight:700;letter-spacing:0.06em;color:#6B7280;">{{ len .Alerts }} {{ if eq .CommonLabels.alertname "Reminder" }}REMINDERS{{ else }}ALERTS{{ end }}</div>
-                        {{ range .Alerts }}
-                        <p style="margin:0;font-size:15px;line-height:22px;color:#111827;">{{ .Annotations.summary }}</p>
-                        <p style="margin:0 0 12px;font-size:13px;line-height:20px;color:#6B7280;">${since}${smallLinks}</p>
-                        {{ end }}
-                        </div>
-                        {{ end }}''
-                    ]
-                    page;
-                text = ''
-                  {{ range .Alerts }}{{ .Labels.alertname }} on {{ .Labels.host }}: {{ .Annotations.summary }}
-                  ${textLinks}${since}
-
-                  {{ end }}'';
+                url = "http://127.0.0.1:${toString hook}/";
+                send_resolved = false;
               }
             ];
           };
 
-      unitMail = pkgs.writeText "unit-mail.json" (
+      alertMail = pkgs.writeText "alert-mail.json" (
         lib.toJSON {
-          page = pkgs.writeText "page.html" page;
+          page = ./_page.html;
           inherit levels;
           inherit (mail) port;
           smtp = mail.host;
@@ -258,9 +179,13 @@
                   repeat_interval = "8760h";
                 }
               ]
+              # alert-mail can't mail its own failure, so Alertmanager's plain mail does
               ++ lib.optional (mail != null) {
-                matchers = [ ''alertname="UnitFailed"'' ];
-                receiver = "unit";
+                matchers = [
+                  ''alertname="UnitFailed"''
+                  ''unit="alert-mail.service"''
+                ];
+                receiver = "fallback";
               };
             };
             # n8n answers 404, logged per alert, while no workflow listens on its alerts path
@@ -276,13 +201,8 @@
                 (
                   [ receiver ]
                   ++ lib.optional (mail != null) {
-                    name = "unit";
-                    webhook_configs = [
-                      {
-                        url = "http://127.0.0.1:${toString hook}/";
-                        send_resolved = false;
-                      }
-                    ];
+                    name = "fallback";
+                    email_configs = [ { to = recipient; } ];
                   }
                 );
             inhibit_rules = [
@@ -307,14 +227,15 @@
       };
 
       # ── units ────────
-      systemd.services.unit-mail = lib.mkIf (mail != null) {
-        description = "Mail failed units with their log";
+      # not email_configs: one renderer for every mail, and a failed unit's log from Loki
+      systemd.services.alert-mail = lib.mkIf (mail != null) {
+        description = "Mail alerts";
         wantedBy = [ "multi-user.target" ];
         serviceConfig = {
           DynamicUser = true;
           Restart = "on-failure";
           EnvironmentFile = config.sops.templates."alertmanager.env".path;
-          ExecStart = "${lib.getExe' pkgs.python3 "python3"} ${./_unit-mail.py} ${unitMail}";
+          ExecStart = "${lib.getExe' pkgs.python3 "python3"} ${./_alert-mail.py} ${alertMail}";
         };
       };
 
@@ -326,7 +247,7 @@
         '';
         restartUnits = [
           "alertmanager.service"
-          "unit-mail.service"
+          "alert-mail.service"
         ];
       };
 
@@ -337,7 +258,7 @@
 
       # ── registration ────────
       axon.services.alerts = {
-        units = [ "alertmanager" ] ++ lib.optional (mail != null) "unit-mail";
+        units = [ "alertmanager" ] ++ lib.optional (mail != null) "alert-mail";
         route.port = port;
       };
 
