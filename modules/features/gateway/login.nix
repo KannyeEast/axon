@@ -104,6 +104,8 @@
           inherit port;
           # it is the login
           gate = false;
+          # the root starts a login, which logs a line per probe
+          health = "/ping";
         };
       };
     };

@@ -12,14 +12,11 @@
   flake.modules.nixos.automation =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) host repo;
+      inherit (config.axon) host;
       inherit (config.axon.services.automation) route;
       inherit (config.services.prometheus) alertmanager;
       state = "/var/lib/private/n8n";
-      dirs = map (home: "${home}/.config/n8n/workflows") [
-        "${repo}/home"
-        "${repo}/hosts/${host.name}/home"
-      ];
+      dirs = map (home: "${home}/.config/n8n/workflows") (lib.reverseList config.axon.dotfiles);
       # n8n's DynamicUser can't read the checkout under the user's 0700 home: root copies the files
       # here first, later ones replacing earlier ones of the same name
       copied = "/run/n8n-import";
@@ -83,6 +80,8 @@
           N8N_PROXY_HOPS = 1;
           # its AI workflow builder, on by default, asks for a model; none is set up
           N8N_DISABLED_MODULES = "instance-ai";
+          # its text lines carry no level, so its warnings and errors would count as info
+          N8N_LOG_FORMAT = "json";
           # workflow nodes read the API keys and addresses below as {{ $env.X }}
           N8N_BLOCK_ENV_ACCESS_IN_NODE = false;
           AXON_HOST = host.name;
@@ -168,13 +167,15 @@
           "n8n"
           "n8n-import"
         ];
-        route.port = 5678;
+        route = {
+          port = 5678;
+          health = "/healthz";
+        };
         dashboard = {
           name = "n8n";
-          group = "Code";
+          group = "Infrastructure";
           description = "Workflows";
           icon = "n8n.svg";
-          monitor = "/healthz";
         };
         backup.paths = [ state ];
       };

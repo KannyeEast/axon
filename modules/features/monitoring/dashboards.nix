@@ -4,7 +4,8 @@
 # there as Admin; the host.toml user stays the local admin, with monitoring/password, for the API.
 # Without a gateway on this host it stays on localhost, with only its own login. The "Start page"
 # dashboard: two tables the gateway's start page embeds, graphs of the last day below, then how
-# full each volume or space capped by [limits] is (metrics/spaces.nix).
+# full each volume or space capped by [limits] is (metrics/spaces.nix) and, where a host runs
+# Postgres (monitoring/metrics.nix), its databases' size, connections and last dumps.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -265,8 +266,42 @@
           }
         )
       ];
+      # Postgres runs where a server lists files or forge, as in monitoring/metrics.nix
+      postgres = lib.any (
+        data:
+        data.host.class == "server" && lib.intersectLists [ "files" "forge" ] data.host.features != [ ]
+      ) (lib.attrValues scraped);
+      ownDatabases = ''datname!~"postgres|template.*"'';
+      # a dump's timer reports 0 until its first run
+      dumped = ''label_replace(node_systemd_timer_last_trigger_seconds{name=~"postgresqlBackup-.+[.]timer"} > 0, "database", "$1", "name", "postgresqlBackup-(.+)[.]timer")'';
+      databases = [
+        (timeseries "Database size" { unit = "bytes"; } [
+          (query "pg_database_size_bytes{${ownDatabases}}" "{{host}} {{datname}}")
+        ])
+        (timeseries "Database connections" { } [
+          (query "pg_stat_database_numbackends{${ownDatabases}}" "{{host}} {{datname}}")
+        ])
+        (
+          table "Dumps"
+            [ "host" "database" ]
+            [
+              { Age = "max by (host, database) (time() - ${dumped})"; }
+            ]
+          // {
+            fieldConfig = {
+              defaults = { };
+              overrides = [
+                (column "host" [ (property "displayName" "Host") ])
+                (column "database" [ (property "displayName" "Database") ])
+                # nightly: amber after a missed night, red after two
+                (column "Age" ([ (property "unit" "s") ] ++ level (36 * 3600) (60 * 3600)))
+              ];
+            };
+          }
+        )
+      ];
       # two per row, in this order
-      panels = overview ++ graphs ++ spaces;
+      panels = overview ++ graphs ++ spaces ++ lib.optionals postgres databases;
 
       start = lib.toJSON {
         uid = "start";
@@ -320,6 +355,13 @@
           };
           # read-only without its own login; the start page's frames need it
           "auth.anonymous".enabled = true;
+          # at info it logs each search index build and panel query; the search's manifest watcher
+          # warns on every poll that there are no app manifests, and an expired session cookie
+          # (Grafana then goes on anonymously) is a warning too
+          log = {
+            level = "warn";
+            filters = "search-manifest-watcher:error authn.service:error";
+          };
           # endpoints and claims as Kanidm names them; with no login attribute the login is the
           # mail address, so it can't collide with the local admin's name
           "auth.generic_oauth" = lib.mkIf (sso.provider != null) {
@@ -351,6 +393,11 @@
               type = "loki";
               uid = "loki";
               url = "http://127.0.0.1:${toString config.services.loki.configuration.server.http_listen_port}";
+              # Loki without auth still wants a tenant on some endpoints (Logs Drilldown's limits);
+              # "fake" is the one it uses for all others
+              jsonData.httpHeaderName1 = "X-Scope-OrgID";
+              # from a file: a value written here directly draws a warning on every evaluation
+              secureJsonData.httpHeaderValue1 = "$__file{${pkgs.writeText "loki-tenant" "fake"}}";
             }
           ];
           dashboards.settings.providers = [
@@ -399,7 +446,7 @@
           instances = {
             Grafana = {
               description = "Dashboards and logs";
-              group = "Monitoring";
+              group = "Infrastructure";
             };
           }
           // lib.listToAttrs (

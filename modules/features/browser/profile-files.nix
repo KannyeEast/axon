@@ -29,19 +29,13 @@
     }:
     let
       inherit (config.programs.zen-browser) profilesPath;
-      inherit (osConfig.axon) host repo;
       # the checkout's declared folders, shared and this host's, for every profile
       watched = lib.concatMap (
         profile:
-        lib.concatMap
-          (home: [
-            "${home}/.config/zen/${profile}/declared"
-            "${home}/.config/zen/${profile}/declared/storage-sync"
-          ])
-          [
-            "${repo}/home"
-            "${repo}/hosts/${host.name}/home"
-          ]
+        lib.concatMap (home: [
+          "${home}/.config/zen/${profile}/declared"
+          "${home}/.config/zen/${profile}/declared/storage-sync"
+        ]) osConfig.axon.dotfiles
       ) (lib.attrNames config.programs.zen-browser.profiles);
 
       # jq filters for merge below; each reads the declared file as $d. upsert keeps the rows of .

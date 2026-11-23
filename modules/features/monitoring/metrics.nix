@@ -1,10 +1,11 @@
-# Prometheus: scrapes the exporters on every host listing the metrics feature, and the download
-# stack's (downloads/exporters.nix) on those listing downloads too, and keeps 90 days.
+# Prometheus: scrapes the exporters on every host listing the metrics feature, Postgres's on servers
+# listing files too, and the download stack's (downloads/exporters.nix) on those listing downloads,
+# and keeps 90 days.
 # Grafana reads it, and the gateway's start page over the overlay, without a login; it has no
-# route of its own. The blackbox exporter checks every route: "service" asks the service directly
-# (any answer below 500 means it runs). Where this host runs the gateway, "route" also calls
-# https://<name>.<domain> the way clients do (DNS, Caddy, certificate, the tunnel for public
-# ones), which must answer.
+# route of its own. The blackbox exporter checks every route on its health path: "service" asks the
+# service directly (any answer below 500 means it runs). Where this host runs the gateway, "route"
+# also calls https://<name>.<domain> the way clients do (DNS, Caddy, certificate, the tunnel for
+# public ones), which must answer.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -18,6 +19,11 @@
         ;
       exporters = config.services.prometheus.exporters;
       scraped = lib.filterAttrs (_: data: lib.elem "metrics" data.host.features) cluster.hosts;
+      # files and forge keep their databases (axon.databases) on servers, so Postgres runs there
+      databases = lib.filterAttrs (
+        _: data:
+        data.host.class == "server" && lib.intersectLists [ "files" "forge" ] data.host.features != [ ]
+      ) scraped;
       downloaders = lib.filterAttrs (_: data: lib.elem "downloads" data.host.features) scraped;
       # Sonarr, Radarr and Prowlarr run only where a data disk mounts a media volume
       libraries = lib.filterAttrs (
@@ -116,9 +122,10 @@
         scrapeConfigs = [
           (job "node" exporters.node.port scraped)
           (job "smartctl" exporters.smartctl.port scraped)
-          (probe "service" (route: route.internal) routes)
+          (probe "service" (route: route.internal + route.health) routes)
         ]
-        ++ lib.optional routed (probe "route" (route: route.url) routes)
+        ++ lib.optional routed (probe "route" (route: route.url + route.health) routes)
+        ++ lib.optional (databases != { }) (job "postgres" exporters.postgres.port databases)
         ++ lib.optional (downloaders != { }) (job "sabnzbd" 9387 downloaders)
         ++ lib.optionals (libraries != { }) [
           (job "sonarr" 9707 libraries)
