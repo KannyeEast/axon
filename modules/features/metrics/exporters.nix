@@ -6,6 +6,7 @@
     { config, ... }:
     let
       inherit (config.axon) databases disk host;
+      inherit (config.axon.registry.metrics) metrics;
       dir = "/run/prometheus-node-exporter-text";
       exporters = config.services.prometheus.exporters;
 
@@ -24,6 +25,7 @@
       services.prometheus.exporters = {
         node = {
           enable = true;
+          inherit (metrics.node) port;
           # services for UnitFailed, timers for the dumps' last run; other units only add series
           enabledCollectors = [ "systemd" ];
           extraFlags = [
@@ -34,6 +36,7 @@
         };
         smartctl = {
           enable = true;
+          inherit (metrics.smartctl) port;
           # at info it logs every disk it finds on each rescan, every few minutes
           extraFlags = [ "--log.level=warn" ];
         };

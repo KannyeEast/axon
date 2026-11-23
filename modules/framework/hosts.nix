@@ -126,11 +126,14 @@ let
     inputs.nixos-hardware.nixosModules.${module}
       or (throw "hosts/${name}/host.toml: unknown hardware quirk '${module}' (see nixos-hardware's flake outputs)");
 
+  # what features state for every host: the exporters they run and their alert rules
+  registry = lib.mapAttrs (_: feature: { inherit (feature) metrics alerts; }) features;
+
   data =
     name:
     let
       values = hosts.${name} // {
-        inherit cluster;
+        inherit cluster registry;
       };
     in
     {

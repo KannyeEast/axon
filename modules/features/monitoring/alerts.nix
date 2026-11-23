@@ -11,6 +11,7 @@
         host
         hostsWith
         mail
+        registry
         routed
         services
         ;
@@ -18,8 +19,9 @@
       hook = 9096;
       n8n.url = "http://127.0.0.1:${toString config.services.n8n.environment.N8N_PORT}/webhook/alerts";
       grafana = services.grafana.route.url;
-      downloads = lib.any (data: lib.elem "downloads" data.host.features) (
-        lib.attrValues (hostsWith "metrics")
+      # the rules of every feature a host listing metrics lists
+      featureRules = lib.concatMap (feature: registry.${feature}.alerts) (
+        lib.unique (lib.concatMap (data: data.host.features) (lib.attrValues (hostsWith "metrics")))
       );
       # its own local part, so a rule at the mailbox can file alerts away
       recipient = "srv-alert@${domain}";
@@ -214,23 +216,7 @@
                     // lib.optionalAttrs routed { link = "${grafana}/d/start"; };
                   }
                 ]
-                ++ lib.optionals downloads [
-                  (rule "DownloadsStalled"
-                    "sabnzbd_queue_length > 0 and sabnzbd_paused == 0 and sabnzbd_speed_bps == 0"
-                    "2h"
-                    "{{ $value }} queued, nothing downloading"
-                  )
-                  # a hung post-processing keeps it paused, as does a pause that was forgotten
-                  (rule "DownloadsPaused" "sabnzbd_queue_length > 0 and sabnzbd_paused == 1" "2h"
-                    "{{ $value }} queued, paused"
-                  )
-                  # the apps' own health checks; updates and upstream notices come with the system
-                  (rule "ArrUnhealthy"
-                    ''{__name__=~"(sonarr|radarr|prowlarr)_system_health_issues",type=~"warning|error",source!~"UpdateCheck|ServerSideNotificationService"} == 1''
-                    "1h"
-                    "{{ $labels.job }}: {{ $labels.message }}"
-                  )
-                ];
+                ++ featureRules;
               }
             ];
           })
@@ -315,16 +301,7 @@
                   "service"
                 ];
               }
-            ]
-            # a full media space pauses the downloads on purpose (n8n's Media space)
-            ++ lib.optional downloads {
-              source_matchers = [
-                ''alertname="SpaceFull"''
-                ''space="media"''
-              ];
-              target_matchers = [ ''alertname="DownloadsPaused"'' ];
-              equal = [ "host" ];
-            };
+            ];
           };
         };
       };

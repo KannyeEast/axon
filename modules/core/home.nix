@@ -46,60 +46,13 @@
           pkgs.coreutils
           pkgs.findutils
         ];
-        text = ''
-          homes=(${lib.escapeShellArgs homes})
-          dst=${lib.escapeShellArg config.home.homeDirectory}
+        runtimeEnv = {
+          DOTFILES = homes;
+          LINK_ROOT = config.home.homeDirectory;
           # every link the last run made, for those under a folder neither home has any more
-          list=${lib.escapeShellArg "${config.xdg.stateHome}/dotfiles/links"}
-
-          # drop links into either home whose file is gone; ownership is read off the link target
-          if [ -f "$list" ]; then
-            while IFS= read -r link; do
-              [ -L "$link" ] && [ ! -e "$link" ] || continue
-              target=$(readlink -- "$link")
-              for src in "''${homes[@]}"; do
-                case "$target" in "$src"/*) rm -f -- "$link" ;; esac
-              done
-            done <"$list"
-          fi
-          for src in "''${homes[@]}"; do
-            # a file at the top of ~ has no folder left to be found through below
-            find "$dst" -maxdepth 1 -xtype l -lname "$src/*" -delete
-            [ -d "$src" ] || continue
-            while IFS= read -r top; do
-              [ -e "$dst/$top" ] || continue
-              find "$dst/$top" -xtype l -lname "$src/*" -delete
-            done < <(find "$src" -mindepth 1 -maxdepth 1 -printf '%P\n')
-          done
-
-          # link every file from the first home that has it
-          mkdir -p -- "$(dirname -- "$list")"
-          : >"$list.new"
-          for i in "''${!homes[@]}"; do
-            src=''${homes[i]}
-            [ -d "$src" ] || continue
-            while IFS= read -r rel; do
-              for more in "''${homes[@]:0:i}"; do
-                [ -e "$more/$rel" ] && continue 2
-              done
-              link="$dst/$rel"
-              printf '%s\n' "$link" >>"$list.new"
-
-              # already pointing at the right file
-              [ "$(readlink -- "$link" 2>/dev/null)" = "$src/$rel" ] && continue
-
-              # never overwrite a real file; atomic-save editors replace links with files
-              if [ -e "$link" ] && [ ! -L "$link" ]; then
-                echo "dotfiles: $link is a real file, moving it to $link.bak" >&2
-                mv -- "$link" "$link.bak"
-              fi
-
-              mkdir -p -- "$(dirname -- "$link")"
-              ln -sfnT -- "$src/$rel" "$link"
-            done < <(find "$src" -type f -printf '%P\n')
-          done
-          mv -- "$list.new" "$list"
-        '';
+          LINK_LIST = "${config.xdg.stateHome}/dotfiles/links";
+        };
+        text = builtins.readFile ./_dotfiles-sync.sh;
       };
 
       watch = pkgs.writeShellScript "dotfiles-watch" ''

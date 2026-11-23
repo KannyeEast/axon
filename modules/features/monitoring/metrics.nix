@@ -8,6 +8,7 @@
       inherit (config.axon)
         host
         hostsWith
+        registry
         routed
         routes
         ;
@@ -18,12 +19,31 @@
         _: data:
         data.host.class == "server" && lib.intersectLists [ "files" "forge" ] data.host.features != [ ]
       ) scraped;
-      downloaders = lib.filterAttrs (_: data: lib.elem "downloads" data.host.features) scraped;
-      # Sonarr, Radarr and Prowlarr run only where a data disk mounts a media volume
-      libraries = lib.filterAttrs (
-        _: data:
-        lib.any (disk: (disk.mounts or { }) ? media) (lib.attrValues (removeAttrs data.disk [ "boot" ]))
-      ) downloaders;
+
+      # the volumes a host's data disks mount, as its axon.volumes
+      mounted = data: lib.concatMapAttrs (_: fs: fs.mounts or { }) (removeAttrs data.disk [ "boot" ]);
+      # the exporters a host runs: its features' metrics, where it mounts their volume
+      runs =
+        data:
+        lib.filterAttrs (_: spec: spec.volume == null || mounted data ? ${spec.volume}) (
+          lib.mergeAttrsList (map (feature: registry.${feature}.metrics) data.host.features)
+        );
+      # one job per name, a target per host that runs it
+      jobs =
+        lib.zipAttrsWith
+          (
+            name: targets:
+            job name (lib.head targets).port (lib.mergeAttrsList (map (target: target.hosts) targets))
+          )
+          (
+            lib.mapAttrsToList (
+              name: data:
+              lib.mapAttrs (_: spec: {
+                inherit (spec) port;
+                hosts.${name} = data;
+              }) (runs data)
+            ) scraped
+          );
 
       # class: alerts that a machine is off only make sense for servers
       job = name: exporterPort: hosts: {
@@ -105,19 +125,11 @@
         enable = true;
         retentionTime = "90d";
         globalConfig.scrape_interval = "30s";
-        scrapeConfigs = [
-          (job "node" exporters.node.port scraped)
-          (job "smartctl" exporters.smartctl.port scraped)
-          (probe "service" (route: route.internal + route.health) routes)
-        ]
-        ++ lib.optional routed (probe "route" (route: route.url + route.health) routes)
-        ++ lib.optional (databases != { }) (job "postgres" exporters.postgres.port databases)
-        ++ lib.optional (downloaders != { }) (job "sabnzbd" 9387 downloaders)
-        ++ lib.optionals (libraries != { }) [
-          (job "sonarr" 9707 libraries)
-          (job "radarr" 9708 libraries)
-          (job "prowlarr" 9710 libraries)
-        ];
+        scrapeConfigs =
+          lib.attrValues jobs
+          ++ [ (probe "service" (route: route.internal + route.health) routes) ]
+          ++ lib.optional routed (probe "route" (route: route.url + route.health) routes)
+          ++ lib.optional (databases != { }) (job "postgres" exporters.postgres.port databases);
       };
 
       services.prometheus.exporters.blackbox = {

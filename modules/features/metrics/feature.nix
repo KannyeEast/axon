@@ -5,5 +5,9 @@
       "desktop"
       "server"
     ];
+    metrics = {
+      node.port = 9100;
+      smartctl.port = 9633;
+    };
   };
 }

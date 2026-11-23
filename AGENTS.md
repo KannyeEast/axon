@@ -60,7 +60,8 @@ starting with `_` is ignored (templates, data).
 `modules/framework/hosts.nix` reads `host.toml`, picks `core` + the class + the features, checks
 the TOML against the schema pieces those bundles own (`axon.schema.<bundle>`), and builds the
 system. Modules read host data from `config.axon.<table>` (`host`, `user`, `locale`, `disk`,
-`sync`, `gateway`, …) and other hosts from `config.axon.cluster.hosts`. No specialArgs.
+`sync`, `gateway`, …), other hosts from `config.axon.cluster.hosts`, and what features state in
+their registry entry from `config.axon.registry`. No specialArgs.
 
 ## Where a thing goes
 
@@ -73,7 +74,7 @@ system. Modules read host data from `config.axon.<table>` (`host`, `user`, `loca
 | A setting a program or service reads from a file | a dotfile: `home/` if every host uses it, else `hosts/<name>/home` |
 | Static data a service reads (a dashboard, rules, a template, a script) | a `_file` next to its module; Nix passes in only what depends on the cluster |
 | Something other modules on the host need to know about a service | its `axon.services.<name>` entry, or the contract for it |
-| Something other hosts need to know | the feature lists in `cluster.hosts`, the only cross-host data |
+| Something other hosts need to know | the feature lists in `cluster.hosts`, and what a feature states in its registry entry (`config.axon.registry`): the only cross-host data |
 | A different behaviour | a feature, never an option |
 
 **Core, class or feature?** Core: a machine can't boot, log in or be managed from this repo
@@ -159,7 +160,8 @@ One vocabulary for all kinds, always in this order:
 ### Kinds
 
 **Registry entry** (`feature.nix`, `class.nix`). No header, no function, one attribute set:
-`description`, `classes`, and `requires` where the feature has a hard need.
+`description`, `classes`, and `requires` where the feature has a hard need; `metrics` and `alerts`
+where it runs exporters or has alert rules. Data only, no functions: install.sh reads it as JSON.
 
 **Core contract** (`modules/core/<contract>.nix`, named after the contract).
 Slots: `contract`, `settings`, `units`, `data`, `checks`.
@@ -283,6 +285,8 @@ use it.
 | A dump or export a backup reads | `"${config.axon.dumps}/<name>"` |
 | The start page | a `dashboard` entry: name, group, icon, a widget where Homepage has one, and the `space` its tile shows |
 | Logs | every unit of the file in the service's `units`; a program that prints no level gets a log-format or log-level setting; entries spanning lines set `logStart` |
+| Being scraped | the feature's `metrics` in its registry entry (job name to `port`, and the `volume` it needs); the exporter reads its port from `config.axon.registry.<feature>.metrics` |
+| Its alert rules | the feature's `alerts` in its registry entry, plain Prometheus rules |
 | Traffic that must not leave in the open | `axon.vpn.confined` |
 | A container | only where DECISIONS gives its reason. `virtualisation.oci-containers`, the image on one `image = "<registry>/<name>:<tag>@sha256:<digest>"` line, ports on `127.0.0.1`, every host path it writes persisted |
 | Something on another host | `config.axon.hostsWith "<feature>"`, from the feature lists in `config.axon.cluster.hosts`; never a host name |

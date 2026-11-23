@@ -11,14 +11,15 @@
         hostsWith
         routes
         services
+        volumes
         ;
-      # monitoring/metrics.nix scrapes these same ports
-      arr = lib.optionalAttrs (config.axon.volumes ? media) {
-        sonarr = 9707;
-        radarr = 9708;
-        prowlarr = 9710;
-      };
-      sabnzbd = 9387;
+      inherit (config.axon.registry.downloads) metrics;
+      # the exporters whose volume this host mounts, name to port
+      ports = lib.mapAttrs (_: job: job.port) (
+        lib.filterAttrs (_: job: job.volume == null || volumes ? ${job.volume}) metrics
+      );
+      arr = removeAttrs ports [ "sabnzbd" ];
+      inherit (ports) sabnzbd;
 
       secret = name: services.${name}.apiKey;
       hasKey = name: hasSecret (secret name);

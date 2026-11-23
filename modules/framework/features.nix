@@ -39,6 +39,30 @@ in
               default = [ ];
               description = "Features that must also be listed on the host";
             };
+            metrics = mkOption {
+              type = types.attrsOf (
+                types.submodule {
+                  options = {
+                    port = mkOption {
+                      type = types.port;
+                      description = "The port its exporter answers on.";
+                    };
+                    volume = mkOption {
+                      type = types.nullOr types.str;
+                      default = null;
+                      description = "A volume the host must mount for the exporter to run there.";
+                    };
+                  };
+                }
+              );
+              default = { };
+              description = "Exporters it runs on a host that also lists metrics, by job name; the host running monitoring scrapes them.";
+            };
+            alerts = mkOption {
+              type = types.listOf types.attrs;
+              default = [ ];
+              description = "Its Prometheus alert rules, loaded where monitoring runs while a host listing metrics lists the feature.";
+            };
           };
         }
       );
