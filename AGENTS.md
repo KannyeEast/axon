@@ -276,7 +276,7 @@ use it.
 | A Postgres database | `axon.databases` and the module's own `createLocally` |
 | State, a static user with `StateDirectory` | the persist entry is the plain path. A mode only through `StateDirectoryMode`, and only where it differs from upstream |
 | State, `DynamicUser` | persist `/var/lib/private/<name>` |
-| A static user where the module gives none (a container that keeps data, a service taken off `DynamicUser`) | its own system user with a fixed id from 400 up, declared next to it; NixOS refuses a duplicate id |
+| A static user where the module gives none (a container that keeps data) | its own system user with a fixed id from 400 up, declared next to it; NixOS refuses a duplicate id |
 | State, a subfolder upstream creates with tmpfiles | its own persist entry |
 | Which persist list | a service's state: `axon.persist.state.directories` (the state volume where a host has one); the system's own: `axon.persist.directories` (the boot disk). In the file that creates the state |
 | User data (files, photos, documents) | its own `axon.spaces` entry, with `units` naming every unit that uses it |

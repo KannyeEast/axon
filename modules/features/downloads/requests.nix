@@ -16,8 +16,8 @@
       inherit (config.axon.services.requests) route;
       port = 5055;
       filter = 8098;
-      state = "/var/lib/seerr";
-      id = 400;
+      # its module runs it as a DynamicUser, so its state lives under /var/lib/private
+      state = "/var/lib/private/seerr";
       # the workflow reads both from n8n's environment, the filter Jellyfin's
       keys = {
         seerr = services.requests.apiKey;
@@ -33,13 +33,6 @@
         inherit port;
       };
 
-      users.users.seerr = {
-        isSystemUser = true;
-        group = "seerr";
-        uid = id;
-      };
-      users.groups.seerr.gid = id;
-
       # ── units ────────
       systemd.services = {
         seerr = {
@@ -48,15 +41,10 @@
             # its default is debug
             LOG_LEVEL = "info";
           };
-          # a static user with a fixed id owns the state: as a DynamicUser, systemd would move
-          # /var/lib/seerr into /var/lib/private, which fails on the persisted mount there
-          serviceConfig = {
-            DynamicUser = lib.mkForce false;
-            User = "seerr";
-            Group = "seerr";
-            # systemd sets the mode on every start; settings.json holds API keys
-            StateDirectoryMode = "0700";
-          };
+          # the module waits for /var/lib/seerr, the link; the persisted folder is behind it
+          unitConfig.RequiresMountsFor = [ state ];
+          # systemd sets the mode on every start; settings.json holds API keys
+          serviceConfig.StateDirectoryMode = "0700";
         };
         # Moonbase's Seerr URL; it hides titles from scoped users, which is not access control
         scope-filter = lib.mkIf filtered {
@@ -77,14 +65,7 @@
       sops.secrets = lib.mkIf filtered { ${keys.jellyfin} = { }; };
 
       # ── data ────────
-      axon.persist.state.directories = [
-        {
-          directory = state;
-          user = "seerr";
-          group = "seerr";
-          mode = "0700";
-        }
-      ];
+      axon.persist.state.directories = [ state ];
 
       # ── registration ────────
       axon.services.requests = {
