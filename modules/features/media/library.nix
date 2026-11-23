@@ -9,13 +9,14 @@
       inherit (config.axon) host volumes;
     in
     lib.mkIf (host.class == "server") {
-      users.groups.media = { };
-
+      # ── service ────────
       services.jellyfin = {
         enable = true;
         group = "media";
       };
+      users.groups.media = { };
 
+      # ── units ────────
       systemd.services.jellyfin = {
         # the library is on a data disk that may be missing at boot (nofail)
         unitConfig.RequiresMountsFor = lib.optional (volumes ? media) volumes.media;
@@ -36,6 +37,7 @@
         ];
       };
 
+      # ── data ────────
       axon.persist.state.directories =
         map
           (directory: {
@@ -50,6 +52,7 @@
             config.services.jellyfin.cacheDir
           ];
 
+      # ── registration ────────
       axon.services.jellyfin = {
         units = [ "jellyfin" ];
         # its log entries' first line; a stack trace follows it

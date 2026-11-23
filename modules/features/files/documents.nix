@@ -9,12 +9,13 @@
     let
       inherit (config.axon) routed services sso;
       inherit (services.docs) route;
-      client = sso.clients.paperless;
-      data = config.axon.spaces.paperless.path;
       port = 28981;
       provider = "kanidm";
+      client = sso.clients.paperless;
+      data = config.axon.spaces.paperless.path;
     in
     lib.mkIf (config.axon.host.class == "server") {
+      # ── service ────────
       services.paperless = {
         enable = true;
         # the database was migrated by 3.5.1; an older package can't run on it
@@ -62,6 +63,11 @@
 
       # its default 3000 is AdGuard's
       services.gotenberg.port = 3002;
+
+      # at notice it logs each of its snapshots, every few minutes
+      services.redis.servers.paperless.logLevel = "warning";
+
+      # ── units ────────
       # it pushes OpenTelemetry data to a collector on localhost by default and logs every failure
       systemd.services.gotenberg.environment = {
         OTEL_METRICS_EXPORTER = "none";
@@ -69,14 +75,12 @@
         OTEL_LOGS_EXPORTER = "none";
       };
 
-      # at notice it logs each of its snapshots, every few minutes
-      services.redis.servers.paperless.logLevel = "warning";
-
       # on a new space the empty folders tmpfiles made at boot give way to a subvolume; Paperless
       # won't start without them, so they are made again inside it
       systemd.services.storage-paperless.serviceConfig.ExecStartPost =
         "${lib.getExe' config.systemd.package "systemd-tmpfiles"} --create --prefix=${data}";
 
+      # ── secrets ────────
       sops.templates."paperless.env" = lib.mkIf (sso.provider != null) {
         # in single quotes systemd and paperless-manage's shell both take the JSON verbatim
         content = ''
@@ -104,11 +108,13 @@
         restartUnits = [ "paperless-web.service" ];
       };
 
+      # ── login ────────
       axon.sso.clients.paperless = {
         service = "docs";
         redirects = [ "${route.url}/accounts/oidc/${provider}/login/callback/" ];
       };
 
+      # ── data ────────
       axon.spaces.paperless = {
         user = "paperless";
         group = "paperless";
@@ -139,6 +145,7 @@
           ]
         ++ [ "/var/lib/redis-paperless" ];
 
+      # ── registration ────────
       axon.services.docs = {
         units = [
           "paperless-consumer"

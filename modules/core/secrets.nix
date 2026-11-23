@@ -12,6 +12,7 @@
     {
       imports = [ inputs.sops-nix.nixosModules.sops ];
 
+      # ── contract ────────
       options.axon.secrets = lib.mkOption {
         type = lib.types.raw;
         readOnly = true;
@@ -34,6 +35,27 @@
       };
 
       config = {
+        # ── settings ────────
+        sops = {
+          defaultSopsFile = file;
+          # JSON is YAML; sops-nix's JSON reader rejects nested keys these files use
+          defaultSopsFormat = "yaml";
+          validateSopsFiles = false;
+        };
+        environment.sessionVariables.SOPS_AGE_KEY_CMD = "ssh-to-age -private-key -i ${home}/.ssh/id_ed25519";
+        environment.systemPackages = [
+          pkgs.sops
+          pkgs.ssh-to-age
+        ];
+
+        # ── secrets ────────
+        sops.secrets."user/private-key" = {
+          path = "${home}/.ssh/id_ed25519";
+          owner = user.name;
+          mode = "0600";
+        };
+
+        # ── checks ────────
         # sops-nix finds a missing key only at boot and then installs none of the host's secrets
         # (Tailscale's among them), so evaluation, and install.sh before it wipes, fails first
         assertions =
@@ -55,25 +77,6 @@
               }; add them with `just secrets ${host.name}` (a/b is {\"a\": {\"b\": …}})";
             }
           ];
-
-        sops = {
-          defaultSopsFile = file;
-          # JSON is YAML; sops-nix's JSON reader rejects nested keys these files use
-          defaultSopsFormat = "yaml";
-          validateSopsFiles = false;
-
-          secrets."user/private-key" = {
-            path = "${home}/.ssh/id_ed25519";
-            owner = user.name;
-            mode = "0600";
-          };
-        };
-
-        environment.sessionVariables.SOPS_AGE_KEY_CMD = "ssh-to-age -private-key -i ${home}/.ssh/id_ed25519";
-        environment.systemPackages = [
-          pkgs.sops
-          pkgs.ssh-to-age
-        ];
       };
     };
 }

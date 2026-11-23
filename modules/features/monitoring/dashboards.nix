@@ -11,10 +11,10 @@
         sso
         user
         ;
-      client = sso.clients.grafana;
+      inherit (services.grafana.route) name origin url;
       port = 3001;
       state = "/var/lib/grafana";
-      inherit (services.grafana.route) name origin url;
+      client = sso.clients.grafana;
 
       percent = {
         unit = "percent";
@@ -321,6 +321,7 @@
       dashboards = pkgs.writeTextDir "start.json" start;
     in
     {
+      # ── service ────────
       services.grafana = {
         enable = true;
         # Grafana 13 downloads its data sources and Drilldown apps on start; declared, they come
@@ -396,13 +397,24 @@
         };
       };
 
+      # ── units ────────
       systemd.services.grafana.preStart = ''
         umask 077
         [ -e ${state}/secret_key ] || head -c 32 /dev/urandom | base64 -w0 >${state}/secret_key
       '';
 
+      # ── secrets ────────
       sops.secrets."monitoring/password".owner = "grafana";
 
+      # ── login ────────
+      axon.sso.clients.grafana = {
+        service = "grafana";
+        landing = "${url}/login/generic_oauth";
+        redirects = [ "${url}/login/generic_oauth" ];
+        group = "admins";
+      };
+
+      # ── data ────────
       axon.persist.state.directories = [
         {
           directory = state;
@@ -412,13 +424,7 @@
         }
       ];
 
-      axon.sso.clients.grafana = {
-        service = "grafana";
-        landing = "${url}/login/generic_oauth";
-        redirects = [ "${url}/login/generic_oauth" ];
-        group = "admins";
-      };
-
+      # ── registration ────────
       axon.services.grafana = {
         units = [ "grafana" ];
         route.port = port;

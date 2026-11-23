@@ -156,6 +156,7 @@
       );
     in
     {
+      # ── service ────────
       services.prometheus = {
         rules = [
           (lib.toJSON {
@@ -328,17 +329,7 @@
         };
       };
 
-      sops.templates."alertmanager.env" = lib.mkIf (mail != null) {
-        content = ''
-          MAIL_LOGIN=${mail.login}
-          MAIL_TOKEN=${mail.token}
-        '';
-        restartUnits = [
-          "alertmanager.service"
-          "unit-mail.service"
-        ];
-      };
-
+      # ── units ────────
       systemd.services.unit-mail = lib.mkIf (mail != null) {
         description = "Mail failed units with their log";
         wantedBy = [ "multi-user.target" ];
@@ -350,17 +341,32 @@
         };
       };
 
-      warnings =
-        lib.optional (mail == null)
-          "hosts/${host.name}/host.toml: alerts only show in Alertmanager's UI; list the mail feature here to have them mailed";
+      # ── secrets ────────
+      sops.templates."alertmanager.env" = lib.mkIf (mail != null) {
+        content = ''
+          MAIL_LOGIN=${mail.login}
+          MAIL_TOKEN=${mail.token}
+        '';
+        restartUnits = [
+          "alertmanager.service"
+          "unit-mail.service"
+        ];
+      };
 
+      # ── data ────────
       axon.persist.state.directories = [
         "/var/lib/private/alertmanager"
       ];
 
+      # ── registration ────────
       axon.services.alerts = {
         units = [ "alertmanager" ] ++ lib.optional (mail != null) "unit-mail";
         route.port = port;
       };
+
+      # ── checks ────────
+      warnings =
+        lib.optional (mail == null)
+          "hosts/${host.name}/host.toml: alerts only show in Alertmanager's UI; list the mail feature here to have them mailed";
     };
 }

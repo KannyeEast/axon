@@ -21,30 +21,7 @@
       };
     in
     {
-      axon.sso.provider = {
-        authorize = "${url}/ui/oauth2";
-        token = "${url}/oauth2/token";
-        userinfo = client: "${url}/oauth2/openid/${client}/userinfo";
-        issuer = client: "${url}/oauth2/openid/${client}";
-        # Kanidm lists groups as <name>@<its domain>
-        group = group: "${group}@${host}";
-        # provisioning runs in the unit's start, so clients exist once it's up
-        unit = "kanidm.service";
-      };
-
-      sops.secrets = {
-        "kanidm/admin-password".owner = "kanidm";
-        "kanidm/idm-admin-password".owner = "kanidm";
-      }
-      // lib.mapAttrs' (
-        name: client:
-        lib.nameValuePair "sso/${name}" {
-          owner = client.user;
-          group = "kanidm";
-          mode = "0440";
-        }
-      ) sso.clients;
-
+      # ── service ────────
       services.kanidm = {
         package = pkgs.kanidmWithSecretProvisioning_1_12;
         server = {
@@ -98,6 +75,7 @@
       # this host's services reach Kanidm by name without DNS
       networking.hosts."127.0.0.1" = [ host ];
 
+      # ── units ────────
       systemd.services.kanidm = {
         # the certificate exists, a placeholder at first, once acme-<domain> ran
         wants = [ "acme-${domain}.service" ];
@@ -108,6 +86,21 @@
       # Kanidm reads its certificate only when it starts
       security.acme.certs.${domain}.reloadServices = [ "kanidm.service" ];
 
+      # ── secrets ────────
+      sops.secrets = {
+        "kanidm/admin-password".owner = "kanidm";
+        "kanidm/idm-admin-password".owner = "kanidm";
+      }
+      // lib.mapAttrs' (
+        name: client:
+        lib.nameValuePair "sso/${name}" {
+          owner = client.user;
+          group = "kanidm";
+          mode = "0440";
+        }
+      ) sso.clients;
+
+      # ── data ────────
       axon.persist.state.directories =
         map
           (directory: {
@@ -121,6 +114,19 @@
             online_backup.path
           ];
 
+      # ── contracts ────────
+      axon.sso.provider = {
+        authorize = "${url}/ui/oauth2";
+        token = "${url}/oauth2/token";
+        userinfo = client: "${url}/oauth2/openid/${client}/userinfo";
+        issuer = client: "${url}/oauth2/openid/${client}";
+        # Kanidm lists groups as <name>@<its domain>
+        group = group: "${group}@${host}";
+        # provisioning runs in the unit's start, so clients exist once it's up
+        unit = "kanidm.service";
+      };
+
+      # ── registration ────────
       axon.services.auth = {
         units = [ "kanidm" ];
         route = {

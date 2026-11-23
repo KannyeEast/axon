@@ -11,13 +11,6 @@
       ]);
     in
     {
-      # uaccess has to sort before 73-seat-late, which services.udev.extraRules doesn't
-      services.udev.packages = [
-        (pkgs.writeTextDir "lib/udev/rules.d/70-stream-deck.rules" ''
-          SUBSYSTEM=="usb", ATTR{idVendor}=="0fd9", TAG+="uaccess"
-        '')
-      ];
-
       systemd.user.services.control-surface = {
         description = "Stream Deck control surface";
         wantedBy = [ "graphical-session.target" ];
@@ -31,5 +24,12 @@
           RestartSec = 5;
         };
       };
+
+      # uaccess has to sort before 73-seat-late, which services.udev.extraRules doesn't
+      services.udev.packages = [
+        (pkgs.writeTextDir "lib/udev/rules.d/70-stream-deck.rules" ''
+          SUBSYSTEM=="usb", ATTR{idVendor}=="0fd9", TAG+="uaccess"
+        '')
+      ];
     };
 }

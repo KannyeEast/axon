@@ -20,7 +20,7 @@ in
   flake.modules.nixos.core =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) host;
+      inherit (config.axon) host laptop nvidia;
       reportFile = host.dir + "/facter.json";
       report = config.hardware.facter.report;
 
@@ -29,10 +29,10 @@ in
       has = vendor: cardsOf vendor != [ ];
       busId = vendor: pciBusId (lib.head (cardsOf vendor)).sysfs_bus_id;
 
-      inherit (config.axon) laptop nvidia;
       hybrid = nvidia && (has "intel" || has "amd");
     in
     {
+      # ── contract ────────
       options.axon = {
         laptop = lib.mkOption {
           type = lib.types.bool;
@@ -50,46 +50,41 @@ in
         };
       };
 
-      config = lib.mkMerge [
-        {
-          # a throw: without a usable report, nixpkgs.hostPlatform fails before assertions run
-          hardware.facter.reportPath =
-            if
-              lib.pathExists reportFile && lib.readFile reportFile != "" && (lib.importJSON reportFile) ? system
-            then
-              reportFile
-            else
-              throw "hosts/${host.name}/facter.json: missing or empty; run install.sh for this host, or nixos-facter on it";
-        }
+      config = {
+        # ── settings ────────
+        # a throw: without a usable report, nixpkgs.hostPlatform fails before assertions run
+        hardware.facter.reportPath =
+          if
+            lib.pathExists reportFile && lib.readFile reportFile != "" && (lib.importJSON reportFile) ? system
+          then
+            reportFile
+          else
+            throw "hosts/${host.name}/facter.json: missing or empty; run install.sh for this host, or nixos-facter on it";
 
         # hardware video decoding on Intel GPUs; facter enables graphics, not the VA-API driver
-        (lib.mkIf (has "intel") {
-          hardware.graphics.extraPackages = [
-            pkgs.intel-media-driver
-            pkgs.vpl-gpu-rt
-          ];
-        })
+        hardware.graphics.extraPackages = lib.mkIf (has "intel") [
+          pkgs.intel-media-driver
+          pkgs.vpl-gpu-rt
+        ];
 
-        (lib.mkIf nvidia {
-          services.xserver.videoDrivers = [ "nvidia" ];
-          hardware.nvidia.open = true;
-        })
+        services.xserver.videoDrivers = lib.mkIf nvidia [ "nvidia" ];
+        hardware.nvidia.open = lib.mkIf nvidia true;
 
-        (lib.mkIf hybrid {
-          hardware.nvidia.prime = {
+        hardware.nvidia.prime = lib.mkIf hybrid (
+          {
             offload.enable = true;
             offload.enableOffloadCmd = true;
             nvidiaBusId = busId "nvidia";
           }
           // lib.optionalAttrs (has "intel") { intelBusId = busId "intel"; }
-          // lib.optionalAttrs (has "amd") { amdgpuBusId = busId "amd"; };
-        })
+          // lib.optionalAttrs (has "amd") { amdgpuBusId = busId "amd"; }
+        );
 
-        (lib.mkIf laptop {
-          services.power-profiles-daemon.enable = true;
-          # the chosen profile (state.ini)
-          axon.persist.directories = [ "/var/lib/power-profiles-daemon" ];
-        })
-      ];
+        services.power-profiles-daemon.enable = lib.mkIf laptop true;
+
+        # ── data ────────
+        # the chosen profile (state.ini)
+        axon.persist.directories = lib.mkIf laptop [ "/var/lib/power-profiles-daemon" ];
+      };
     };
 }

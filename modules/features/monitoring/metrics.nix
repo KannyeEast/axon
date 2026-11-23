@@ -100,14 +100,7 @@
       );
     in
     {
-      services.prometheus.exporters.blackbox = {
-        enable = true;
-        listenAddress = "127.0.0.1";
-        configFile = blackbox;
-        # at info it logs every redirect a probe meets
-        extraFlags = [ "--log.prober=warn" ];
-      };
-
+      # ── service ────────
       services.prometheus = {
         enable = true;
         retentionTime = "90d";
@@ -127,8 +120,15 @@
         ];
       };
 
-      axon.overlay.tcpPorts = [ config.services.prometheus.port ];
+      services.prometheus.exporters.blackbox = {
+        enable = true;
+        listenAddress = "127.0.0.1";
+        configFile = blackbox;
+        # at info it logs every redirect a probe meets
+        extraFlags = [ "--log.prober=warn" ];
+      };
 
+      # ── data ────────
       axon.persist.state.directories = [
         {
           directory = "/var/lib/prometheus2";
@@ -137,5 +137,8 @@
           mode = "0700";
         }
       ];
+
+      # ── contracts ────────
+      axon.overlay.tcpPorts = [ config.services.prometheus.port ];
     };
 }

@@ -11,10 +11,10 @@
       inherit (config.axon.services.automation) route;
       inherit (config.services.prometheus) alertmanager;
       state = "/var/lib/private/n8n";
-      dirs = map (home: "${home}/.config/n8n/workflows") (lib.reverseList config.axon.dotfiles);
       # n8n's DynamicUser can't read the checkout under the user's 0700 home: root copies the files
       # here first, later ones replacing earlier ones of the same name
       copied = "/run/n8n-import";
+      dirs = map (home: "${home}/.config/n8n/workflows") (lib.reverseList config.axon.dotfiles);
 
       secret = name: "${name}/api-key";
       # every service's API key in secrets.json, also of one on another host
@@ -63,6 +63,7 @@
       };
     in
     {
+      # ── service ────────
       services.n8n = {
         enable = true;
         environment = {
@@ -85,14 +86,7 @@
         };
       };
 
-      sops.secrets = lib.genAttrs (map secret keys) (_: { });
-      sops.templates."n8n.env" = lib.mkIf (keys != [ ]) {
-        content = lib.concatMapStrings (
-          name: "${envName name}=${config.sops.placeholder.${secret name}}\n"
-        ) keys;
-        restartUnits = [ "n8n.service" ];
-      };
-
+      # ── units ────────
       # the import is part of every start: as its own unit a switch ran it apart from n8n, which
       # then kept the workflows it had started with. A failed import (-) doesn't stop n8n
       systemd.services.n8n.serviceConfig = {
@@ -118,12 +112,19 @@
         };
       };
 
-      warnings =
-        lib.optional (!alertmanager.enable)
-          "hosts/${host.name}/host.toml: no Alertmanager on this host, so n8n's failed workflows and reminders aren't mailed; list monitoring here to mail them";
+      # ── secrets ────────
+      sops.secrets = lib.genAttrs (map secret keys) (_: { });
+      sops.templates."n8n.env" = lib.mkIf (keys != [ ]) {
+        content = lib.concatMapStrings (
+          name: "${envName name}=${config.sops.placeholder.${secret name}}\n"
+        ) keys;
+        restartUnits = [ "n8n.service" ];
+      };
 
+      # ── data ────────
       axon.persist.state.directories = [ state ];
 
+      # ── registration ────────
       axon.services.automation = {
         units = [
           "n8n"
@@ -141,5 +142,10 @@
         };
         backup.paths = [ state ];
       };
+
+      # ── checks ────────
+      warnings =
+        lib.optional (!alertmanager.enable)
+          "hosts/${host.name}/host.toml: no Alertmanager on this host, so n8n's failed workflows and reminders aren't mailed; list monitoring here to mail them";
     };
 }

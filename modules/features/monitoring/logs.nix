@@ -31,6 +31,7 @@
       };
     in
     {
+      # ── service ────────
       services.loki = {
         enable = true;
         dataDir = data;
@@ -77,6 +78,7 @@
         };
       };
 
+      # ── data ────────
       axon.spaces.loki = {
         inherit (config.services.loki) user group;
         units = [ "loki" ];
@@ -90,6 +92,7 @@
         }
       ];
 
+      # ── contracts ────────
       axon.overlay.tcpPorts = [ port ];
     };
 }

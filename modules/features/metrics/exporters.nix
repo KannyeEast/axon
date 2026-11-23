@@ -20,6 +20,7 @@
       );
     in
     {
+      # ── service ────────
       services.prometheus.exporters = {
         node = {
           enable = true;
@@ -42,14 +43,18 @@
           runAsLocalSuperUser = true;
         };
       };
+
+      # ── units ────────
       systemd.tmpfiles.rules = [ "d ${dir} 0755 root root -" ];
 
+      # ── contracts ────────
       axon.overlay.tcpPorts = [
         exporters.node.port
         exporters.smartctl.port
       ]
       ++ lib.optional (databases != [ ]) exporters.postgres.port;
 
+      # ── checks ────────
       # monitoring/metrics.nix finds Postgres only through files or forge in a feature list
       warnings =
         lib.optional

@@ -27,8 +27,6 @@
       };
     in
     lib.mkIf active {
-      sops.secrets.${secret}.owner = "kanidm";
-
       services.kanidm.provision.systems.oauth2.tailscale = {
         displayName = "Tailscale";
         originUrl = [ "https://login.tailscale.com/a/oauth_response" ];
@@ -62,5 +60,7 @@
 
       services.cloudflared.tunnels.${gateway.tunnel}.ingress.${domain} =
         "http://127.0.0.1:${toString port}";
+
+      sops.secrets.${secret}.owner = "kanidm";
     };
 }

@@ -14,11 +14,11 @@
         spaces
         sso
         ;
+      route = services.git.route;
+      port = 3030;
+      source = "Kanidm";
       cfg = config.services.forgejo;
       client = sso.clients.forgejo;
-      route = services.git.route;
-      source = "Kanidm";
-      port = 3030;
       # attachments, avatars, LFS objects, packages
       data = "${cfg.stateDir}/data";
       mirrors = lib.unique (
@@ -26,6 +26,7 @@
       );
     in
     {
+      # ── service ────────
       services.forgejo = {
         enable = true;
         stateDir = spaces.forgejo.path;
@@ -48,8 +49,18 @@
         };
       };
 
-      axon.databases = [ cfg.database.name ];
+      # ── program ────────
+      # the admin command line
+      environment.systemPackages = [ cfg.package ];
 
+      # push mirrors log in over SSH as forgejo unless their address names a user, and forges only
+      # take git. It applies to every user on this host; git is the SSH login on every forge
+      programs.ssh.extraConfig = lib.concatMapStrings (host: ''
+        Host ${host}
+          User git
+      '') mirrors;
+
+      # ── units ────────
       # the login source, made or updated before every start; a failure leaves it as it was. The
       # secret is on the command line while it runs: the command takes it no other way
       systemd.services.forgejo = lib.mkIf (sso.provider != null) {
@@ -80,6 +91,7 @@
         '';
       };
 
+      # ── login ────────
       axon.sso.clients.forgejo = {
         service = "git";
         landing = "${route.url}/user/oauth2/${source}";
@@ -87,21 +99,15 @@
         group = "admins";
       };
 
-      # the admin command line
-      environment.systemPackages = [ cfg.package ];
-
-      # push mirrors log in over SSH as forgejo unless their address names a user, and forges only
-      # take git. It applies to every user on this host; git is the SSH login on every forge
-      programs.ssh.extraConfig = lib.concatMapStrings (host: ''
-        Host ${host}
-          User git
-      '') mirrors;
+      # ── data ────────
+      axon.databases = [ cfg.database.name ];
 
       axon.spaces.forgejo = {
         inherit (cfg) user group;
         units = [ "forgejo" ];
       };
 
+      # ── registration ────────
       axon.services.git = {
         units = [
           "forgejo"

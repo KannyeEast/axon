@@ -16,8 +16,11 @@
       own = ''{host="${host.name}",datname!~"postgres|template.*"}'';
     in
     lib.mkIf (databases != [ ]) {
+      # ── service ────────
       # named like the unit's dynamic user, so peer authentication lets it in
       services.postgresql.ensureUsers = [ { name = "pgweb"; } ];
+
+      # ── units ────────
       # ensureUsers has no role memberships; reading isn't connecting, and Nextcloud's install takes
       # that right from everyone else on its database
       systemd.services.postgresql-setup.script = lib.mkAfter ''
@@ -41,6 +44,7 @@
         };
       };
 
+      # ── registration ────────
       axon.services.databases = {
         units = [ "pgweb" ];
         route.port = port;

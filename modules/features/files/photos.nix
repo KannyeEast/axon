@@ -9,18 +9,16 @@
     let
       inherit (config.axon) domain mail sso;
       inherit (config.axon.services.photos) route;
+      port = 2283;
       client = sso.clients.immich;
       data = config.axon.spaces.immich.path;
-      port = 2283;
       generated = lib.optionals (config.axon.volumes ? state && config.axon.spaces.immich.onVolume) [
         "thumbs"
         "encoded-video"
       ];
     in
     lib.mkIf (config.axon.host.class == "server") {
-      # at notice it logs each of its snapshots, every few minutes
-      services.redis.servers.immich.logLevel = "warning";
-
+      # ── service ────────
       services.immich = {
         enable = true;
         # "localhost" binds to ::1 only, and the gateway proxies to 127.0.0.1
@@ -57,6 +55,16 @@
         };
       };
 
+      # at notice it logs each of its snapshots, every few minutes
+      services.redis.servers.immich.logLevel = "warning";
+
+      # ── units ────────
+      systemd.services.immich-server.unitConfig.RequiresMountsFor = map (dir: "${data}/${dir}") generated;
+      # systemd sets these on every start, over the mode the folders were made with
+      systemd.services.immich-server.serviceConfig.StateDirectoryMode = "0700";
+      systemd.services.immich-machine-learning.serviceConfig.CacheDirectoryMode = "0700";
+
+      # ── secrets ────────
       # the login and token are sops placeholders, so they reach Immich's settings as files
       sops.templates = lib.mkIf (mail != null) (
         lib.mapAttrs
@@ -71,6 +79,7 @@
           }
       );
 
+      # ── login ────────
       axon.sso.clients.immich = {
         service = "photos";
         redirects = [
@@ -80,12 +89,7 @@
         ];
       };
 
-      axon.spaces.immich = {
-        user = "immich";
-        group = "immich";
-        units = [ "immich-server" ];
-      };
-
+      # ── data ────────
       # thumbnails and videos the timeline loads by the hundred stay on the state volume
       fileSystems = lib.listToAttrs (
         map (dir: {
@@ -103,10 +107,11 @@
           };
         }) generated
       );
-      systemd.services.immich-server.unitConfig.RequiresMountsFor = map (dir: "${data}/${dir}") generated;
-      # systemd sets these on every start, over the mode the folders were made with
-      systemd.services.immich-server.serviceConfig.StateDirectoryMode = "0700";
-      systemd.services.immich-machine-learning.serviceConfig.CacheDirectoryMode = "0700";
+      axon.spaces.immich = {
+        user = "immich";
+        group = "immich";
+        units = [ "immich-server" ];
+      };
 
       axon.databases = [ "immich" ];
 
@@ -129,6 +134,7 @@
           )
         ++ [ "/var/lib/redis-immich" ];
 
+      # ── registration ────────
       axon.services.photos = {
         units = [
           "immich-machine-learning"

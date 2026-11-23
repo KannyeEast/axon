@@ -1,14 +1,10 @@
 # Home Assistant at ha.<domain>: the household's hub, with the Companion app on the phones.
 # Reach: tailnet, its own login (TOTP per user, a ban after failed logins), not the gateway's.
 # In its UI only: its whole configuration, backed up with its state folder.
+{ lib, ... }:
 {
   flake.modules.nixos.family =
-    {
-      config,
-      lib,
-      pkgs,
-      ...
-    }:
+    { config, pkgs, ... }:
     let
       port = 8123;
       state = "/var/lib/home-assistant";
@@ -63,6 +59,7 @@
       '';
     in
     {
+      # ── service ────────
       virtualisation.oci-containers.containers.home-assistant = {
         image = "ghcr.io/home-assistant/home-assistant:2026.11.2@sha256:493a07e8f6530fc640223f4a0a5248f20a61ca2f718bb1d31efbf08a2c5ea28f";
         # finds devices on the network by broadcast
@@ -71,8 +68,10 @@
         volumes = [ "${state}:/config" ];
       };
 
+      # ── units ────────
       systemd.services.docker-home-assistant.serviceConfig.ExecStartPre = [ "${seeding}" ];
 
+      # ── data ────────
       axon.persist.state.directories = [
         {
           directory = state;
@@ -80,6 +79,7 @@
         }
       ];
 
+      # ── registration ────────
       axon.services.ha = {
         units = [ "docker-home-assistant" ];
         # its log entries' first line; a traceback follows it

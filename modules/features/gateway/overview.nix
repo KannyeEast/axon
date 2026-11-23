@@ -32,9 +32,8 @@ in
         links
         routes
         ;
-      ph = config.sops.placeholder;
-
       port = 8082;
+      ph = config.sops.placeholder;
 
       tiles = lib.filterAttrs (_: service: service.dashboard != null) routes;
       linkGroups = lib.unique (lib.sort (a: b: a < b) (lib.mapAttrsToList (_: link: link.group) links));
@@ -182,6 +181,7 @@ in
       );
     in
     {
+      # ── service ────────
       services.homepage-dashboard = {
         enable = true;
         listenPort = port;
@@ -230,6 +230,7 @@ in
         }) linkGroups;
       };
 
+      # ── units ────────
       systemd.services.homepage-dashboard = {
         # Next.js listens on every address unless told otherwise
         environment.HOSTNAME = "127.0.0.1";
@@ -237,8 +238,24 @@ in
         serviceConfig.SuccessExitStatus = [ 143 ];
       };
 
+      # ── secrets ────────
+      sops.secrets = lib.genAttrs secrets (_: { });
+      sops.templates."homepage.env" = {
+        content = lib.concatStrings (map (secret: "${envName secret}=${ph.${secret}}\n") secrets);
+        # a running Homepage keeps the variables it started with
+        restartUnits = [ "homepage-dashboard.service" ];
+      };
+
+      # ── contracts ────────
       axon.links = gateway.links;
 
+      # ── registration ────────
+      axon.services.home = {
+        units = [ "homepage-dashboard" ];
+        route.port = port;
+      };
+
+      # ── checks ────────
       # Homepage shows only one of a services group and a link group of the same name
       assertions = [
         {
@@ -252,17 +269,5 @@ in
           "hosts/${host.name}/secrets.json: no ${
             lib.concatMapStringsSep ", " (name: tiles.${name}.apiKey) waiting
           }, so those tiles show no numbers; add them with `just secrets ${host.name}`";
-
-      sops.secrets = lib.genAttrs secrets (_: { });
-      sops.templates."homepage.env" = {
-        content = lib.concatStrings (map (secret: "${envName secret}=${ph.${secret}}\n") secrets);
-        # a running Homepage keeps the variables it started with
-        restartUnits = [ "homepage-dashboard.service" ];
-      };
-
-      axon.services.home = {
-        units = [ "homepage-dashboard" ];
-        route.port = port;
-      };
     };
 }

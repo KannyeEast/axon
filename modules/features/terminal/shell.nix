@@ -1,13 +1,9 @@
 # The terminal: zsh, tmux and neovim with their plugins, and the everyday CLI tools.
 # Settings: .zshrc, .config/tmux/tmux.conf, .config/starship.toml, .config/nvim/init.lua.
+{ lib, ... }:
 {
   flake.modules.nixos.terminal =
-    {
-      config,
-      lib,
-      pkgs,
-      ...
-    }:
+    { config, pkgs, ... }:
     let
       omz = "${pkgs.oh-my-zsh}/share/oh-my-zsh";
     in

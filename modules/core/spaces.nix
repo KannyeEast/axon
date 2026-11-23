@@ -85,6 +85,7 @@ in
       '';
     in
     {
+      # ── contract ────────
       options.axon.spaces = mkOption {
         default = { };
         description = "Service name to its own space on a volume.";
@@ -127,20 +128,7 @@ in
       };
 
       config = {
-        # a space on a volume persists with it; only the /var/lib fallback is listed
-        axon.persist.state.directories = lib.mkAfter (
-          lib.mapAttrsToList (_: space: {
-            directory = space.path;
-            inherit (space) user group;
-            mode = "0750";
-          }) (lib.filterAttrs (_: space: !space.onVolume) spaces)
-        );
-
-        assertions = lib.mapAttrsToList (name: _: {
-          assertion = paths ? ${name};
-          message = "hosts/${host.name}/host.toml: [limits] names ${name}, which is neither a volume nor a service's space on one (${lib.concatStringsSep ", " limitable})";
-        }) limits;
-
+        # ── units ────────
         systemd.services = lib.mkMerge (
           [
             (lib.mapAttrs' (
@@ -183,6 +171,22 @@ in
             }) spaces.${name}.units
           ) (lib.attrNames spaces)
         );
+
+        # ── data ────────
+        # a space on a volume persists with it; only the /var/lib fallback is listed
+        axon.persist.state.directories = lib.mkAfter (
+          lib.mapAttrsToList (_: space: {
+            directory = space.path;
+            inherit (space) user group;
+            mode = "0750";
+          }) (lib.filterAttrs (_: space: !space.onVolume) spaces)
+        );
+
+        # ── checks ────────
+        assertions = lib.mapAttrsToList (name: _: {
+          assertion = paths ? ${name};
+          message = "hosts/${host.name}/host.toml: [limits] names ${name}, which is neither a volume nor a service's space on one (${lib.concatStringsSep ", " limitable})";
+        }) limits;
       };
     };
 }

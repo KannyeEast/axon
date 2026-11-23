@@ -35,32 +35,7 @@
       exclude = lib.unique (lib.concatMap (service: service.backup.exclude) backups);
     in
     {
-      warnings =
-        lib.optional (targets == { })
-          "hosts/${host.name}/secrets.json: the backup feature has no targets, so nothing is backed up; add backup.<name> with `just secrets ${host.name}`";
-
-      sops.secrets = lib.concatMapAttrs (
-        name: data:
-        {
-          "backup/${name}/password" = { };
-        }
-        // lib.concatMapAttrs (key: _: { "backup/${name}/env/${key}" = { }; }) (secretEnv (envOf data))
-      ) targets;
-
-      sops.templates = lib.mapAttrs' (
-        name: data: lib.nameValuePair "restic-${name}.env" { content = mkEnv name (envOf data); }
-      ) (lib.filterAttrs (_: data: envOf data != { }) targets);
-
-      # the units' CacheDirectory (RESTIC_CACHE_DIR), so a run doesn't fetch the index again
-      axon.persist.state.directories = lib.mapAttrsToList (name: _: {
-        directory = "/var/cache/restic-backups-${name}";
-        mode = "0700";
-      }) targets;
-
-      environment.systemPackages = [
-        pkgs.restic
-      ];
-
+      # ── service ────────
       services.restic.backups = lib.mapAttrs (
         name: data:
         let
@@ -93,11 +68,42 @@
         }
       ) targets;
 
+      # ── program ────────
+      environment.systemPackages = [
+        pkgs.restic
+      ];
+
+      # ── units ────────
       systemd.services = lib.concatMapAttrs (
         name: data:
         lib.optionalAttrs (lib.hasPrefix "/" (rmSuffix data).repository) {
           "restic-backups-${name}".unitConfig.RequiresMountsFor = [ (rmSuffix data).repository ];
         }
       ) targets;
+
+      # ── secrets ────────
+      sops.secrets = lib.concatMapAttrs (
+        name: data:
+        {
+          "backup/${name}/password" = { };
+        }
+        // lib.concatMapAttrs (key: _: { "backup/${name}/env/${key}" = { }; }) (secretEnv (envOf data))
+      ) targets;
+
+      sops.templates = lib.mapAttrs' (
+        name: data: lib.nameValuePair "restic-${name}.env" { content = mkEnv name (envOf data); }
+      ) (lib.filterAttrs (_: data: envOf data != { }) targets);
+
+      # ── data ────────
+      # the units' CacheDirectory (RESTIC_CACHE_DIR), so a run doesn't fetch the index again
+      axon.persist.state.directories = lib.mapAttrsToList (name: _: {
+        directory = "/var/cache/restic-backups-${name}";
+        mode = "0700";
+      }) targets;
+
+      # ── checks ────────
+      warnings =
+        lib.optional (targets == { })
+          "hosts/${host.name}/secrets.json: the backup feature has no targets, so nothing is backed up; add backup.<name> with `just secrets ${host.name}`";
     };
 }

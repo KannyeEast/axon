@@ -16,10 +16,10 @@ in
     { config, ... }:
     let
       inherit (config.axon)
+        cluster
         home
         host
         user
-        cluster
         volumes
         ;
       peerPort = 22000;

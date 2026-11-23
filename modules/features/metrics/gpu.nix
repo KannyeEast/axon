@@ -5,8 +5,8 @@
   flake.modules.nixos.metrics =
     { config, pkgs, ... }:
     let
-      dir = "/run/prometheus-node-exporter-text";
       inherit (config.axon) laptop nvidia;
+      dir = "/run/prometheus-node-exporter-text";
 
       # while nvidia-smi fails (a driver updated before the reboot) the values are gone
       poll = pkgs.writeShellApplication {

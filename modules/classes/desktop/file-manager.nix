@@ -9,17 +9,15 @@
         pkgs.nautilus
         pkgs.ffmpegthumbnailer
       ];
-
-      services.gnome.sushi.enable = true;
-
-      # off for every GTK app, which also takes Recent out of the sidebar
-      programs.dconf.profiles.user.databases = [
-        { settings."org/gnome/desktop/privacy".remember-recent-files = false; }
-      ];
-
       programs.nautilus-open-any-terminal = {
         enable = true;
         terminal = "alacritty";
       };
+
+      services.gnome.sushi.enable = true;
+      # off for every GTK app, which also takes Recent out of the sidebar
+      programs.dconf.profiles.user.databases = [
+        { settings."org/gnome/desktop/privacy".remember-recent-files = false; }
+      ];
     };
 }

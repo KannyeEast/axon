@@ -15,16 +15,14 @@
         sso
         ;
       inherit (services.cloud) route;
+      port = 8090;
       client = sso.clients.nextcloud;
       data = config.axon.spaces.nextcloud.path;
-      port = 8090;
     in
-    lib.mkMerge [
-      (lib.mkIf (config.axon.host.class == "server") {
-        # at notice it logs each of its snapshots, every few minutes
-        services.redis.servers.nextcloud.logLevel = "warning";
-
-        services.nextcloud = {
+    lib.mkIf (config.axon.host.class == "server") {
+      # ── service ────────
+      services.nextcloud = lib.mkMerge [
+        {
           enable = true;
           # major versions upgrade one at a time: bump by one, switch, repeat
           package = pkgs.nextcloud35;
@@ -52,120 +50,15 @@
             # the module ties this to maxUploadSize, but uploads stream
             memory_limit = lib.mkForce "1G";
           };
-        };
-
-        # nextcloud's nginx only on localhost; caddy owns 80/443
-        services.nginx.virtualHosts.${route.name}.listen = [
-          {
-            addr = "127.0.0.1";
-            inherit port;
-          }
-        ];
-
-        axon.sso.clients.nextcloud = {
-          service = "cloud";
-          redirects = [ "${route.url}/apps/user_oidc/code" ];
-        };
-
-        axon.spaces.nextcloud = {
-          user = "nextcloud";
-          group = "nextcloud";
-          units = [
-            "nextcloud-cron"
-            "nextcloud-setup"
-            "nextcloud-update-db"
-            "phpfpm-nextcloud"
-          ];
-        };
-
-        axon.databases = [ "nextcloud" ];
-
-        axon.persist.state.directories = [
-          {
-            directory = "/var/lib/nextcloud";
-            user = "nextcloud";
-            group = "nextcloud";
-            mode = "0750";
-          }
-          "/var/lib/redis-nextcloud"
-        ];
-
-        axon.services.cloud = {
-          # nginx is the module's front for PHP; nothing else here runs one
-          units = [
-            "nextcloud-cron"
-            "nextcloud-setup"
-            "nextcloud-update-db"
-            "nginx"
-            "phpfpm-nextcloud"
-            "redis-nextcloud"
-          ];
-          route = {
-            inherit port;
-            # share links work without Tailscale
-            public = true;
-            # / redirects to https on this plain http port
-            health = "/status.php";
-          };
-          dashboard = {
-            name = "Nextcloud";
-            group = "Files";
-            description = "Files";
-            icon = "nextcloud.svg";
-            space = "nextcloud";
-            widget = {
-              type = "nextcloud";
-              # four values make labels like "ACTIVE USERS" wrap, and the whole row grows with them
-              fields = [
-                "freespace"
-                "numfiles"
-                "activeusers"
-              ];
-            };
-            key = true;
-          };
-          backup = {
-            paths = [
-              data
-              "/var/lib/nextcloud"
-            ];
-            # rebuilt from the files
-            exclude = [ "${data}/data/appdata_*/preview" ];
-          };
-        };
-      })
-
-      (lib.mkIf (config.axon.host.class == "server" && sso.provider != null) {
-        services.nextcloud = {
+        }
+        (lib.mkIf (sso.provider != null) {
           # this also closes the app store, which file storage alone doesn't need
           extraApps = { inherit (config.services.nextcloud.package.packages.apps) user_oidc; };
           # the provider answers on 127.0.0.1, a local address Nextcloud refuses without it
           settings.allow_local_remote_servers = true;
-        };
-
-        # updated on every setup run; --unique-uid=0 keeps the short name, so a login lands in the
-        # account of that name; Nextcloud's own second factor is asked only on the password form
-        systemd.services.nextcloud-setup.script = lib.mkAfter ''
-          nextcloud-occ user_oidc:provider Kanidm \
-            --clientid=${client.id} \
-            --clientsecret-file=${client.secret} \
-            --discoveryuri=${client.issuer}/.well-known/openid-configuration \
-            --mapping-uid=preferred_username \
-            --unique-uid=0
-        '';
-      })
-
-      # without an account Nextcloud runs the same, but invites and password resets fail
-      (lib.mkIf (config.axon.host.class == "server" && mail != null) {
-        sops.templates."nextcloud.json" = {
-          owner = "nextcloud";
-          content = lib.toJSON {
-            mail_smtpname = mail.login;
-            mail_smtppassword = mail.token;
-          };
-        };
-
-        services.nextcloud = {
+        })
+        # without an account Nextcloud runs the same, but invites and password resets fail
+        (lib.mkIf (mail != null) {
           settings = {
             mail_smtphost = mail.host;
             mail_smtpport = mail.port;
@@ -174,7 +67,116 @@
             mail_domain = domain;
           };
           secretFile = config.sops.templates."nextcloud.json".path;
+        })
+      ];
+
+      # nextcloud's nginx only on localhost; caddy owns 80/443
+      services.nginx.virtualHosts.${route.name}.listen = [
+        {
+          addr = "127.0.0.1";
+          inherit port;
+        }
+      ];
+
+      # at notice it logs each of its snapshots, every few minutes
+      services.redis.servers.nextcloud.logLevel = "warning";
+
+      # ── units ────────
+      # updated on every setup run; --unique-uid=0 keeps the short name, so a login lands in the
+      # account of that name; Nextcloud's own second factor is asked only on the password form
+      systemd.services.nextcloud-setup.script = lib.mkIf (sso.provider != null) (
+        lib.mkAfter ''
+          nextcloud-occ user_oidc:provider Kanidm \
+            --clientid=${client.id} \
+            --clientsecret-file=${client.secret} \
+            --discoveryuri=${client.issuer}/.well-known/openid-configuration \
+            --mapping-uid=preferred_username \
+            --unique-uid=0
+        ''
+      );
+
+      # ── secrets ────────
+      sops.templates."nextcloud.json" = lib.mkIf (mail != null) {
+        owner = "nextcloud";
+        content = lib.toJSON {
+          mail_smtpname = mail.login;
+          mail_smtppassword = mail.token;
         };
-      })
-    ];
+      };
+
+      # ── login ────────
+      axon.sso.clients.nextcloud = {
+        service = "cloud";
+        redirects = [ "${route.url}/apps/user_oidc/code" ];
+      };
+
+      # ── data ────────
+      axon.spaces.nextcloud = {
+        user = "nextcloud";
+        group = "nextcloud";
+        units = [
+          "nextcloud-cron"
+          "nextcloud-setup"
+          "nextcloud-update-db"
+          "phpfpm-nextcloud"
+        ];
+      };
+
+      axon.databases = [ "nextcloud" ];
+
+      axon.persist.state.directories = [
+        {
+          directory = "/var/lib/nextcloud";
+          user = "nextcloud";
+          group = "nextcloud";
+          mode = "0750";
+        }
+        "/var/lib/redis-nextcloud"
+      ];
+
+      # ── registration ────────
+      axon.services.cloud = {
+        # nginx is the module's front for PHP; nothing else here runs one
+        units = [
+          "nextcloud-cron"
+          "nextcloud-setup"
+          "nextcloud-update-db"
+          "nginx"
+          "phpfpm-nextcloud"
+          "redis-nextcloud"
+        ];
+        route = {
+          inherit port;
+          # share links work without Tailscale
+          public = true;
+          # / redirects to https on this plain http port
+          health = "/status.php";
+        };
+        dashboard = {
+          name = "Nextcloud";
+          group = "Files";
+          description = "Files";
+          icon = "nextcloud.svg";
+          space = "nextcloud";
+          widget = {
+            type = "nextcloud";
+            # four values make labels like "ACTIVE USERS" wrap, and the whole row grows with them
+            fields = [
+              "freespace"
+              "numfiles"
+              "activeusers"
+            ];
+          };
+          key = true;
+        };
+        backup = {
+          paths = [
+            data
+            "/var/lib/nextcloud"
+          ];
+          # rebuilt from the files
+          exclude = [ "${data}/data/appdata_*/preview" ];
+        };
+      };
+    };
 }

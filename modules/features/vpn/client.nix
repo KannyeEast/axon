@@ -79,12 +79,16 @@
       };
     in
     lib.mkIf (config.axon.host.class == "desktop") {
+      # ── service ────────
       services.mullvad-vpn = {
         enable = true;
         gui.enable = true;
       };
+
+      # ── program ────────
       environment.systemPackages = [ country ];
 
+      # ── units ────────
       # while connected, Mullvad's firewall drops everything outside its tunnel, the tailnet
       # included; marking tailnet traffic as excluded keeps the other machines reachable
       systemd.services.mullvad-tailnet = lib.mkIf (network != null) {
@@ -99,6 +103,7 @@
         };
       };
 
+      # ── data ────────
       # login and device key: else every boot registers a new device, and an account has five
       axon.persist.state.directories = [
         {

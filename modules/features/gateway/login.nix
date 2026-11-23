@@ -13,12 +13,12 @@
         sso
         ;
       inherit (config.axon.services.login) route;
-      client = sso.clients.proxy;
       port = 4180;
       secrets = [
         "sso/proxy"
         "sso/proxy-cookie"
       ];
+      client = sso.clients.proxy;
       missing = lib.filter (secret: !hasSecret secret) secrets;
       active = sso.provider != null && missing == [ ];
       gated = lib.attrNames (lib.filterAttrs (_: service: service.route.gate) routes);
@@ -27,22 +27,7 @@
       );
     in
     {
-      assertions = [
-        {
-          assertion = open == [ ];
-          message = "axon.services: ${lib.concatStringsSep ", " open} set gate and public; the tunnel bypasses the gate, so drop one";
-        }
-      ];
-
-      warnings = lib.optional (gated != [ ] && !active) (
-        if sso.provider == null then
-          "axon.sso.provider: null, so ${lib.concatStringsSep ", " gated} have no login"
-        else
-          "hosts/${host.name}/secrets.json: no ${lib.concatStringsSep ", " missing}, so ${lib.concatStringsSep ", " gated} have no login; add them with `just secrets ${host.name}`"
-      );
-
-      sops.secrets."sso/proxy-cookie" = lib.mkIf active { };
-
+      # ── service ────────
       services.oauth2-proxy = lib.mkIf active {
         enable = true;
         httpAddress = "http://127.0.0.1:${toString port}";
@@ -71,6 +56,7 @@
         };
       };
 
+      # ── units ────────
       # it exits when the provider's discovery document isn't there yet, so it retries
       systemd.services.oauth2-proxy = lib.mkIf active (
         let
@@ -87,6 +73,10 @@
         }
       );
 
+      # ── secrets ────────
+      sops.secrets."sso/proxy-cookie" = lib.mkIf active { };
+
+      # ── login ────────
       axon.sso.clients.proxy = lib.mkIf active {
         displayName = "Tailnet apps";
         landing = config.axon.services.home.route.url;
@@ -95,8 +85,10 @@
         user = "oauth2-proxy";
       };
 
+      # ── contracts ────────
       axon.gated = active;
 
+      # ── registration ────────
       axon.services.login = {
         units = lib.mkIf active [ "oauth2-proxy" ];
         route = lib.mkIf active {
@@ -107,5 +99,20 @@
           health = "/ping";
         };
       };
+
+      # ── checks ────────
+      assertions = [
+        {
+          assertion = open == [ ];
+          message = "axon.services: ${lib.concatStringsSep ", " open} set gate and public; the tunnel bypasses the gate, so drop one";
+        }
+      ];
+
+      warnings = lib.optional (gated != [ ] && !active) (
+        if sso.provider == null then
+          "axon.sso.provider: null, so ${lib.concatStringsSep ", " gated} have no login"
+        else
+          "hosts/${host.name}/secrets.json: no ${lib.concatStringsSep ", " missing}, so ${lib.concatStringsSep ", " gated} have no login; add them with `just secrets ${host.name}`"
+      );
     };
 }

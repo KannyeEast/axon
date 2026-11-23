@@ -5,8 +5,6 @@
   flake.modules.nixos.vpn =
     { config, pkgs, ... }:
     lib.mkIf (config.axon.host.class == "server") {
-      axon.vpn.confined.vpn-check = { };
-
       systemd.services.vpn-check = {
         description = "Check that the tunnel reaches the internet";
         serviceConfig = {
@@ -23,5 +21,7 @@
           RandomizedDelaySec = "5m";
         };
       };
+
+      axon.vpn.confined.vpn-check = { };
     };
 }

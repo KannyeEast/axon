@@ -6,9 +6,9 @@
     { config, pkgs, ... }:
     let
       inherit (config.axon) host hostsWith services;
-      containers = config.virtualisation.oci-containers;
       # Loki's port on the monitoring hosts
       port = 3100;
+      containers = config.virtualisation.oci-containers;
       monitors = lib.attrNames (hostsWith "monitoring");
       address = name: if name == host.name then "127.0.0.1" else name;
 

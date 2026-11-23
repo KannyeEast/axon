@@ -26,6 +26,7 @@ in
         };
     in
     {
+      # ── contract ────────
       options.axon.remotes = mkOption {
         readOnly = true;
         default = lib.mapAttrs (
@@ -72,6 +73,7 @@ in
       };
 
       config = {
+        # ── settings ────────
         # the remotes live here alone: a second url on a clone's own remote makes git push to both
         programs.git.enable = true;
         programs.git.config = lib.mkIf (repo.remotes != { }) {
@@ -85,13 +87,7 @@ in
           )}";
         };
 
-        assertions = [
-          {
-            assertion = repo.remotes == { } || (repo.origin != null && repo.remotes ? ${repo.origin});
-            message = "cluster.toml: [repo] origin must be one of the names under [repo.remotes] (${lib.concatStringsSep ", " (lib.attrNames repo.remotes)})";
-          }
-        ];
-
+        # ── contracts ────────
         axon.links = lib.mapAttrs' (
           name: remote:
           lib.nameValuePair (lib.toSentenceCase name) {
@@ -100,6 +96,14 @@ in
             group = "Mirrors";
           }
         ) (lib.filterAttrs (_: remote: remote.mirror && !own remote) remotes);
+
+        # ── checks ────────
+        assertions = [
+          {
+            assertion = repo.remotes == { } || (repo.origin != null && repo.remotes ? ${repo.origin});
+            message = "cluster.toml: [repo] origin must be one of the names under [repo.remotes] (${lib.concatStringsSep ", " (lib.attrNames repo.remotes)})";
+          }
+        ];
       };
     };
 }

@@ -130,8 +130,8 @@ in
 
 - `lib` comes from the outer function, never from the module's own arguments. Modules write
   `lib.<function>`.
-- The body is made of **slots**, in the order of the file's kind. A slot that doesn't apply is
-  left out, never moved. A file with three or more slots opens each with a ruler:
+- The body is made of **slots**: those that apply, always in the order of the table below. The
+  kind lists the usual ones; a slot that doesn't apply is left out, never moved. A file with three or more slots opens each with a ruler:
   `# ── service ────────`.
 - Inside a slot: the main definition first, then what adjusts it. A line that isn't obvious
   carries its reason as a comment above it.
@@ -144,14 +144,14 @@ One vocabulary for all kinds, always in this order:
 |---|---|
 | `contract` | `options.axon.<name>`: the contract a core file declares |
 | `settings` | plain NixOS settings of a core or class file |
-| `service` | `services.<name>` through its NixOS module, or its `virtualisation.oci-containers` entry; the user and group it runs as |
+| `service` | `services.<name>` through its NixOS module, or its `virtualisation.oci-containers` entry; the user and group it runs as; `security.acme` |
 | `program` | packages and `programs.<name>` |
-| `units` | `systemd.services`, `systemd.timers`, `systemd.paths`, `systemd.tmpfiles`: changes to the service's units, then the file's own units |
-| `session` | `systemd.user.services`: what starts with the desktop session |
-| `system` | what only Nix can wire for a desktop program: D-Bus, udev, portals, PAM, dconf defaults |
+| `units` | `systemd.services`, `systemd.timers`, `systemd.paths`, `systemd.tmpfiles`, the initrd's units: changes to the service's units, then the file's own units |
+| `session` | `systemd.user.services` and `.timers`: what runs in the user's session |
+| `system` | what only Nix can wire for a desktop program: D-Bus, udev, portals, PAM, dconf defaults, groups, firewall |
 | `secrets` | every `sops.secrets` and `sops.templates` entry the file reads |
 | `login` | `axon.sso.clients.<name>` |
-| `data` | `axon.databases`, `axon.persist…`, `axon.spaces`, `axon.folders` |
+| `data` | `axon.databases`, `axon.persist…`, `axon.spaces`, `axon.folders`, and `fileSystems` that place a service's state |
 | `contracts` | what the file adds to other contracts (`axon.overlay`, `axon.vpn.confined`, `axon.links`, `axon.browser`), or the value it produces (`axon.mail`, `axon.sso.provider`, `axon.routed`, `axon.gated`) |
 | `registration` | `axon.services.<name>`: route, tile, units, logs, backup |
 | `checks` | `warnings`, `assertions` |

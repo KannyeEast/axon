@@ -26,6 +26,7 @@ in
         || (lists "monitoring" && othersList "metrics");
     in
     {
+      # ── contract ────────
       options.axon.overlay = {
         network = mkOption {
           default = null;
@@ -66,15 +67,7 @@ in
       };
 
       config = lib.mkIf member {
-        axon.overlay.network = {
-          ipv4 = "100.64.0.0/10";
-          ipv6 = "fd7a:115c:a1e0::/48";
-          domain = "ts.net";
-          resolver = "100.100.100.100";
-        };
-
-        sops.secrets."tailscale/authkey" = { };
-
+        # ── settings ────────
         services.tailscale = {
           enable = true;
           openFirewall = true;
@@ -87,17 +80,29 @@ in
           allowedUDPPorts = overlay.udpPorts;
         };
 
-        axon.links.Tailscale = {
-          url = "https://console.tailscale.com";
-          icon = "tailscale.svg";
-        };
+        # ── secrets ────────
+        sops.secrets."tailscale/authkey" = { };
 
+        # ── data ────────
         axon.persist.directories = [
           {
             directory = "/var/lib/tailscale";
             mode = "0700";
           }
         ];
+
+        # ── contracts ────────
+        axon.overlay.network = {
+          ipv4 = "100.64.0.0/10";
+          ipv6 = "fd7a:115c:a1e0::/48";
+          domain = "ts.net";
+          resolver = "100.100.100.100";
+        };
+
+        axon.links.Tailscale = {
+          url = "https://console.tailscale.com";
+          icon = "tailscale.svg";
+        };
       };
     };
 }

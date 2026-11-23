@@ -27,14 +27,13 @@ in
           }
         ];
       };
+      programs.ssh.knownHosts =
+        lib.mapAttrs (_: publicKey: { inherit publicKey; }) forges
+        // lib.mapAttrs (_: data: { publicKey = data.host.key; }) cluster.hosts;
 
       axon.services.ssh = {
         units = [ "sshd" ];
         backup.paths = [ "/persist/etc/ssh" ];
       };
-
-      programs.ssh.knownHosts =
-        lib.mapAttrs (_: publicKey: { inherit publicKey; }) forges
-        // lib.mapAttrs (_: data: { publicKey = data.host.key; }) cluster.hosts;
     };
 }

@@ -44,6 +44,7 @@ in
     {
       imports = [ inputs.impermanence.nixosModules.impermanence ];
 
+      # ── contract ────────
       options.axon.persist = {
         directories = mkOption {
           type = types.listOf entry;
@@ -58,12 +59,7 @@ in
       };
 
       config = {
-        axon.persist.directories = [
-          "/var/lib/nixos"
-          "/var/lib/systemd"
-          "/var/log"
-        ];
-
+        # ── settings ────────
         # the journal stays small on the boot disk; with a monitoring host Loki keeps 30 days
         services.journald.settings.Journal.SystemMaxUse = "1G";
 
@@ -89,6 +85,7 @@ in
           ${state}.neededForBoot = true;
         };
 
+        # ── units ────────
         # systemd starts DynamicUser services only under a 0700 /var/lib/private; impermanence
         # copies each parent's mode from its persisted copy on every activation, so that copy sets it
         systemd.tmpfiles.rules = [
@@ -122,6 +119,13 @@ in
             umount /btrfs
           '';
         };
+
+        # ── data ────────
+        axon.persist.directories = [
+          "/var/lib/nixos"
+          "/var/lib/systemd"
+          "/var/log"
+        ];
       };
     };
 }

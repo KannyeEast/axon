@@ -32,17 +32,20 @@ in
       monitors = hostsWith "monitoring";
     in
     {
+      # ── secrets ────────
+      sops.secrets = {
+        "mail/login" = { };
+        "mail/token" = { };
+      };
+
+      # ── contracts ────────
       axon.mail = {
         inherit (smtp) host port;
         login = ph."mail/login";
         token = ph."mail/token";
       };
 
-      sops.secrets = {
-        "mail/login" = { };
-        "mail/token" = { };
-      };
-
+      # ── checks ────────
       warnings = lib.optional (
         monitors == { }
       ) "hosts/${host.name}/host.toml: no host lists monitoring, so alerts aren't mailed";

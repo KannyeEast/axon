@@ -97,6 +97,7 @@ in
       storage = removeAttrs config.axon.disk [ "boot" ];
     in
     {
+      # ── contract ────────
       options.axon.volumes = mkOption {
         type = types.attrsOf types.str;
         readOnly = true;
@@ -114,11 +115,7 @@ in
       };
 
       config = {
-        assertions = lib.mapAttrsToList (label: fs: {
-          assertion = lib.length fs.devices >= minimum.${fs.profile};
-          message = "hosts/${host.name}/host.toml: disk.${label} uses ${fs.profile}, which needs ${toString minimum.${fs.profile}} devices";
-        }) storage;
-
+        # ── settings ────────
         disko.devices.disk = lib.concatMapAttrs disks storage;
 
         # by label, not disko's first device path, so the mount survives replacing that disk
@@ -130,6 +127,12 @@ in
         ) storage;
 
         services.btrfs.autoScrub.enable = true;
+
+        # ── checks ────────
+        assertions = lib.mapAttrsToList (label: fs: {
+          assertion = lib.length fs.devices >= minimum.${fs.profile};
+          message = "hosts/${host.name}/host.toml: disk.${label} uses ${fs.profile}, which needs ${toString minimum.${fs.profile}} devices";
+        }) storage;
       };
     };
 }

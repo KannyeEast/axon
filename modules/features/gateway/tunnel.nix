@@ -16,16 +16,11 @@ in
   flake.modules.nixos.gateway =
     { config, ... }:
     let
-      inherit (config.axon) host routes gateway;
+      inherit (config.axon) gateway host routes;
       public = lib.filterAttrs (_: service: service.route.public) routes;
     in
     {
-      warnings =
-        lib.optional (public != { } && gateway.tunnel == null)
-          "hosts/${host.name}/host.toml: ${lib.concatStringsSep ", " (lib.attrNames public)} would be public, but [gateway] has no tunnel yet";
-
-      sops.secrets."cloudflare/tunnel" = lib.mkIf (gateway.tunnel != null) { };
-
+      # ── service ────────
       services.cloudflared = lib.mkIf (gateway.tunnel != null && public != { }) {
         enable = true;
         tunnels.${gateway.tunnel} = {
@@ -40,5 +35,13 @@ in
           ) public;
         };
       };
+
+      # ── secrets ────────
+      sops.secrets."cloudflare/tunnel" = lib.mkIf (gateway.tunnel != null) { };
+
+      # ── checks ────────
+      warnings =
+        lib.optional (public != { } && gateway.tunnel == null)
+          "hosts/${host.name}/host.toml: ${lib.concatStringsSep ", " (lib.attrNames public)} would be public, but [gateway] has no tunnel yet";
     };
 }

@@ -23,6 +23,7 @@
         ];
     in
     {
+      # ── settings ────────
       virtualisation.docker = {
         # Docker's own iptables rules come before the host firewall, so ports bind 127.0.0.1
         daemon.settings.ip = "127.0.0.1";
@@ -34,8 +35,10 @@
       };
       virtualisation.oci-containers.backend = "docker";
 
+      # ── data ────────
       axon.persist.directories = lib.mkIf config.virtualisation.docker.enable [ "/var/lib/docker" ];
 
+      # ── checks ────────
       assertions = lib.concatLists (
         lib.mapAttrsToList checks config.virtualisation.oci-containers.containers
       );

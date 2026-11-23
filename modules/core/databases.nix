@@ -10,6 +10,7 @@
       dumps = "${config.axon.dumps}/postgresql";
     in
     {
+      # ── contract ────────
       options.axon.databases = lib.mkOption {
         type = lib.types.listOf lib.types.str;
         default = [ ];
@@ -17,6 +18,7 @@
       };
 
       config = lib.mkIf (databases != [ ]) {
+        # ── settings ────────
         services.postgresql = {
           enable = true;
           # on by default: two lines for each checkpoint, every few minutes
@@ -29,6 +31,7 @@
           inherit databases;
         };
 
+        # ── units ────────
         # the data disk may be missing at boot (nofail): never write the dumps to root instead
         systemd.services = lib.genAttrs (map (name: "postgresqlBackup-${name}") databases) (_: {
           unitConfig.RequiresMountsFor = [ dumps ];
@@ -37,6 +40,7 @@
           timerConfig.Persistent = true;
         });
 
+        # ── data ────────
         axon.persist.state.directories = [
           {
             directory = "/var/lib/postgresql";
@@ -47,6 +51,7 @@
         ]
         ++ lib.optional (!volumes ? data) dumps;
 
+        # ── registration ────────
         axon.services.postgres = {
           units = [
             "postgresql"

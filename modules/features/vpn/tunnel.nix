@@ -12,19 +12,7 @@
       imports = [ inputs.vpn-confinement.nixosModules.default ];
 
       config = lib.mkIf (host.class == "server") {
-        axon.vpn.network = {
-          address = namespace.namespaceAddress;
-          subnet = "${namespace.bridgeAddress}/24";
-        };
-
-        axon.links.Mullvad = {
-          url = "https://mullvad.net/en/account";
-          icon = "mullvad.svg";
-        };
-
-        # a wg-quick file from Mullvad's config generator
-        sops.secrets."mullvad/wireguard" = { };
-
+        # ── service ────────
         vpnNamespaces.vpn = {
           wireguardConfigFile = config.sops.secrets."mullvad/wireguard".path;
           # not the bridge's own subnet: the namespace already has that route, and
@@ -39,6 +27,7 @@
           ) (lib.attrValues vpn.confined);
         };
 
+        # ── units ────────
         systemd.services = lib.mapAttrs (_: _: {
           vpnConfinement = {
             enable = true;
@@ -48,6 +37,21 @@
           # folder over its socket makes it look absent, so lookups go to the tunnel's own DNS
           serviceConfig.TemporaryFileSystem = [ "/run/systemd/resolve:ro" ];
         }) vpn.confined;
+
+        # ── secrets ────────
+        # a wg-quick file from Mullvad's config generator
+        sops.secrets."mullvad/wireguard" = { };
+
+        # ── contracts ────────
+        axon.vpn.network = {
+          address = namespace.namespaceAddress;
+          subnet = "${namespace.bridgeAddress}/24";
+        };
+
+        axon.links.Mullvad = {
+          url = "https://mullvad.net/en/account";
+          icon = "mullvad.svg";
+        };
       };
     };
 }

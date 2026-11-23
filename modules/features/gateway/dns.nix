@@ -6,19 +6,13 @@
   flake.modules.nixos.gateway =
     { config, ... }:
     let
-      inherit (config.axon.overlay) network;
       inherit (config.axon) routes;
+      inherit (config.axon.overlay) network;
       port = 3000;
       public = lib.filterAttrs (_: service: service.route.public) routes;
     in
     {
-      axon.persist.state.directories = [
-        "/var/lib/private/AdGuardHome"
-      ];
-
-      # frees port 53
-      services.resolved.settings.Resolve.DNSStubListener = false;
-
+      # ── service ────────
       services.adguardhome = {
         enable = true;
         mutableSettings = false;
@@ -84,11 +78,21 @@
         };
       };
 
+      # frees port 53
+      services.resolved.settings.Resolve.DNSStubListener = false;
+
+      # ── data ────────
+      axon.persist.state.directories = [
+        "/var/lib/private/AdGuardHome"
+      ];
+
+      # ── contracts ────────
       axon.overlay = {
         tcpPorts = [ 53 ];
         udpPorts = [ 53 ];
       };
 
+      # ── registration ────────
       axon.services.dns = {
         units = [ "adguardhome" ];
         route.port = port;

@@ -19,8 +19,7 @@ in
       inherit (config.axon) forge services;
     in
     lib.mkIf (forge.runner != null) {
-      sops.secrets."forge/runner" = { };
-
+      # ── service ────────
       services.forgejo-runner.instances.native = {
         enable = true;
         settings = {
@@ -49,6 +48,7 @@ in
         ];
       };
 
+      # ── units ────────
       # it registers on start, so Forgejo comes first; a switch leaves it alone, as the job that
       # deploys may run on it: a changed runner takes effect on reboot or `systemctl restart`
       systemd.services.forgejo-runner-native = {
@@ -57,6 +57,10 @@ in
         restartIfChanged = false;
       };
 
+      # ── secrets ────────
+      sops.secrets."forge/runner" = { };
+
+      # ── data ────────
       axon.persist.state.directories = [
         "/var/lib/private/forgejo-runner"
       ];

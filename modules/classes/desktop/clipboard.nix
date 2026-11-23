@@ -1,7 +1,6 @@
 # cliphist: clipboard history, text and images; KeePassXC marks its copies secret, so they stay out.
 # Settings: none.
 # Windows: none; `clipboard-pick` lists the history in fuzzel and pastes the pick. Key: Mod+V.
-{ ... }:
 {
   flake.modules.nixos.desktop =
     { config, pkgs, ... }:

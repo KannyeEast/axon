@@ -13,11 +13,6 @@
       hasGithub = hasSecret "forge/github-token";
     in
     lib.mkIf own {
-      sops.secrets = {
-        "forge/renovate-token" = { };
-      }
-      // lib.optionalAttrs hasGithub { "forge/github-token" = { }; };
-
       services.renovate = {
         enable = true;
         schedule = "daily";
@@ -37,5 +32,10 @@
           timezone = config.axon.locale.timezone;
         };
       };
+
+      sops.secrets = {
+        "forge/renovate-token" = { };
+      }
+      // lib.optionalAttrs hasGithub { "forge/github-token" = { }; };
     };
 }

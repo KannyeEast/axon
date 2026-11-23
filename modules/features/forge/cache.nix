@@ -20,14 +20,17 @@ in
       port = 5000;
     in
     lib.mkIf (config.axon.forge.cache != null) {
-      sops.secrets."forge/cache" = { };
-
+      # ── service ────────
       services.harmonia.cache = {
         enable = true;
         signKeyPaths = [ config.sops.secrets."forge/cache".path ];
         settings.bind = "127.0.0.1:${toString port}";
       };
 
+      # ── secrets ────────
+      sops.secrets."forge/cache" = { };
+
+      # ── registration ────────
       axon.services.cache = {
         units = [ "harmonia" ];
         route = {
