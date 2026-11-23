@@ -5,12 +5,12 @@
   flake.modules.nixos.forge =
     { config, ... }:
     let
-      inherit (config.axon) cluster remotes;
+      inherit (config.axon) cluster hasSecret remotes;
       inherit (config.axon.services.git) route;
       secret = name: config.sops.secrets."forge/${name}".path;
       origin = lib.findFirst (remote: remote.origin) null (lib.attrValues remotes);
       own = origin != null && origin.web != null && cluster.domain != null && origin.host == route.host;
-      hasGithub = lib.hasAttrByPath [ "forge" "github-token" ] config.axon.secrets;
+      hasGithub = hasSecret "forge/github-token";
     in
     lib.mkIf own {
       sops.secrets = {

@@ -133,7 +133,7 @@ in
                   default = null;
                   description = "A tile on the gateway's start page, linked to the route.";
                   type = types.nullOr (
-                    types.submodule (dashboard: {
+                    types.submodule {
                       options = {
                         name = mkOption {
                           type = types.str;
@@ -165,13 +165,7 @@ in
                         key = mkOption {
                           type = types.bool;
                           default = false;
-                          description = "The widget needs the service's API key, kept in the gateway host's secrets.json at dashboard/<name>/key.";
-                        };
-                        secrets = mkOption {
-                          type = types.attrsOf types.str;
-                          default = lib.optionalAttrs dashboard.config.key { key = "dashboard/${name}/key"; };
-                          defaultText = "{ key = \"dashboard/<name>/key\"; } with key, else { }";
-                          description = "Widget field -> key in the gateway host's secrets.json that holds its value.";
+                          description = "The widget needs the service's API key, <name>/api-key in the gateway host's secrets.json.";
                         };
                         space = mkOption {
                           type = types.nullOr types.str;
@@ -209,8 +203,16 @@ in
                           );
                         };
                       };
-                    })
+                    }
                   );
+                };
+
+                apiKey = mkOption {
+                  type = types.str;
+                  readOnly = true;
+                  default = "${name}/api-key";
+                  defaultText = "<name>/api-key";
+                  description = "The name of the service's API key in secrets.json, for whatever on this host calls its API.";
                 };
 
                 units = mkOption {

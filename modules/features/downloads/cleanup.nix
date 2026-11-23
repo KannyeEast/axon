@@ -5,16 +5,19 @@
   flake.modules.nixos.downloads =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) host;
+      inherit (config.axon)
+        hasSecret
+        host
+        services
+        ;
       # it reads ./config/config.yaml and writes ./logs
       runtime = "/run/decluttarr";
       files = map (home: "${home}/.config/decluttarr/config.yaml") config.axon.dotfiles;
       secrets = {
-        radarr = "dashboard/radarr/key";
-        sonarr = "dashboard/sonarr/key";
+        radarr = services.radarr.apiKey;
+        sonarr = services.sonarr.apiKey;
       };
-      hasKey = key: lib.hasAttrByPath (lib.splitString "/" key) config.axon.secrets;
-      missing = lib.filter (key: !hasKey key) (lib.attrValues secrets);
+      missing = lib.filter (key: !hasSecret key) (lib.attrValues secrets);
 
       src = pkgs.fetchFromGitHub {
         owner = "ManiMatter";

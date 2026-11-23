@@ -1,13 +1,19 @@
-# exportarr for Sonarr, Radarr, Prowlarr and SABnzbd's queue, each with dashboard/<name>/key, while
+# exportarr for Sonarr, Radarr, Prowlarr and SABnzbd's queue, each with <name>/api-key, while
 # this host lists metrics and a host runs monitoring; they answer on the overlay only.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) cluster host routes;
-      secret = name: "dashboard/${name}/key";
-      hasKey = name: lib.hasAttrByPath (lib.splitString "/" (secret name)) config.axon.secrets;
+      inherit (config.axon)
+        cluster
+        hasSecret
+        host
+        routes
+        services
+        ;
+      secret = name: services.${name}.apiKey;
+      hasKey = name: hasSecret (secret name);
       scraped =
         lib.elem "metrics" host.features
         && lib.any (data: lib.elem "monitoring" data.host.features) (lib.attrValues cluster.hosts);

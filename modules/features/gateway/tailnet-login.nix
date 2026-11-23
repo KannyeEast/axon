@@ -8,15 +8,13 @@
       inherit (config.axon)
         domain
         gateway
+        hasSecret
         sso
         ;
       port = 8099;
       secret = "sso/tailscale";
       issuer = "${sso.provider}/oauth2/openid/tailscale";
-      active =
-        sso.provider != null
-        && gateway.tunnel != null
-        && lib.hasAttrByPath (lib.splitString "/" secret) config.axon.secrets;
+      active = sso.provider != null && gateway.tunnel != null && hasSecret secret;
       # the address is echoed back, so only plain ones are answered
       address = "^acct:[A-Za-z0-9._+-]+@${lib.replaceStrings [ "." ] [ "[.]" ] domain}$";
       answer = lib.toJSON {

@@ -9,6 +9,7 @@
     let
       inherit (config.axon)
         domain
+        hasSecret
         mail
         sso
         volumes
@@ -18,7 +19,7 @@
       ph = config.sops.placeholder;
       port = 8222;
       backups = "${volumes.data or "/var/backup"}/vaultwarden";
-      hasAdmin = lib.hasAttrByPath [ "vaultwarden" "admin-token" ] config.axon.secrets;
+      hasAdmin = hasSecret "vaultwarden/admin-token";
       env =
         lib.optionalAttrs (mail != null) {
           SMTP_USERNAME = mail.login;

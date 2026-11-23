@@ -5,17 +5,21 @@
   flake.modules.nixos.downloads =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) host user;
+      inherit (config.axon)
+        hasSecret
+        host
+        services
+        user
+        ;
       state = "/var/lib/recyclarr";
       dirs = map (home: "${home}/.config/recyclarr") config.axon.dotfiles;
-      secret = name: "dashboard/${name}/key";
-      hasKey = name: lib.hasAttrByPath (lib.splitString "/" (secret name)) config.axon.secrets;
+      secret = name: services.${name}.apiKey;
       names = [
         "radarr"
         "sonarr"
       ];
       # recyclarr.yml reads both keys; one unset fails the whole file
-      missing = lib.filter (name: !hasKey name) names;
+      missing = lib.filter (name: !hasSecret (secret name)) names;
 
       sync = pkgs.writeShellApplication {
         name = "recyclarr-sync";

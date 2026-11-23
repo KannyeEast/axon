@@ -16,10 +16,9 @@
       # here first, later ones replacing earlier ones of the same name
       copied = "/run/n8n-import";
 
-      secret = name: "dashboard/${name}/key";
-      keys = lib.attrNames (
-        lib.filterAttrs (_: secrets: secrets ? key) (config.axon.secrets.dashboard or { })
-      );
+      secret = name: "${name}/api-key";
+      # every service's API key in secrets.json, also of one on another host
+      keys = lib.attrNames (lib.filterAttrs (_: area: area ? "api-key") config.axon.secrets);
       envName = name: "${lib.toUpper (lib.replaceStrings [ "-" ] [ "_" ] name)}_API_KEY";
 
       copy = pkgs.writeShellApplication {

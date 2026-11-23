@@ -46,10 +46,7 @@
           Fallback = true;
         };
         DontCheckDefaultBrowser = true;
-        EnableTrackingProtection = {
-          Category = "strict";
-          BaselineExceptions = true;
-        };
+        EnableTrackingProtection.Category = "standard";
         FirefoxSuggest = {
           WebSuggestions = false;
           SponsoredSuggestions = false;

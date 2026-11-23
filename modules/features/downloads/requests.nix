@@ -7,19 +7,23 @@
   flake.modules.nixos.downloads =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) host routes;
+      inherit (config.axon)
+        hasSecret
+        host
+        routes
+        services
+        ;
       port = 5055;
       filter = 8098;
       state = "/var/lib/seerr";
       id = 400;
       # the workflow reads both from n8n's environment, the filter Jellyfin's
       keys = {
-        seerr = "dashboard/requests/key";
-        jellyfin = "dashboard/jellyfin/key";
+        seerr = services.requests.apiKey;
+        jellyfin = services.jellyfin.apiKey;
       };
-      hasKey = secret: lib.hasAttrByPath (lib.splitString "/" secret) config.axon.secrets;
-      missing = lib.filter (secret: !hasKey secret) (lib.attrValues keys);
-      filtered = routes ? jellyfin && hasKey keys.jellyfin;
+      missing = lib.filter (secret: !hasSecret secret) (lib.attrValues keys);
+      filtered = routes ? jellyfin && hasSecret keys.jellyfin;
     in
     lib.mkIf (config.axon.volumes ? media) (
       lib.mkMerge [

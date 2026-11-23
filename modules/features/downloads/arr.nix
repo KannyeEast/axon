@@ -6,6 +6,7 @@
   flake.modules.nixos.downloads =
     { config, pkgs, ... }:
     let
+      inherit (config.axon) hasSecret services;
       inherit (config.axon.volumes) media;
       # order: after Jellyfin, Seerr and the downloaders; attention: widget values amber above 0
       apps = {
@@ -70,8 +71,8 @@
       logStart = "^\\[(Trace|Debug|Info|Warn|Error|Fatal)\\]";
 
       # without its key in secrets.json, an app keeps the one it made itself
-      secret = name: "dashboard/${name}/key";
-      hasKey = name: lib.hasAttrByPath (lib.splitString "/" (secret name)) config.axon.secrets;
+      secret = name: services.${name}.apiKey;
+      hasKey = name: hasSecret (secret name);
       keyed = lib.filter hasKey [
         "radarr"
         "sonarr"

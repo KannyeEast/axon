@@ -26,6 +26,7 @@ in
       inherit (config.axon)
         cluster
         gateway
+        hasSecret
         host
         limits
         links
@@ -39,13 +40,10 @@ in
       linkGroups = lib.unique (lib.sort (a: b: a < b) (lib.mapAttrsToList (_: link: link.group) links));
 
       envName = secret: "HOMEPAGE_VAR_${lib.toUpper (lib.replaceStrings [ "/" "-" ] [ "_" "_" ] secret)}";
-      hasSecret = secret: lib.hasAttrByPath (lib.splitString "/" secret) config.axon.secrets;
-      hasKeys = service: lib.all hasSecret (lib.attrValues service.dashboard.secrets);
-      waiting = lib.attrNames (lib.filterAttrs (_: service: !hasKeys service) tiles);
-      secrets = lib.unique (
-        lib.concatMap (service: lib.attrValues service.dashboard.secrets) (
-          lib.filter hasKeys (lib.attrValues tiles)
-        )
+      hasKey = service: !service.dashboard.key || hasSecret service.apiKey;
+      waiting = lib.attrNames (lib.filterAttrs (_: service: !hasKey service) tiles);
+      secrets = map (service: service.apiKey) (
+        lib.filter (service: service.dashboard.key && hasSecret service.apiKey) (lib.attrValues tiles)
       );
 
       monitors = lib.attrNames (
@@ -83,12 +81,12 @@ in
           widget = lib.defaultTo { } service.dashboard.widget // instance.widget or { };
           fromPrometheus = widget.type or null == "prometheusmetric";
           widgets =
-            lib.optional (hasKeys service && widget != { } && (fromPrometheus -> prometheus != null)) (
+            lib.optional (hasKey service && widget != { } && (fromPrometheus -> prometheus != null)) (
               {
                 url = if fromPrometheus then prometheus else service.route.internal;
               }
               // lib.defaultTo { } service.dashboard.widget
-              // lib.mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
+              // lib.optionalAttrs service.dashboard.key { key = "{{${envName service.apiKey}}}"; }
               // instance.widget or { }
             )
             # only on the tile that leads to the service itself
@@ -253,7 +251,9 @@ in
 
       warnings =
         lib.optional (waiting != [ ])
-          "hosts/${host.name}/secrets.json: no widget key yet for ${lib.concatStringsSep ", " waiting}, so those tiles show no numbers; add the keys with `just secrets ${host.name}`";
+          "hosts/${host.name}/secrets.json: no ${
+            lib.concatMapStringsSep ", " (name: tiles.${name}.apiKey) waiting
+          }, so those tiles show no numbers; add them with `just secrets ${host.name}`";
 
       sops.secrets = lib.genAttrs secrets (_: { });
       sops.templates."homepage.env" = {

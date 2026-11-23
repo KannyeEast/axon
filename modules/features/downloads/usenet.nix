@@ -6,14 +6,18 @@
   flake.modules.nixos.downloads =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) routed services volumes;
+      inherit (config.axon)
+        hasSecret
+        routed
+        services
+        volumes
+        ;
       state = "/var/lib/sabnzbd";
       finished = "${volumes.media or state}/downloads";
       incomplete = "${volumes.scratch or state}/usenet";
       port = 8080;
       # without it in secrets.json, SABnzbd keeps the key it made itself
-      key = "dashboard/usenet/key";
-      hasKey = lib.hasAttrByPath (lib.splitString "/" key) config.axon.secrets;
+      key = services.usenet.apiKey;
       folders = [
         finished
         incomplete
@@ -35,7 +39,7 @@
             complete_dir = finished;
             # Radarr and Sonarr, in the media group, move and delete what lands here
             permissions = "775";
-            api_key = lib.mkIf hasKey "@api_key@";
+            api_key = lib.mkIf (hasSecret key) "@api_key@";
             # unset, every article goes straight to disk; new installs default to at most this
             cache_limit = "1G";
             # its web UI's one-time tips message, seen
@@ -52,11 +56,11 @@
             };
           };
         };
-        secretValues = lib.mkIf hasKey { "@api_key@" = config.sops.secrets.${key}.path; };
+        secretValues = lib.mkIf (hasSecret key) { "@api_key@" = config.sops.secrets.${key}.path; };
       };
 
       # read by its preStart, which runs as sabnzbd
-      sops.secrets.${key} = lib.mkIf hasKey {
+      sops.secrets.${key} = lib.mkIf (hasSecret key) {
         owner = config.services.sabnzbd.user;
         restartUnits = [ "sabnzbd.service" ];
       };

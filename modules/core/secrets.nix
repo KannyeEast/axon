@@ -19,10 +19,18 @@
         defaultText = "the key structure of secrets.json";
         description = ''
           The shape of secrets.json. sops encrypts values, not keys, so evaluation can see
-          which secrets exist. Read it for data (which networks, which backup targets, which widget keys)
-          and for extras that switch on with their secret. A hard need declares its sops.secrets,
-          and evaluation lists what is missing.
+          which secrets exist. Read it for data (which networks, which backup targets, which API keys);
+          an extra that switches on with its secret reads axon.hasSecret. A hard need declares its
+          sops.secrets, and evaluation lists what is missing.
         '';
+      };
+
+      options.axon.hasSecret = lib.mkOption {
+        type = lib.types.functionTo lib.types.bool;
+        readOnly = true;
+        default = name: lib.hasAttrByPath (lib.splitString "/" name) config.axon.secrets;
+        defaultText = "whether secrets.json holds the secret";
+        description = "Whether secrets.json holds the secret of this name (area/name), for extras that switch on with their secret.";
       };
 
       config = {
@@ -33,9 +41,7 @@
             ours = lib.filter (secret: secret.sopsFile == file && secret.key != "") (
               lib.attrValues config.sops.secrets
             );
-            missing = lib.filter (
-              secret: !lib.hasAttrByPath (lib.splitString "/" secret.key) config.axon.secrets
-            ) ours;
+            missing = lib.filter (secret: !config.axon.hasSecret secret.key) ours;
           in
           [
             {

@@ -247,7 +247,7 @@ Only when nothing existing fits (Rules: use what exists). Then:
   default where one makes sense, and a description.
 - `secrets.json`: every key is `<area>/<name>`, never flat. The area is the service or account
   the secret belongs to (`user`, `tailscale`, `kanidm`, `sso`, `mail`, `forge`), the name says
-  what it is, in kebab-case.
+  what it is, in kebab-case. A service's API key is `<its axon.services name>/api-key`.
 
 ## One way per need
 
@@ -266,7 +266,8 @@ use it.
 | A login | `axon.sso.clients.<name>` with `service`, which fills its name, icon and landing; the service logs in there when `axon.sso.provider` isn't null and keeps its own login otherwise |
 | Mail | `axon.mail`; the service works when it is null. The sender is `<service name>@<domain>` |
 | A secret the file can't do without | declare its `sops.secrets`; evaluation lists what is missing. Every file declares each secret it reads |
-| An extra that switches on with its secret | read `config.axon.secrets`; without the secret the extra is off, with one warning naming the secret |
+| An extra that switches on with its secret | `config.axon.hasSecret "<area>/<name>"`; without the secret the extra is off, with one warning naming the secret |
+| A service's API key | `axon.services.<name>.apiKey`, the secret `<name>/api-key`; `dashboard.key` when the start page's widget needs it |
 | A secret into a NixOS service | what its module offers, in this order: a `…File` option, `LoadCredential`, a sops template as environment file |
 | A secret into an own unit or container | `LoadCredential`; for a container a sops template in `environmentFiles`, never `environment` |
 | A Postgres database | `axon.databases` and the module's own `createLocally` |
@@ -300,8 +301,8 @@ use it.
   `axon.volumes`, `axon.spaces` (a service's own subvolume, capped by `[limits]`), `axon.mail`,
   `axon.sso` (single sign-on), `axon.vpn`, `axon.overlay`, `axon.browser`, `axon.links` (admin
   links on the start page), `axon.databases` (Postgres databases, dumped nightly). Derived values
-  core exposes: `axon.domain`, `axon.routed`, `axon.routes`, `axon.secrets`, `axon.dotfiles`,
-  `axon.remotes`, `axon.home`, `axon.repo`, `axon.laptop`, `axon.nvidia`.
+  core exposes: `axon.domain`, `axon.routed`, `axon.routes`, `axon.secrets`, `axon.hasSecret`,
+  `axon.dotfiles`, `axon.remotes`, `axon.home`, `axon.repo`, `axon.laptop`, `axon.nvidia`.
 - **Only what changes something.** Don't restate an upstream default (read the module's source),
   and don't add an option nothing sets, a helper with one caller or a package nothing runs. The
   framework (`modules/`, published on `main`) serves any machine, not only these hosts: what a

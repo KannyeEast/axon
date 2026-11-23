@@ -7,6 +7,7 @@
     let
       inherit (config.axon)
         domain
+        hasSecret
         host
         routes
         sso
@@ -18,9 +19,7 @@
         "sso/proxy"
         "sso/proxy-cookie"
       ];
-      missing = lib.filter (
-        secret: !lib.hasAttrByPath (lib.splitString "/" secret) config.axon.secrets
-      ) secrets;
+      missing = lib.filter (secret: !hasSecret secret) secrets;
       active = sso.provider != null && missing == [ ];
       gated = lib.attrNames (lib.filterAttrs (_: service: service.route.gate) routes);
       open = lib.attrNames (
