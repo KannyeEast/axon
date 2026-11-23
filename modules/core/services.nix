@@ -57,10 +57,14 @@ in
                   type = types.nullOr (
                     types.submodule (route: {
                       options = {
-                        port = mkOption { type = types.port; };
+                        port = mkOption {
+                          type = types.port;
+                          description = "The port the service listens on.";
+                        };
                         address = mkOption {
                           type = types.str;
                           default = "127.0.0.1";
+                          description = "The address the service listens on.";
                         };
                         host = mkOption {
                           type = types.str;
@@ -75,13 +79,6 @@ in
                           default = "https://${route.config.host}";
                           defaultText = "https://<host>";
                           description = "Where clients reach it, through the gateway.";
-                        };
-                        endpoint = mkOption {
-                          type = types.str;
-                          readOnly = true;
-                          default = "${route.config.address}:${toString route.config.port}";
-                          defaultText = "<address>:<port>";
-                          description = "Where the service itself answers, on this host.";
                         };
                         name = mkOption {
                           type = types.str;
@@ -105,8 +102,10 @@ in
                         internal = mkOption {
                           type = types.str;
                           readOnly = true;
-                          default = "${if route.config.tls then "https" else "http"}://${route.config.endpoint}";
-                          defaultText = "http://<endpoint>, https:// with tls";
+                          default = "${
+                            if route.config.tls then "https" else "http"
+                          }://${route.config.address}:${toString route.config.port}";
+                          defaultText = "http://<address>:<port>, https:// with tls";
                           description = "The service's own address, for callers on this host.";
                         };
                         public = mkOption {
@@ -136,8 +135,14 @@ in
                   type = types.nullOr (
                     types.submodule (dashboard: {
                       options = {
-                        name = mkOption { type = types.str; };
-                        group = mkOption { type = types.str; };
+                        name = mkOption {
+                          type = types.str;
+                          description = "The tile's title.";
+                        };
+                        group = mkOption {
+                          type = types.str;
+                          description = "The start-page group the tile sits in.";
+                        };
                         order = mkOption {
                           type = types.int;
                           default = 100;
@@ -146,6 +151,7 @@ in
                         description = mkOption {
                           type = types.str;
                           default = "";
+                          description = "The line under the tile's title.";
                         };
                         icon = mkOption {
                           type = types.str;
@@ -166,6 +172,11 @@ in
                           default = lib.optionalAttrs dashboard.config.key { key = "dashboard/${name}/key"; };
                           defaultText = "{ key = \"dashboard/<name>/key\"; } with key, else { }";
                           description = "Widget field -> key in the gateway host's secrets.json that holds its value.";
+                        };
+                        space = mkOption {
+                          type = types.nullOr types.str;
+                          default = null;
+                          description = "The volume or space in host.toml [limits] whose use its tile shows, against that limit.";
                         };
                         instances = mkOption {
                           default = { };
@@ -191,6 +202,7 @@ in
                                 description = mkOption {
                                   type = types.nullOr types.str;
                                   default = null;
+                                  description = "Its line under the title instead of the service's.";
                                 };
                               };
                             }
@@ -199,12 +211,6 @@ in
                       };
                     })
                   );
-                };
-
-                space = mkOption {
-                  type = types.nullOr types.str;
-                  default = null;
-                  description = "The volume or space in host.toml [limits] whose use its tile shows, against that limit.";
                 };
 
                 units = mkOption {
@@ -229,6 +235,7 @@ in
                   exclude = mkOption {
                     type = types.listOf types.str;
                     default = [ ];
+                    description = "Left out of the backup, below paths.";
                   };
                 };
               };

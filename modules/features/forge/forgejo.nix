@@ -90,11 +90,10 @@
       };
 
       axon.sso.clients.forgejo = {
-        displayName = "Forgejo";
+        service = "git";
         landing = "${route.url}/user/oauth2/${source}";
         redirects = [ "${route.url}/user/oauth2/${source}/callback" ];
         group = "admins";
-        inherit (services.git.dashboard) icon;
       };
 
       # the admin command line
@@ -113,7 +112,6 @@
       };
 
       axon.services.git = {
-        space = "forgejo";
         units = [
           "forgejo"
           "forgejo-secrets"
@@ -128,6 +126,7 @@
           group = "Infrastructure";
           description = "Git repositories";
           icon = "forgejo.svg";
+          space = "forgejo";
           # Forgejo answers Gitea's API; the key is a token that reads repositories, issues,
           # notifications and the user (n8n's Mirror check lists the owner's repositories with it)
           widget.type = "gitea";

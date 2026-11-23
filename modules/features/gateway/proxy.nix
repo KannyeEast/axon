@@ -64,7 +64,7 @@
             useACMEHost = domain;
             extraConfig =
               lib.optionalString (service.route.gate && config.services.oauth2-proxy.enable) ''
-                forward_auth ${login.endpoint} {
+                forward_auth ${login.address}:${toString login.port} {
                   uri /oauth2/auth
                   @login status 401
                   handle_response @login {

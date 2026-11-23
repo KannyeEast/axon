@@ -1,6 +1,9 @@
-# Every [disk.<label>] in host.toml but disk.boot: one btrfs filesystem each, on one disk or an
-# array. disko has no multi-device type, so the first device carries the filesystem and names the
-# others for mkfs.btrfs; the others get an empty table.
+# Contract: axon.volumes. This host's data disks, name to mountpoint, from every [disk.<label>] in
+# host.toml but disk.boot. A feature that can't work without a volume asserts it; one that can
+# falls back to its state folder. The file also lays the disks out with disko, one btrfs
+# filesystem each, on one disk or an array: disko has no multi-device type, so the first device
+# carries the filesystem and names the others for mkfs.btrfs; the others get an empty table. They
+# mount by label and are scrubbed. axon.profiles, at flake level, lists the btrfs data profiles.
 { lib, ... }:
 let
   inherit (lib) mkOption types;

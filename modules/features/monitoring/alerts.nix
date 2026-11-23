@@ -1,11 +1,11 @@
-# Alert rules over Prometheus' metrics, and Alertmanager to mail them through axon.mail: one
-# mail when an alert fires and again every 12 hours while it lasts; none when it's over. A
-# failed service or timer on any host listing metrics is one (UnitFailed), mailed by
-# _unit-mail.py with the end of its log from Loki and a link to the rest. Watchdog always fires,
-# so a mail comes once a week. Without an account alerts only show in Alertmanager's UI, at
-# alerts.<domain> where silences are set too. Where n8n runs on this host, every alert also goes to
-# its webhook `alerts`, firing and resolved, for workflows that act on them; without a workflow on
-# that path n8n answers 404, which Alertmanager logs per alert.
+# Alert rules over Prometheus' metrics, and Alertmanager to mail them through axon.mail to
+# srv-alert@ the cluster domain, in the page in _page.html: one mail when an alert fires and again
+# every 12 hours while it lasts; none when it's over. A failed service or timer on any host listing
+# metrics is one (UnitFailed), mailed by _unit-mail.py with the end of its log from Loki and a link
+# to the rest. Watchdog always fires, so a mail comes once a week. Without an account alerts only
+# show in Alertmanager's UI, at alerts.<domain> where silences are set too. Where n8n runs on this
+# host, every alert also goes to its webhook `alerts`, firing and resolved, for workflows that act
+# on them; without a workflow on that path n8n answers 404, which Alertmanager logs per alert.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -13,6 +13,7 @@
     let
       inherit (config.axon)
         cluster
+        domain
         host
         mail
         routed
@@ -25,6 +26,29 @@
       downloads = lib.any (
         data: lib.elem "metrics" data.host.features && lib.elem "downloads" data.host.features
       ) (lib.attrValues cluster.hosts);
+      recipient = "srv-alert@${domain}";
+      # the HTML around a mail's content, filled in by the sender: @preview@ (the inbox's preview
+      # line), @label@, @color@, @tint@, @bar@, @title@, @subtitle@, @body@ and @footer@. Sections in
+      # @body@ follow the page's style: a rule above, a small uppercase heading
+      page = lib.readFile ./_page.html;
+      # colours per level: the label's color and tint, and the bar across the top
+      levels = {
+        ok = {
+          color = "#15803D";
+          tint = "#DCFCE7";
+          bar = "#16A34A";
+        };
+        info = {
+          color = "#1D4ED8";
+          tint = "#DBEAFE";
+          bar = "#2563EB";
+        };
+        fail = {
+          color = "#B91C1C";
+          tint = "#FEE2E2";
+          bar = "#DC2626";
+        };
+      };
 
       rule = alert: expr: wait: summary: {
         inherit alert expr;
@@ -32,7 +56,7 @@
         annotations.summary = summary;
       };
 
-      # the page from axon.mail, by level. Watchdog always fires: its weekly mail is good news; a
+      # the page's values by level. Watchdog always fires: its weekly mail is good news; a
       # Reminder (pushed by an n8n workflow) is news; the rest fail
       byLevel =
         {
@@ -41,7 +65,7 @@
           fail,
         }:
         ''{{ if eq .CommonLabels.alertname "Watchdog" }}${ok}{{ else if eq .CommonLabels.alertname "Reminder" }}${info}{{ else }}${fail}{{ end }}'';
-      level = field: byLevel (lib.mapAttrs (_: colors: colors.${field}) mail.levels);
+      level = field: byLevel (lib.mapAttrs (_: colors: colors.${field}) levels);
       since = ''since {{ .StartsAt.Local.Format "Mon 02.01. 15:04" }}'';
       # an alert's unit in Logs Drilldown, from an hour before it fired. html/template escapes the
       # html part's values by itself; the text part's go through urlquery
@@ -75,7 +99,7 @@
             name = "mail";
             email_configs = [
               {
-                to = mail.alert;
+                to = recipient;
                 headers.Subject = "[{{ .CommonLabels.host }}] {{ or .CommonAnnotations.summary .CommonLabels.alertname }}";
                 html =
                   lib.replaceStrings
@@ -117,7 +141,7 @@
                         </div>
                         {{ end }}''
                     ]
-                    mail.page;
+                    page;
                 text = ''
                   {{ range .Alerts }}{{ .Labels.alertname }} on {{ .Labels.host }}: {{ .Annotations.summary }}
                   ${textLinks}${since}
@@ -129,11 +153,12 @@
 
       unitMail = pkgs.writeText "unit-mail.json" (
         lib.toJSON {
-          page = pkgs.writeText "page.html" mail.page;
-          inherit (mail) levels port;
+          page = pkgs.writeText "page.html" page;
+          inherit levels;
+          inherit (mail) port;
           smtp = mail.host;
-          from = "alerts@${mail.domain}";
-          to = mail.alert;
+          from = "alerts@${domain}";
+          to = recipient;
           loki = "http://127.0.0.1:${toString config.services.loki.configuration.server.http_listen_port}";
           grafana = if routed then grafana else "";
           sender = host.name;
@@ -237,7 +262,7 @@
           configuration = {
             global = lib.optionalAttrs (mail != null) {
               smtp_smarthost = "${mail.host}:${toString mail.port}";
-              smtp_from = "alerts@${mail.domain}";
+              smtp_from = "alerts@${domain}";
               smtp_auth_username = "$MAIL_LOGIN";
               smtp_auth_password = "$MAIL_TOKEN";
             };

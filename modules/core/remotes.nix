@@ -51,10 +51,22 @@ in
         type = types.attrsOf (
           types.submodule {
             options = {
-              host = mkOption { type = types.nullOr types.str; };
-              web = mkOption { type = types.nullOr types.str; };
-              origin = mkOption { type = types.bool; };
-              mirror = mkOption { type = types.bool; };
+              host = mkOption {
+                type = types.nullOr types.str;
+                description = "The forge's host name; null when the url is neither ssh nor https.";
+              };
+              web = mkOption {
+                type = types.nullOr types.str;
+                description = "The repository's web address; null when the url is neither ssh nor https.";
+              };
+              origin = mkOption {
+                type = types.bool;
+                description = "Whether it is [repo] origin.";
+              };
+              mirror = mkOption {
+                type = types.bool;
+                description = "Whether it is a mirror: any other remote with a web address.";
+              };
             };
           }
         );

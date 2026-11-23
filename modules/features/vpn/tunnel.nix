@@ -39,10 +39,7 @@
               to = port;
             }) service.ports
           ) (lib.attrValues vpn.confined);
-          # only the host's end of the bridge is let past the kill switch
-          allowedEgress = lib.optional (vpn.hostPorts != [ ]) "${namespace.bridgeAddress}/32";
         };
-        networking.firewall.interfaces.vpn-br.allowedTCPPorts = vpn.hostPorts;
 
         systemd.services = lib.mapAttrs (_: _: {
           vpnConfinement = {

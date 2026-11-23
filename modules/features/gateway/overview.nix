@@ -78,8 +78,8 @@ in
         url = prometheus;
         metrics = [
           {
-            label = "of ${size limits.${service.space}}";
-            query = ''axon_space_used_bytes{host="${host.name}",space="${service.space}"}'';
+            label = "of ${size limits.${service.dashboard.space}}";
+            query = ''axon_space_used_bytes{host="${host.name}",space="${service.dashboard.space}"}'';
             format.type = "bbytes";
           }
         ];
@@ -102,8 +102,8 @@ in
             # on the tile that leads to the service itself, not on those linking elsewhere
             ++ lib.optional (
               prometheus != null
-              && service.space != null
-              && limits ? ${service.space}
+              && service.dashboard.space != null
+              && limits ? ${service.dashboard.space}
               && instance.link or null == null
             ) (spaceWidget service);
         in

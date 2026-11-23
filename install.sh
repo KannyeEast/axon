@@ -1313,7 +1313,7 @@ setSecret() {
     "$(jq -rn --arg k "$1" '$k | split("/") | map("[\(tojson)]") | join("")')"
 }
 
-# whether the config puts the host on the tailnet (modules/core/tailnet.nix): true, false, or
+# whether the config puts the host on the tailnet (modules/core/overlay.nix): true, false, or
 # nothing while it doesn't evaluate
 joinsTailnet() {
   nixx eval "$FLAKE#nixosConfigurations.$HOSTNAME.config.services.tailscale.enable" 2>/dev/null || true
@@ -1617,7 +1617,7 @@ complete() {
 }
 
 # ── data disks ────────
-# disko formats a data disk only while it holds no filesystem (core/storage.nix never wipes one),
+# disko formats a data disk only while it holds no filesystem (core/volumes.nix never wipes one),
 # and then with mkfs.btrfs -f, over any partitions on it. So each one is looked at first: btrfs
 # with its table's label is kept, an empty one is formatted, anything else is wiped on a typed yes
 # or the install stops.

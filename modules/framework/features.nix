@@ -14,6 +14,7 @@ in
           options = {
             description = mkOption {
               type = types.str;
+              description = "What it is for, in a line.";
             };
           };
         }
@@ -28,6 +29,7 @@ in
           options = {
             description = mkOption {
               type = types.str;
+              description = "What it is for, in a line.";
             };
             classes = mkOption {
               type = types.nonEmptyListOf (types.enum (lib.attrNames config.axon.classes));

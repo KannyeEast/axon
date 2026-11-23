@@ -38,11 +38,15 @@ in
         laptop = lib.mkOption {
           type = lib.types.bool;
           readOnly = true;
+          default = (report.hardware.system.form_factor or "") == "laptop";
+          defaultText = "form_factor laptop in facter.json";
           description = "Whether facter reports this machine as a laptop.";
         };
         nvidia = lib.mkOption {
           type = lib.types.bool;
           readOnly = true;
+          default = has "nvidia";
+          defaultText = "an NVIDIA graphics card in facter.json";
           description = "Whether this machine has an NVIDIA graphics card.";
         };
       };
@@ -58,8 +62,6 @@ in
               reportFile
             else
               throw "hosts/${host.name}/facter.json: missing or empty; run install.sh for this host, or nixos-facter on it";
-          axon.laptop = (report.hardware.system.form_factor or "") == "laptop";
-          axon.nvidia = has "nvidia";
         }
 
         # hardware video decoding on Intel GPUs; facter enables graphics, not the VA-API driver

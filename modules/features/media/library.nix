@@ -53,7 +53,6 @@
           ];
 
       axon.services.jellyfin = {
-        space = "media";
         units = [ "jellyfin" ];
         # its log entries' first line; a stack trace follows it
         logStart = "^\\[\\d{2}:\\d{2}:\\d{2}\\.\\d{3}\\] \\[";
@@ -67,6 +66,7 @@
           group = "Media";
           description = "Movies and shows";
           icon = "jellyfin.svg";
+          space = "media";
           widget = {
             type = "jellyfin";
             version = 2;

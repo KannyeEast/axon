@@ -97,8 +97,14 @@ in
             { name, ... }:
             {
               options = {
-                user = mkOption { type = types.str; };
-                group = mkOption { type = types.str; };
+                user = mkOption {
+                  type = types.str;
+                  description = "Owner of the space.";
+                };
+                group = mkOption {
+                  type = types.str;
+                  description = "Group of the space.";
+                };
                 units = mkOption {
                   type = types.listOf types.str;
                   default = [ ];
@@ -108,11 +114,15 @@ in
                   type = types.bool;
                   readOnly = true;
                   default = volumes ? data;
+                  defaultText = "whether the host has a data volume";
+                  description = "Whether it is a subvolume on the data volume.";
                 };
                 path = mkOption {
                   type = types.str;
                   readOnly = true;
                   default = "${volumes.data or "/var/lib"}/${name}";
+                  defaultText = "<data volume>/<name>, else /var/lib/<name>";
+                  description = "Where the space is.";
                 };
               };
             }

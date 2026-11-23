@@ -108,10 +108,8 @@
       };
 
       axon.sso.clients.paperless = {
-        displayName = "Paperless";
-        landing = route.url;
+        service = "docs";
         redirects = [ "${route.url}/accounts/oidc/${provider}/login/callback/" ];
-        inherit (services.docs.dashboard) icon;
       };
 
       axon.spaces.paperless = {
@@ -145,7 +143,6 @@
         ++ [ "/var/lib/redis-paperless" ];
 
       axon.services.docs = {
-        space = "paperless";
         units = [
           "paperless-consumer"
           "paperless-exporter"
@@ -166,6 +163,7 @@
           group = "Files";
           description = "Documents";
           icon = "paperless-ngx.svg";
+          space = "paperless";
           widget.type = "paperlessngx";
           key = true;
         };

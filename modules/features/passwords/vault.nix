@@ -11,7 +11,12 @@
   flake.modules.nixos.passwords =
     { config, ... }:
     let
-      inherit (config.axon) mail sso volumes;
+      inherit (config.axon)
+        domain
+        mail
+        sso
+        volumes
+        ;
       inherit (config.axon.services.vault) route;
       client = sso.clients.vaultwarden;
       ph = config.sops.placeholder;
@@ -44,7 +49,7 @@
         // lib.optionalAttrs (mail != null) {
           SMTP_HOST = mail.host;
           SMTP_PORT = mail.port;
-          SMTP_FROM = "vault@${mail.domain}";
+          SMTP_FROM = "vault@${domain}";
         }
         // lib.optionalAttrs (sso.provider != null) {
           SSO_ENABLED = true;
@@ -68,10 +73,8 @@
       systemd.services.backup-vaultwarden.unitConfig.RequiresMountsFor = [ backups ];
 
       axon.sso.clients.vaultwarden = {
-        displayName = "Vaultwarden";
-        landing = route.url;
+        service = "vault";
         redirects = [ "${route.url}/identity/connect/oidc-signin" ];
-        inherit (config.axon.services.vault.dashboard) icon;
       };
 
       axon.persist.state.directories = [

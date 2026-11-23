@@ -28,7 +28,7 @@ in
         settings = {
           runner.labels = [ "native:host" ];
           server.connections.forgejo = {
-            url = "http://${services.git.route.endpoint}/";
+            url = "${services.git.route.internal}/";
             uuid = forge.runner;
             # the module requires it null when the token comes from a file (token_url below)
             token = null;

@@ -8,7 +8,7 @@
   flake.modules.nixos.files =
     { config, ... }:
     let
-      inherit (config.axon) mail sso;
+      inherit (config.axon) domain mail sso;
       inherit (config.axon.services.photos) route;
       client = sso.clients.immich;
       data = config.axon.spaces.immich.path;
@@ -48,7 +48,7 @@
           # shared albums and password resets by mail; without an account it sends none
           notifications.smtp = lib.mkIf (mail != null) {
             enabled = true;
-            from = "Immich <photos@${mail.domain}>";
+            from = "Immich <photos@${domain}>";
             transport = {
               inherit (mail) host port;
               username._secret = config.sops.templates."immich-mail-login".path;
@@ -73,14 +73,12 @@
       );
 
       axon.sso.clients.immich = {
-        displayName = "Immich";
-        landing = route.url;
+        service = "photos";
         redirects = [
           "${route.url}/auth/login"
           "${route.url}/user-settings"
           "app.immich:///oauth-callback"
         ];
-        inherit (config.axon.services.photos.dashboard) icon;
       };
 
       axon.spaces.immich = {
@@ -135,7 +133,6 @@
         ++ [ "/var/lib/redis-immich" ];
 
       axon.services.photos = {
-        space = "immich";
         units = [
           "immich-machine-learning"
           "immich-server"
@@ -150,6 +147,7 @@
           group = "Files";
           description = "Photos and videos";
           icon = "immich.svg";
+          space = "immich";
           widget = {
             type = "immich";
             version = 2;

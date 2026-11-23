@@ -13,7 +13,10 @@ in
       type = types.attrsOf (
         types.submodule {
           options = {
-            url = mkOption { type = types.str; };
+            url = mkOption {
+              type = types.str;
+              description = "The page's address.";
+            };
             icon = mkOption {
               type = types.str;
               description = "A name from homarr-labs/dashboard-icons, e.g. mullvad.svg.";

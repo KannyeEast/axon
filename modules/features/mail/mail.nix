@@ -3,7 +3,7 @@
 # sends for every service, each from its own address on the cluster domain, so the relay must
 # accept any sender on that domain. Alerts, failed units among them, are mailed by Alertmanager on
 # the host running monitoring to srv-alert@ the cluster domain, filed away by a Sieve rule on the
-# local part, in the page in _page.html.
+# local part.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -29,7 +29,6 @@ in
     let
       inherit (config.axon)
         cluster
-        domain
         host
         smtp
         ;
@@ -39,28 +38,8 @@ in
     {
       axon.mail = {
         inherit (smtp) host port;
-        inherit domain;
         login = ph."mail/login";
         token = ph."mail/token";
-        alert = "srv-alert@${domain}";
-        page = lib.readFile ./_page.html;
-        levels = {
-          ok = {
-            color = "#15803D";
-            tint = "#DCFCE7";
-            bar = "#16A34A";
-          };
-          info = {
-            color = "#1D4ED8";
-            tint = "#DBEAFE";
-            bar = "#2563EB";
-          };
-          fail = {
-            color = "#B91C1C";
-            tint = "#FEE2E2";
-            bar = "#DC2626";
-          };
-        };
       };
 
       sops.secrets = {

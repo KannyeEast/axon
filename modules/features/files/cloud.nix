@@ -13,6 +13,7 @@
     { config, pkgs, ... }:
     let
       inherit (config.axon)
+        domain
         mail
         routed
         services
@@ -67,10 +68,8 @@
         ];
 
         axon.sso.clients.nextcloud = {
-          displayName = "Nextcloud";
-          landing = route.url;
+          service = "cloud";
           redirects = [ "${route.url}/apps/user_oidc/code" ];
-          inherit (services.cloud.dashboard) icon;
         };
 
         axon.spaces.nextcloud = {
@@ -97,7 +96,6 @@
         ];
 
         axon.services.cloud = {
-          space = "nextcloud";
           # nginx is the module's front for PHP; nothing else here runs one
           units = [
             "nextcloud-cron"
@@ -118,6 +116,7 @@
             group = "Files";
             description = "Files";
             icon = "nextcloud.svg";
+            space = "nextcloud";
             widget = {
               type = "nextcloud";
               # four values make labels like "ACTIVE USERS" wrap, and the whole row grows with them
@@ -178,7 +177,7 @@
             mail_smtpport = mail.port;
             mail_smtpauth = true;
             mail_from_address = "cloud";
-            mail_domain = mail.domain;
+            mail_domain = domain;
           };
           secretFile = config.sops.templates."nextcloud.json".path;
         };

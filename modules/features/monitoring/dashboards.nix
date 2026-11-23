@@ -428,22 +428,21 @@
       ];
 
       axon.sso.clients.grafana = {
-        displayName = "Grafana";
+        service = "grafana";
         landing = "${origin}/login/generic_oauth";
         redirects = [ "${origin}/login/generic_oauth" ];
         group = "admins";
-        inherit (services.grafana.dashboard) icon;
       };
 
       axon.services.grafana = {
-        # Loki's logs are the space monitoring fills
-        space = "loki";
         units = [ "grafana" ];
         route.port = port;
         dashboard = {
           name = "Grafana";
           group = "System";
           icon = "grafana.svg";
+          # Loki's logs are the space monitoring fills
+          space = "loki";
           # the overview tables come first in the dashboard, so their panel ids are 1 and 2
           instances = {
             Grafana = {
