@@ -270,7 +270,7 @@ use it.
 | An extra that switches on with its secret | `config.axon.hasSecret "<area>/<name>"`; without the secret the extra is off, with one warning naming the secret |
 | A service's API key | `axon.services.<name>.apiKey`, the secret `<name>/api-key`; `dashboard.key` when the start page's widget needs it |
 | A secret into a NixOS service | what its module offers, in this order: a `…File` option, `LoadCredential`, a sops template as environment file |
-| A secret into an own unit or container | `LoadCredential`; for a container a sops template in `environmentFiles`, never `environment` |
+| A secret into an own unit or container | `LoadCredential`; for a program that reads its keys only from the environment a sops template as `EnvironmentFile`; for a container a sops template in `environmentFiles`, never `environment` |
 | A Postgres database | `axon.databases` and the module's own `createLocally` |
 | State, a static user with `StateDirectory` | the persist entry is the plain path. A mode only through `StateDirectoryMode`, and only where it differs from upstream |
 | State, `DynamicUser` | persist `/var/lib/private/<name>` |

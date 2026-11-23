@@ -7,45 +7,25 @@
     let
       inherit (config.axon)
         hasSecret
+        home
         host
         services
         user
         ;
       state = "/var/lib/recyclarr";
+      dir = "${home}/.config/recyclarr";
       names = [
         "radarr"
         "sonarr"
       ];
-      dirs = map (home: "${home}/.config/recyclarr") config.axon.dotfiles;
       secret = name: services.${name}.apiKey;
       # recyclarr.yml reads both keys; one unset fails the whole file
       missing = lib.filter (name: !hasSecret (secret name)) names;
-
-      sync = pkgs.writeShellApplication {
-        name = "recyclarr-sync";
-        runtimeInputs = [ pkgs.recyclarr ];
-        text = ''
-          ${lib.concatMapStrings (app: ''
-            ${lib.toUpper app}_API_KEY=$(<"$CREDENTIALS_DIRECTORY/${app}")
-            export ${lib.toUpper app}_API_KEY
-          '') names}
-          for dir in ${lib.escapeShellArgs dirs}; do
-            if [ -e "$dir/recyclarr.yml" ]; then
-              # it keeps its state next to settings.yml, so that one is linked in
-              if [ -e "$dir/settings.yml" ]; then
-                ln -sfn "$dir/settings.yml" ${state}/settings.yml
-              else
-                rm -f ${state}/settings.yml
-              fi
-              exec recyclarr sync --config "$dir/recyclarr.yml" "$@"
-            fi
-          done
-          echo "no .config/recyclarr/recyclarr.yml in the checkout, nothing to apply"
-        '';
-      };
     in
     lib.mkIf (config.axon.volumes ? media) {
       # ── units ────────
+      # services.recyclarr takes its config as Nix and runs with ProtectHome=true, so it can't read
+      # the dotfile
       systemd.services.recyclarr = lib.mkIf (missing == [ ]) {
         description = "Apply the Radarr and Sonarr profiles from the checkout";
         after = [
@@ -54,14 +34,18 @@
           "network-online.target"
         ];
         wants = [ "network-online.target" ];
+        unitConfig.ConditionPathExists = "${dir}/recyclarr.yml";
         serviceConfig = {
           Type = "oneshot";
           User = user.name;
           StateDirectory = "recyclarr";
           StateDirectoryMode = "0700";
-          LoadCredential = map (app: "${app}:${config.sops.secrets.${secret app}.path}") names;
-          ExecStart = lib.getExe sync;
+          EnvironmentFile = config.sops.templates."recyclarr.env".path;
           Environment = "RECYCLARR_CONFIG_DIR=${state}";
+          # it reads settings.yml from its config folder, where its state lives. Without one it
+          # writes a default there, which a dangling link would put into the home
+          ExecStartPre = "${pkgs.runtimeShell} -c 'if [ -e ${dir}/settings.yml ]; then ln -sfn ${dir}/settings.yml ${state}/settings.yml; else rm -f ${state}/settings.yml; fi'";
+          ExecStart = "${lib.getExe pkgs.recyclarr} sync --config ${dir}/recyclarr.yml";
         };
       };
       systemd.timers.recyclarr = lib.mkIf (missing == [ ]) {
@@ -73,10 +57,18 @@
       };
       systemd.paths.recyclarr = lib.mkIf (missing == [ ]) {
         wantedBy = [ "paths.target" ];
-        pathConfig.PathChanged = lib.concatMap (dir: [
+        pathConfig.PathChanged = [
           "${dir}/recyclarr.yml"
           "${dir}/settings.yml"
-        ]) dirs;
+        ];
+      };
+
+      # ── secrets ────────
+      sops.secrets = lib.mkIf (missing == [ ]) (lib.genAttrs (map secret names) (_: { }));
+      sops.templates."recyclarr.env" = lib.mkIf (missing == [ ]) {
+        content = lib.concatMapStrings (
+          name: "${lib.toUpper name}_API_KEY=${config.sops.placeholder.${secret name}}\n"
+        ) names;
       };
 
       # ── data ────────
