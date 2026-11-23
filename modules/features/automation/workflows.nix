@@ -15,7 +15,6 @@
       # n8n's DynamicUser can't read the checkout under the user's 0700 home: root copies the files
       # here first, later ones replacing earlier ones of the same name
       copied = "/run/n8n-import";
-      n8n = config.systemd.services.n8n;
 
       secret = name: "dashboard/${name}/key";
       keys = lib.attrNames (
@@ -43,13 +42,12 @@
         ];
         text = ''
           shopt -s nullglob
-          failed=0
           # n8n skips such a file with only a warning, and gives one without an id a new copy each time
           for file in ${copied}/*.json; do
             if ! jq -e 'type == "object" and (.id | type) == "string" and has("nodes") and has("connections")' "$file" >/dev/null; then
-              echo "$(basename "$file"): not a workflow with id, nodes and connections, skipped"
+              # critical, so it is mailed: the workflow isn't running
+              echo "<2>$(basename "$file"): not a workflow with id, nodes and connections, skipped"
               rm "$file"
-              failed=1
             fi
           done
           files=(${copied}/*.json)
@@ -62,7 +60,6 @@
               fi
             done
           fi
-          exit "$failed"
         '';
       };
     in
@@ -89,10 +86,6 @@
         };
       };
 
-      systemd.services.n8n.serviceConfig.EnvironmentFile = lib.mkIf (
-        keys != [ ]
-      ) config.sops.templates."n8n.env".path;
-
       sops.secrets = lib.genAttrs (map secret keys) (_: { });
       sops.templates."n8n.env" = lib.mkIf (keys != [ ]) {
         content = lib.concatMapStrings (
@@ -101,39 +94,17 @@
         restartUnits = [ "n8n.service" ];
       };
 
-      # a broken file fails this unit, not n8n
-      systemd.services.n8n-import = {
-        description = "Import the n8n workflows from the checkout";
-        wantedBy = [ "n8n.service" ];
-        before = [ "n8n.service" ];
-        environment = removeAttrs n8n.environment [ "PATH" ];
-        serviceConfig = {
-          Type = "oneshot";
-          User = "n8n";
-          RuntimeDirectory = "n8n-import";
-          ExecStartPre = "+${lib.getExe copy}";
-          ExecStart = lib.getExe load;
-          inherit (n8n.serviceConfig)
-            DynamicUser
-            StateDirectory
-            LoadCredential
-            NoNewPrivileges
-            PrivateTmp
-            PrivateDevices
-            DevicePolicy
-            ProtectSystem
-            ProtectHome
-            ProtectControlGroups
-            ProtectKernelModules
-            ProtectKernelTunables
-            RestrictAddressFamilies
-            RestrictNamespaces
-            RestrictRealtime
-            RestrictSUIDSGID
-            MemoryDenyWriteExecute
-            LockPersonality
-            ;
-        };
+      # the import is part of every start: as its own unit a switch ran it apart from n8n, which
+      # then kept the workflows it had started with. A failed import (-) doesn't stop n8n
+      systemd.services.n8n.serviceConfig = {
+        EnvironmentFile = lib.mkIf (keys != [ ]) config.sops.templates."n8n.env".path;
+        RuntimeDirectory = "n8n-import";
+        ExecStartPre = [
+          "+${lib.getExe copy}"
+          "-${lib.getExe load}"
+        ];
+        # the import takes about 5 s per workflow
+        TimeoutStartSec = "10min";
       };
       systemd.paths.n8n-workflows = {
         wantedBy = [ "paths.target" ];
@@ -157,7 +128,7 @@
       axon.services.automation = {
         units = [
           "n8n"
-          "n8n-import"
+          "n8n-workflows"
         ];
         route = {
           port = 5678;
