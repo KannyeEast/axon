@@ -1,6 +1,5 @@
-# One encrypted file per host. The SSH host key is the age identity (sops-nix finds it through
-# services.openssh.hostKeys), so there is no key file to lose. The user's private key is itself a
-# secret, so the user edits secrets.json with no extra key material.
+# One encrypted secrets.json per host, opened with the SSH host key as age identity: no key file
+# to lose. The user's private key is a secret in it too, so editing needs no extra key material.
 { inputs, lib, ... }:
 {
   flake.modules.nixos.core =

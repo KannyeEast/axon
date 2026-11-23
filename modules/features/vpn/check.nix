@@ -1,6 +1,5 @@
-# Looks through the tunnel every hour. Its unit stays active even when nothing gets through, say
-# once the subscription has run out, and everything inside just stalls. A failure here is mailed
-# like any other.
+# Looks through the tunnel every hour: its unit stays active when nothing gets through (the
+# subscription ran out), and everything inside just stalls.
 { lib, ... }:
 {
   flake.modules.nixos.vpn =

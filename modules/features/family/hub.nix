@@ -1,8 +1,6 @@
-# Home Assistant at ha.<domain>, tailnet only: the household's hub, with the Companion app on the
-# phones. Its own login guards it (TOTP per user, a ban after failed logins), not the gateway's. The official
-# container on the host's network, listening on 127.0.0.1. Its configuration is HA's own, made in
-# its UI; a first one is seeded only when none exists, with what the gateway needs. The image runs
-# as root inside: its process supervisor requires it.
+# Home Assistant at ha.<domain>: the household's hub, with the Companion app on the phones.
+# Reach: tailnet, its own login (TOTP per user, a ban after failed logins), not the gateway's.
+# In its UI only: its whole configuration, backed up with its state folder.
 {
   flake.modules.nixos.family =
     {
@@ -25,9 +23,8 @@
         script: !include scripts.yaml
         scene: !include scenes.yaml
       '';
-      # HA's own store for its network settings (Settings > System > Network). An http: block in
-      # the YAML would only be taken over as a trial that reverts unless confirmed in the UI within
-      # five minutes; the store takes every field, defaults included.
+      # HA's store for Settings > System > Network: an http: block in the YAML is only a trial that
+      # reverts unless confirmed in the UI within five minutes; the store takes every field
       network = {
         server_host = [ "127.0.0.1" ];
         server_port = port;

@@ -1,7 +1,5 @@
-# oauth2-proxy at login.<domain>: the login in front of every route with gate (by default every
-# tailnet-only one), for the provider's (axon.sso) admins group. The gateway (proxy.nix) asks it on
-# each request to a gated route; one cookie for the whole domain covers them all. Without a provider or its secrets (sso/proxy, the
-# client secret, and sso/proxy-cookie) it doesn't run and gated routes stay open, with a warning.
+# oauth2-proxy at login.<domain>: the gateway's login in front of every gated route, for admins.
+# Reach: tailnet, no login.
 { lib, ... }:
 {
   flake.modules.nixos.gateway =
@@ -69,15 +67,13 @@
           code-challenge-method = "S256";
           cookie-samesite = "lax";
           skip-provider-button = true;
-          # where the login may send the browser back to
           whitelist-domain = ".${domain}";
           # Kanidm lists groups as <name>@<its domain>
           allowed-group = "${client.group}@${lib.removePrefix "https://" sso.provider}";
         };
       };
 
-      # it reads the provider's discovery document through the gateway at start and exits without
-      # it, so it retries until Kanidm is up
+      # it exits when the provider's discovery document isn't there yet, so it retries
       systemd.services.oauth2-proxy = lib.mkIf active (
         let
           units = [ "caddy.service" ] ++ lib.optional (sso.unit != null) sso.unit;

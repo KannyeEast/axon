@@ -1,7 +1,5 @@
-# Mullvad on demand on desktops: the app connects when asked (tray, or `mullvad connect`), not at
-# boot, and leaves the network alone while disconnected. Login, location and LAN sharing are
-# runtime settings it keeps in /etc/mullvad-vpn. `mullvad-country` steps the location through
-# Mullvad's own country list (next/prev [n]), toggles the tunnel and prints the state, for a dial.
+# Mullvad: the VPN on demand, connected when asked (tray or `mullvad connect`), not at boot.
+# Settings: none; login, location and LAN sharing are set in the app and kept in /etc/mullvad-vpn.
 { lib, ... }:
 {
   flake.modules.nixos.vpn =
@@ -26,6 +24,7 @@
         }
       '';
 
+      # for a dial: steps the country (next/prev [n]), toggles the tunnel, prints the state
       country = pkgs.writeShellApplication {
         name = "mullvad-country";
         runtimeInputs = [
@@ -100,8 +99,7 @@
         };
       };
 
-      # the login and this machine's device key: without them every boot registers a new
-      # device, and an account has five
+      # login and device key: else every boot registers a new device, and an account has five
       axon.persist.state.directories = [
         {
           directory = "/etc/mullvad-vpn";

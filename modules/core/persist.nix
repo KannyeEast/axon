@@ -1,6 +1,6 @@
-# Contract: axon.persist. Root is replaced on every boot; what must survive is declared here by
-# the module that creates it. /home is its own subvolume, never rolled back. Machine state stays
-# on the boot disk; service state goes to the host's state volume when it has one.
+# Contract: axon.persist. What survives the root wiped on every boot, declared by the module that
+# creates it: machine state on the boot disk, service state on the state volume where there is one.
+# /home is its own subvolume, never rolled back.
 { inputs, lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -67,7 +67,6 @@ in
         # the journal stays small on the boot disk; with a monitoring host Loki keeps 30 days
         services.journald.settings.Journal.SystemMaxUse = "1G";
 
-        # the backend; nothing outside this file depends on it
         environment.persistence = {
           "/persist" = {
             hideMounts = true;
@@ -82,8 +81,7 @@ in
           };
         };
 
-        # impermanence needs its sources mounted early; a missing state disk (nofail) only leaves
-        # its services without their state
+        # impermanence needs these in the initrd; a missing state disk (nofail) only costs its services their state
         fileSystems = {
           "/persist".neededForBoot = true;
         }
@@ -91,14 +89,14 @@ in
           ${state}.neededForBoot = true;
         };
 
-        # systemd starts DynamicUser services only under a 0700 /var/lib/private; impermanence copies
-        # each parent's mode from the persisted copy on every activation, so that copy sets it
+        # systemd starts DynamicUser services only under a 0700 /var/lib/private; impermanence
+        # copies each parent's mode from its persisted copy on every activation, so that copy sets it
         systemd.tmpfiles.rules = [
           "d /persist/var/lib/private 0700 root root -"
         ]
         ++ lib.optionals (state != null) [ "d ${state}/var/lib/private 0700 root root -" ];
 
-        # find prunes old roots in the rollback; btrfs, coreutils and mount are in the initrd already
+        # find prunes old roots in the rollback; btrfs, coreutils and mount are in the initrd
         boot.initrd.systemd.initrdBin = [ pkgs.findutils ];
 
         boot.initrd.systemd.services.rollback = {

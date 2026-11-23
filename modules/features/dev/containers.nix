@@ -1,6 +1,5 @@
 # Rootless Docker for the owner: the daemon is a user unit, so a container's root is the user and
-# no account joins the docker group. `docker compose` comes with the package. The sandbox
-# (dev/sandbox.nix) runs on it.
+# no account joins the docker group.
 { lib, ... }:
 {
   flake.modules.nixos.dev =
@@ -17,11 +16,9 @@
       }
 
       (lib.mkIf (config.axon.host.class == "desktop") {
-        # DOCKER_HOST for shells; the daemon's socket is in $XDG_RUNTIME_DIR
         virtualisation.docker.rootless.setSocketVariable = true;
 
-        # nixpkgs' autoPrune is for the rootful daemon only; this runs as the user, on nh's schedule.
-        # Untagged images and the build cache go; tagged images, containers and volumes stay
+        # nixpkgs' autoPrune is for the rootful daemon only; this runs as the user, on nh's schedule
         systemd.user.services.docker-prune = {
           description = "Remove untagged Docker images and the build cache";
           wants = [ "docker.service" ];

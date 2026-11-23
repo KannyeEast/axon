@@ -1,11 +1,5 @@
-# Prometheus: scrapes the exporters on every host listing the metrics feature, Postgres's on servers
-# listing files too, and the download stack's (downloads/exporters.nix) on those listing downloads,
-# and keeps 90 days.
-# Grafana reads it, and the gateway's start page over the overlay, without a login; it has no
-# route of its own. The blackbox exporter checks every route on its health path: "service" asks the
-# service directly (any answer below 500 means it runs). Where this host runs the gateway, "route"
-# also calls https://<name>.<domain> the way clients do (DNS, Caddy, certificate, the tunnel for
-# public ones), which must answer.
+# Prometheus: the exporters of every host listing metrics and a probe of every route, kept 90 days.
+# No route of its own: Grafana and the start page read it over the overlay, without a login.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -31,8 +25,7 @@
         lib.any (disk: (disk.mounts or { }) ? media) (lib.attrValues (removeAttrs data.disk [ "boot" ]))
       ) downloaders;
 
-      # every series carries the host it's about, and its class: alerts that a machine is off
-      # only make sense for servers
+      # class: alerts that a machine is off only make sense for servers
       job = name: exporterPort: hosts: {
         job_name = name;
         static_configs = lib.mapAttrsToList (name: data: {

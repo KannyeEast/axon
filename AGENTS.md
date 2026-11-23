@@ -174,7 +174,7 @@ Every option has a `description`. A derived value is read-only with a `default` 
 it lives in its feature. Core names no feature and holds no provider's format.
 
 **Core or class settings** (`boot.nix`, `locale.nix`, `fonts.nix`).
-Slots: `settings`, `units`, `data`, `checks`. Header: one to three lines saying what the file does.
+Slots: `settings`, `units`, `data`, `checks`. Header: one or two lines saying what the file does.
 
 **Server service.**
 Slots: `service`, `units`, `secrets`, `login`, `data`, `contracts`, `registration`, `checks`.
@@ -205,7 +205,7 @@ themselves in niri; small tool windows, pickers and popups without a parent get 
 
 **Producer or helper** (a file that produces a contract value, or holds only own units:
 `mail.nix`, `vpn/check.nix`). Slots as they apply, in the order of the table. Header: what it
-does, in one to three lines.
+does, in one or two lines.
 
 **Data file** (`_<name>.<ext>`). Its first comment names the module that reads it. Sections get
 the ruler in the file's comment style.
@@ -272,6 +272,7 @@ use it.
 | A Postgres database | `axon.databases` and the module's own `createLocally` |
 | State, a static user with `StateDirectory` | the persist entry is the plain path. A mode only through `StateDirectoryMode`, and only where it differs from upstream |
 | State, `DynamicUser` | persist `/var/lib/private/<name>` |
+| A static user where the module gives none (a container that keeps data, a service taken off `DynamicUser`) | its own system user with a fixed id from 400 up, declared next to it; NixOS refuses a duplicate id |
 | State, a subfolder upstream creates with tmpfiles | its own persist entry |
 | Which persist list | a service's state: `axon.persist.state.directories` (the state volume where a host has one); the system's own: `axon.persist.directories` (the boot disk). In the file that creates the state |
 | User data (files, photos, documents) | its own `axon.spaces` entry, with `units` naming every unit that uses it |
@@ -309,11 +310,19 @@ use it.
   program, a unit, a script, an option, an app id, a path) means searching the whole repository
   for it, `home/` and `hosts/*/home` included, and updating every place in the same change.
 - **Formatting**: `nix fmt`. Never align `=` or values with extra spaces, in any file type.
-- **Comments describe the code as it is.** A header in the form of the file's kind. Inline only
-  for what a reader can't see from the code: a quirk, a reason, a non-obvious value. A workaround
-  for a tool, driver or service says on its lines what breaks without them. Plain statements, a
-  line or two; never history, rejected alternatives or reasoning from a conversation, which
-  belong in the commit message. Comments never outgrow the code they describe.
+- **Comments are short and few.** They describe the code as it is: never history, rejected
+  alternatives or reasoning from a conversation, which belong in the commit message.
+  - *Header*: the lines of the file's kind and nothing else, each one line. At most four for a
+    server service, three for a desktop program or a core contract, two for any other file, one
+    for a data file.
+  - *Inline*: one line above the line it explains, for what a reader can't see from the code: a
+    reason, a quirk, a non-obvious value. Two lines only for a workaround, which says what breaks
+    without it. A few words after a value, on its line, may label it.
+  - *Never*: what the code already says (an option's name, what a call does), how the pieces fit
+    together, an example the code shows, a comment on a `let` name or an option that has a
+    `description`.
+  - A reason that needs more than two lines is a row in DECISIONS.md.
+  - An option's `description` is one sentence.
 - **Strings a person reads are terse.** Errors read `<file or option>: <what is wrong>` and say
   what to do where possible. Alert texts, warnings and descriptions say what it is in as few
   words as possible, and nothing the reader already knows (the alert's name, how often it comes,

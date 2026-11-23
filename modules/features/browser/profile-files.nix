@@ -1,23 +1,5 @@
-# Profile files Zen rewrites itself, kept as dotfiles in <profile>/declared/ and applied while Zen
-# is closed: at activation, at login before the session starts, and when one changes in the
-# checkout (then as soon as Zen is closed). A missing file leaves Zen's alone; a listed set is
-# the whole set. Each holds the shape of the Zen file it goes into:
-#   containers.json     containers.json, replaces it (lastUserContextId raised to the highest id)
-#   search.json         search.json without the default engines' hashes, which it gets here;
-#                       replaces search.json.mozlz4
-#   sessions.json       {spaces, tabs, folders, groups}: rows of zen-sessions.jsonlz4, merged by
-#                       uuid, zenSyncId and id. Spaces and folders not listed go; pinned tabs not
-#                       listed become normal tabs after the listed ones. Only into a file Zen has
-#                       made
-#   live-folders.json   rows of zen-live-folders.jsonlz4, merged by id, the rest go; Zen keeps its
-#                       own state. Only once the sessions file exists
-#   space-routing.json  {routes, defaultRouteExternal} of zen-space-routing.jsonlz4, routes merged
-#                       by id, the rest go
-#   storage-sync/<extension id>.json
-#                       merged over that extension's blob in storage-sync-v2.sqlite (storage.sync);
-#                       DeArrow's licenseKey there is its free key, not a secret
-# live-folders.json and space-routing.json become Zen's file as they are where it has none. The
-# merges follow the zen-browser flake's (hm-module/session), without split views.
+# Profile files Zen rewrites itself, kept as dotfiles in .config/zen/<profile>/declared/ and applied
+# while Zen is closed: at activation, before the session starts, and once Zen closes after a change.
 { lib, ... }:
 {
   flake.modules.homeManager.browser =
@@ -29,7 +11,6 @@
     }:
     let
       inherit (config.programs.zen-browser) profilesPath;
-      # the checkout's declared folders, shared and this host's, for every profile
       watched = lib.concatMap (
         profile:
         lib.concatMap (home: [
@@ -38,9 +19,7 @@
         ]) osConfig.axon.dotfiles
       ) (lib.attrNames config.programs.zen-browser.profiles);
 
-      # jq filters for merge below; each reads the declared file as $d. upsert keeps the rows of .
-      # in their order, puts a declared row's fields (f over [row, declared]) over the row with its
-      # key, then appends the declared rows that are new; only drops the rows $decl doesn't list
+      # each filter reads the declared file as $d; upsert's f merges [row, declared row]
       filter =
         name: body:
         pkgs.writeText "zen-${name}.jq" ''
@@ -54,6 +33,7 @@
           | ${body}
         '';
 
+      # sessions.json: merged by uuid, zenSyncId and id, only into a file Zen has made
       sessions = filter "sessions" ''
         .spaces = (.spaces // []) | .tabs = (.tabs // [])
         | .folders = (.folders // []) | .groups = (.groups // [])
@@ -102,13 +82,14 @@
         | .groups |= sort_by(.index // 0)
       '';
 
-      # Zen keeps a live folder's dismissed items and tab state; the ones not listed go
+      # live-folders.json: merged by id, the rest go; Zen keeps dismissed items and tab state
       liveFolders = filter "live-folders" ''
         (if type == "array" then . else [] end)
         | upsert($d; .id; .[0] * (.[1] | del(.dismissedItems, .tabsState)))
         | only($d; .id)
       '';
 
+      # space-routing.json: {routes, defaultRouteExternal}, routes merged by id, the rest go
       routing = filter "space-routing" ''
         (if type == "object" then . else {} end) as $existing
         | {
@@ -265,7 +246,7 @@
         };
       };
 
-      # an edit in the checkout applies once Zen is closed; a later edit while this waits is read too
+      # an edit applies once Zen is closed; a later edit while this waits is read too
       systemd.user.paths.zen-declared-changed = {
         Unit.Description = "Watch Zen's declared profile files";
         Install.WantedBy = [ "default.target" ];

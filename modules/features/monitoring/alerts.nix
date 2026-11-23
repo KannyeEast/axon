@@ -1,11 +1,6 @@
-# Alert rules over Prometheus' metrics, and Alertmanager to mail them through axon.mail to
-# srv-alert@ the cluster domain, in the page in _page.html: one mail when an alert fires and again
-# every 12 hours while it lasts; none when it's over. A failed service or timer on any host listing
-# metrics is one (UnitFailed), mailed by _unit-mail.py with the end of its log from Loki and a link
-# to the rest. Watchdog always fires, so a mail comes once a week. Without an account alerts only
-# show in Alertmanager's UI, at alerts.<domain> where silences are set too. Where n8n runs on this
-# host, every alert also goes to its webhook `alerts`, firing and resolved, for workflows that act
-# on them; without a workflow on that path n8n answers 404, which Alertmanager logs per alert.
+# Alertmanager at alerts.<domain>: the alert rules over Prometheus, mailed to srv-alert@<domain>.
+# Reach: tailnet, the gateway's login.
+# In its UI only: silences, not backed up.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -26,12 +21,9 @@
       downloads = lib.any (
         data: lib.elem "metrics" data.host.features && lib.elem "downloads" data.host.features
       ) (lib.attrValues cluster.hosts);
+      # its own local part, so a rule at the mailbox can file alerts away
       recipient = "srv-alert@${domain}";
-      # the HTML around a mail's content, filled in by the sender: @preview@ (the inbox's preview
-      # line), @label@, @color@, @tint@, @bar@, @title@, @subtitle@, @body@ and @footer@. Sections in
-      # @body@ follow the page's style: a rule above, a small uppercase heading
       page = lib.readFile ./_page.html;
-      # colours per level: the label's color and tint, and the bar across the top
       levels = {
         ok = {
           color = "#15803D";
@@ -56,8 +48,7 @@
         annotations.summary = summary;
       };
 
-      # the page's values by level. Watchdog always fires: its weekly mail is good news; a
-      # Reminder (pushed by an n8n workflow) is news; the rest fail
+      # Watchdog always fires, so its weekly mail is good news; a Reminder (from n8n) is news
       byLevel =
         {
           ok,
@@ -67,13 +58,11 @@
         ''{{ if eq .CommonLabels.alertname "Watchdog" }}${ok}{{ else if eq .CommonLabels.alertname "Reminder" }}${info}{{ else }}${fail}{{ end }}'';
       level = field: byLevel (lib.mapAttrs (_: colors: colors.${field}) levels);
       since = ''since {{ .StartsAt.Local.Format "Mon 02.01. 15:04" }}'';
-      # an alert's unit in Logs Drilldown, from an hour before it fired. html/template escapes the
-      # html part's values by itself; the text part's go through urlquery
+      # html/template escapes the html part's values itself; the text part's need urlquery
       logs =
         escape:
         "${grafana}/a/grafana-lokiexplore-app/explore/unit/{{ ${escape ".Labels.unit"} }}/logs?var-filters=unit%7C%3D%7C{{ ${escape ".Labels.unit"} }}&var-filters=host%7C%3D%7C{{ ${escape ".Labels.host"} }}&from={{ (.StartsAt.Add -3600000000000).UnixMilli }}&to=now";
       htmlLogs = lib.replaceStrings [ "&" ] [ "&amp;" ] (logs lib.id);
-      # an alert's links: its unit's logs where Grafana is routed, and its link annotation
       hasLinks = if routed then "or .Labels.unit .Annotations.link" else ".Annotations.link";
       button =
         href: text:
@@ -234,8 +223,7 @@
                   (rule "DownloadsPaused" "sabnzbd_queue_length > 0 and sabnzbd_paused == 1" "2h"
                     "{{ $value }} queued, paused"
                   )
-                  # the apps' own health checks: indexers or download client failing, missing folders; their
-                  # updates come with the system
+                  # the apps' own health checks; their updates come with the system
                   (rule "ArrUnhealthy"
                     ''{__name__=~"(sonarr|radarr|prowlarr)_system_health_issues",type=~"warning|error",source!="UpdateCheck"} == 1''
                     "1h"
@@ -254,8 +242,7 @@
           listenAddress = "127.0.0.1";
           inherit port;
           webExternalUrl = if config.axon.routed then config.axon.services.alerts.route.url else null;
-          # Alertmanager forgets a sent mail after this long and then sends it again, so it must
-          # outlast the longest repeat below
+          # a mail it has forgotten is sent again, so this must outlast the longest repeat
           extraFlags = [ "--data.retention=8760h" ];
           # $MAIL_* are filled in from the environment file at start
           environmentFile = if mail != null then config.sops.templates."alertmanager.env".path else null;
@@ -268,7 +255,6 @@
             };
             route = {
               receiver = receiver.name;
-              # one mail per kind of alert and host, listing every service it hits
               group_by = [
                 "alertname"
                 "host"
@@ -279,8 +265,7 @@
                   matchers = [ ''alertname="Watchdog"'' ];
                   repeat_interval = "168h";
                 }
-                # a full disk stays full until someone frees it: one mail, the next only once it
-                # filled up again
+                # a full disk stays full until freed: one mail, the next once it filled up again
                 {
                   matchers = [ ''alertname=~"DiskFull|SpaceFull"'' ];
                   repeat_interval = "8760h";
@@ -291,6 +276,7 @@
                 receiver = "unit";
               };
             };
+            # n8n answers 404, logged per alert, while no workflow listens on its alerts path
             receivers =
               map
                 (
@@ -373,7 +359,7 @@
       ];
 
       axon.services.alerts = {
-        units = [ "alertmanager" ];
+        units = [ "alertmanager" ] ++ lib.optional (mail != null) "unit-mail";
         route.port = port;
       };
     };

@@ -1,10 +1,6 @@
-# The start page (Homepage) at home.<domain>: a tile per service with a dashboard entry, grouped,
-# linked to its route, with a status dot and, where it sets a widget, live numbers (amber where the
-# widget's highlight marks one). A tile shows no numbers until its key is in secrets.json (some
-# services make theirs only once they run). A service whose space [limits] caps shows its
-# use against that limit, from Prometheus (metrics/spaces.nix), which prometheusmetric widgets
-# query too. Below the tiles, axon.links and [gateway] links; _start-page.js adds the header,
-# attention bar, group chips and the tiles' logs links.
+# Homepage at home.<domain>: the start page, a tile per service with its status and numbers.
+# Reach: tailnet, the gateway's login.
+# By hand: add a tile's key with `just secrets` once its service has made it.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -42,7 +38,6 @@ in
       tiles = lib.filterAttrs (_: service: service.dashboard != null) routes;
       linkGroups = lib.unique (lib.sort (a: b: a < b) (lib.mapAttrsToList (_: link: link.group) links));
 
-      # "dashboard/radarr/key" -> HOMEPAGE_VAR_DASHBOARD_RADARR_KEY
       envName = secret: "HOMEPAGE_VAR_${lib.toUpper (lib.replaceStrings [ "/" "-" ] [ "_" "_" ] secret)}";
       hasSecret = secret: lib.hasAttrByPath (lib.splitString "/" secret) config.axon.secrets;
       hasKeys = service: lib.all hasSecret (lib.attrValues service.dashboard.secrets);
@@ -53,8 +48,6 @@ in
         )
       );
 
-      # Prometheus (its default port) on a monitoring host, this host's own where it has one; the
-      # values exist only while this host lists metrics
       monitors = lib.attrNames (
         lib.filterAttrs (_: data: lib.elem "monitoring" data.host.features) cluster.hosts
       );
@@ -65,7 +58,6 @@ in
           "http://127.0.0.1:9090"
         else
           "http://${lib.head monitors}:9090";
-      # "7T" -> "7 TiB"
       size =
         limit:
         let
@@ -99,7 +91,7 @@ in
               // lib.mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
               // instance.widget or { }
             )
-            # on the tile that leads to the service itself, not on those linking elsewhere
+            # only on the tile that leads to the service itself
             ++ lib.optional (
               prometheus != null
               && service.dashboard.space != null
@@ -122,7 +114,6 @@ in
           a.service.dashboard.order < b.service.dashboard.order
         else
           a.service.dashboard.name < b.service.dashboard.name;
-      # every tile with its service and group, in order; an instance may sit in a group of its own
       entries = lib.concatMap (
         { name, service }:
         map
@@ -141,9 +132,7 @@ in
       groups = lib.unique (lib.sort (a: b: a < b) (map (entry: entry.group) entries));
       inGroup = group: map (entry: entry.tile) (lib.filter (entry: entry.group == group) entries);
 
-      # Each group has its own rows, except groups of one tile: those share a row at the bottom,
-      # above the groups of graphs. The groups named here come first, the rest alphabetically.
-      # _start-page.css sets how many tiles fit a row; Homepage's columns only apply without it
+      # _start-page.css sets the tiles per row; this applies only without it
       columns = 4;
       first = [
         "Media"
@@ -151,11 +140,10 @@ in
         "Home"
         "Infrastructure"
       ];
-      # groups of graphs: last, two per row, so they get the width
+      # groups of graphs, two per row so they get the width
       wide = [ "System" ];
       narrow = lib.subtractLists wide groups;
       ordered = lib.filter (group: lib.elem group narrow) first ++ lib.subtractLists first narrow;
-      # for the subtitle: tiles outside the graph groups, and the machines this repository builds
       serviceCount = lib.length (lib.concatMap inGroup narrow);
       hostCount = lib.length (lib.attrNames config.axon.cluster.hosts);
       single = group: lib.length (inGroup group) == 1;
@@ -182,12 +170,9 @@ in
             // lib.genAttrs row (_: grid 1)
           );
 
-      # Homepage shows groups in the order of their layout entries, and Nix writes attribute sets
-      # sorted, so the layout is a list of one-entry sets, which Homepage reads in order
+      # Homepage keeps the order of the layout's entries and Nix sorts attribute sets
       layout = map (row: lib.listToAttrs [ (layoutOf row) ]) rows;
 
-      # tile name -> its service in Grafana's Logs Drilldown (service_name from metrics/logs.nix),
-      # for every tile outside the graph groups, while this host ships its logs and Grafana is routed here
       logs = lib.optionalAttrs (lib.elem "metrics" host.features && routes ? grafana) (
         lib.mergeAttrsList (
           map (
@@ -216,7 +201,6 @@ in
 
         settings = {
           title = "Homelab";
-          # the subtitle under the title in _start-page.js's header
           description = "${toString serviceCount} services, ${toString hostCount} host${
             lib.optionalString (hostCount != 1) "s"
           }";
@@ -237,7 +221,6 @@ in
             { ${rowName row} = map (group: { ${group} = inGroup group; }) row; }
         ) rows;
 
-        # one list per link group, the groups and the links in each alphabetical
         bookmarks = map (group: {
           ${group} = lib.mapAttrsToList (name: link: {
             ${name} = [
@@ -254,7 +237,7 @@ in
       systemd.services.homepage-dashboard = {
         # Next.js listens on every address unless told otherwise
         environment.HOSTNAME = "127.0.0.1";
-        # Next.js exits with 143 on SIGTERM; without this every restart counts as a failure and alerts
+        # Next.js exits 143 on SIGTERM; without this every restart counts as a failure and alerts
         serviceConfig.SuccessExitStatus = [ 143 ];
       };
 

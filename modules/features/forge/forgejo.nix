@@ -1,12 +1,7 @@
-# Forgejo at git.<domain>: git repositories on the tailnet, its own login, sign-up off. Without a
-# gateway on this host it stays on localhost. Repositories, attachments and avatars live on the
-# data volume (or in /var/lib without one) and are backed up as files; the database is in Postgres,
-# dumped with the host's others (axon.databases). Kept only in its UI, in that database: users,
-# tokens, push mirrors, Actions secrets. Git over SSH goes through the host's own sshd as
-# forgejo@git.<domain>. First account by hand after install:
-#   sudo -u forgejo forgejo --work-path <state dir> admin user create --admin --username <name> --email <address> --random-password
-# With a login provider (axon.sso) its admins log in there too: the first time, Forgejo asks for the
-# local password once to link the two; nobody signs up through it, and the password form stays.
+# Forgejo at git.<domain>: git repositories, also over SSH as forgejo@git.<domain>.
+# Reach: tailnet, its own login with sign-up off; axon.sso's for its admins once linked.
+# In its UI only: users, tokens, push mirrors and Actions secrets, in its database, dumped nightly.
+# By hand: `sudo -u forgejo forgejo --work-path <state dir> admin user create --admin --username <name> --email <address> --random-password`.
 { lib, ... }:
 {
   flake.modules.nixos.forge =
@@ -26,7 +21,6 @@
       port = 3030;
       # attachments, avatars, LFS objects, packages
       data = "${cfg.stateDir}/data";
-      # the forges the repository is mirrored to, from cluster.toml [repo]
       mirrors = lib.unique (
         lib.mapAttrsToList (_: remote: remote.host) (lib.filterAttrs (_: remote: remote.mirror) remotes)
       );
@@ -46,8 +40,7 @@
           service.DISABLE_REGISTRATION = true;
           session.COOKIE_SECURE = routed;
           log = {
-            # no router log (a line per request, a "slow" warning for each over 3 s, such as clones);
-            # errors still reach the default log
+            # no router log, a line per request; errors still reach the default log
             LOGGER_ROUTER_MODE = "";
             # at info it logs a database ping for every health check
             LEVEL = "Warn";
@@ -57,10 +50,8 @@
 
       axon.databases = [ cfg.database.name ];
 
-      # the login source, made or updated before every start; Forgejo keeps it in its database.
-      # Making it fetches the provider's discovery document; any failure leaves the source as it
-      # was and Forgejo starts anyway. The secret is on the command line for the moment it runs: the
-      # command takes it no other way
+      # the login source, made or updated before every start; a failure leaves it as it was. The
+      # secret is on the command line while it runs: the command takes it no other way
       systemd.services.forgejo = lib.mkIf (sso.provider != null) {
         # the client's discovery document only exists once the provider made it
         after = lib.optional (sso.unit != null) sso.unit;
@@ -127,8 +118,8 @@
           description = "Git repositories";
           icon = "forgejo.svg";
           space = "forgejo";
-          # Forgejo answers Gitea's API; the key is a token that reads repositories, issues,
-          # notifications and the user (n8n's Mirror check lists the owner's repositories with it)
+          # Gitea's API; the token reads repository, issue, notification and user, with access "All"
+          # (not "Public only"), which n8n's Mirror check needs to list push mirrors
           widget.type = "gitea";
           key = true;
         };

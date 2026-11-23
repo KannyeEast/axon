@@ -1,11 +1,7 @@
-# Vaultwarden at vault.<domain> on servers: the family's password manager for the Bitwarden apps.
-# Public through the tunnel, guarded by its own login. Nobody signs up; accounts are invited from
-# the admin page, on only while secrets.json holds vaultwarden/admin-token (an argon2 hash). With
-# axon.mail it sends invitations and account mail. Its nightly copy is what gets backed up, on the
-# data volume where a host has one.
-# With a login provider (axon.sso) the family can log in there instead of with mail address and
-# master password; the account with the provider's mail address is the one logged into, and only
-# accounts that exist or are invited can. The master password still unlocks the vault.
+# Vaultwarden at vault.<domain>: the family's password manager for the Bitwarden apps.
+# Reach: public, its own login.
+# In its UI only: accounts and their vaults, backed up through its nightly copy.
+# By hand: invite the family from the admin page (vaultwarden/admin-token, an argon2 hash).
 { lib, ... }:
 {
   flake.modules.nixos.passwords =
@@ -42,8 +38,8 @@
           SIGNUPS_ALLOWED = false;
           # cloudflared connects from 127.0.0.1; Cloudflare puts the client's address in this header
           IP_HEADER = "Cf-Connecting-IP";
-          # the admin page saves its settings here, and they override these on start; at runtime
-          # only, so a restart brings back the Nix settings and an admin page without a token stays off
+          # the admin page's saved settings override these; in /run they go on restart, so without
+          # vaultwarden/admin-token the admin page stays off
           CONFIG_FILE = "/run/vaultwarden/config.json";
         }
         // lib.optionalAttrs (mail != null) {
@@ -69,7 +65,7 @@
       };
 
       systemd.services.vaultwarden.serviceConfig.RuntimeDirectory = "vaultwarden";
-      # the copy lives on a data disk that may be missing at boot (nofail): never write to root instead
+      # the copy is on a data disk that may be missing at boot (nofail): never write to root instead
       systemd.services.backup-vaultwarden.unitConfig.RequiresMountsFor = [ backups ];
 
       axon.sso.clients.vaultwarden = {

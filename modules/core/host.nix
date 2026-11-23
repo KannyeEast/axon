@@ -1,13 +1,11 @@
-# The schema of host.toml and cluster.toml. hosts.nix checks every host's file against these
-# options (plus its class's and features' pieces) before NixOS evaluates, so a mistake points at
-# the file.
+# The schema of host.toml and cluster.toml, checked by hosts.nix before NixOS evaluates, so a
+# mistake points at the file.
 { config, lib, ... }:
 let
   inherit (lib) mkOption types;
 
   inherit (config.axon) classes features;
 
-  # disk.boot: the framework owns its layout, the host picks the device and two sizes
   bootDisk = {
     options = {
       devices = mkOption {
@@ -27,7 +25,6 @@ let
     };
   };
 
-  # disk.<name>: one btrfs filesystem, on one disk or as an array, labelled <name>
   extraDisk = {
     options = {
       devices = mkOption {
@@ -160,7 +157,7 @@ in
       sync = mkOption {
         type = types.attrsOf (types.listOf types.str);
         default = { };
-        description = "Folder to the members that share it with each other.";
+        description = "Folder to the members that share it; one named like a host's volume lives on that volume, else in ~/<folder>.";
       };
       external = mkOption {
         default = { };

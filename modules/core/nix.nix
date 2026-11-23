@@ -1,6 +1,5 @@
-# Nix itself: flakes, binary caches, cleanup through nh, and what a host needs to rebuild itself.
-# Besides the public caches, the cache of any other host that runs one (the forge feature's
-# host.toml [forge] cache), at cache.<domain>.
+# Nix itself: flakes, binary caches (the public ones and any host's [forge] cache at
+# cache.<domain>), cleanup through nh, and what a host needs to rebuild itself.
 { lib, ... }:
 {
   flake.modules.nixos.core =
@@ -43,7 +42,7 @@
         clean.extraArgs = "--keep-since 4d --keep 5";
       };
 
-      # with git (remotes.nix), what a host needs to rebuild itself from the checkout: `just switch`
+      # `just switch` rebuilds the host from its checkout, with git from remotes.nix
       environment.systemPackages = [ pkgs.just ];
 
       nixpkgs.config.allowUnfree = true;

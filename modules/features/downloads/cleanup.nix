@@ -1,8 +1,5 @@
-# Decluttarr clears what hangs in Radarr's and Sonarr's queues (a download that can't be imported,
-# a failed one, one whose item is gone), blocklists it and lets the app search again. Its settings
-# are .config/decluttarr/config.yaml from the checkout (hosts/<name>/home wins over home/), read on
-# start and again when the file changes; it reads the keys as !ENV RADARR_API_KEY and
-# SONARR_API_KEY. It keeps no state.
+# Decluttarr clears what hangs in Radarr's and Sonarr's queues, blocklists it and searches again, as
+# .config/decluttarr/config.yaml says (keys as !ENV RADARR_API_KEY, SONARR_API_KEY). No state.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =

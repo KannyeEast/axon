@@ -1,7 +1,6 @@
-# Contract: axon.databases. The Postgres databases this host's services keep; each service creates
-# its own through its module (ensureDatabases or the module's own option). With any listed, the
-# host runs its own Postgres (no database is shared between hosts) and dumps each one nightly to
-# the data volume, where a host has one: a dump next to its database is lost with it.
+# Contract: axon.databases. The Postgres databases this host's services keep, each created by its
+# service's module. With any listed, the host runs its own Postgres and dumps each nightly to the
+# data volume where there is one: a dump beside its database is lost with it.
 { lib, ... }:
 {
   flake.modules.nixos.core =
@@ -30,11 +29,10 @@
           inherit databases;
         };
 
-        # the dumps live on a data disk that may be missing at boot (nofail): never write to root instead
+        # the data disk may be missing at boot (nofail): never write the dumps to root instead
         systemd.services = lib.genAttrs (map (name: "postgresqlBackup-${name}") databases) (_: {
           unitConfig.RequiresMountsFor = [ dumps ];
         });
-        # a dump missed while the host was off runs at the next boot
         systemd.timers = lib.genAttrs (map (name: "postgresqlBackup-${name}") databases) (_: {
           timerConfig.Persistent = true;
         });
@@ -49,7 +47,7 @@
         ]
         ++ lib.optional (!volumes ? data) dumps;
 
-        axon.services.database = {
+        axon.services.postgres = {
           units = [
             "postgresql"
             "postgresql-setup"

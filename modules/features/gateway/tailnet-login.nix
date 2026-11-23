@@ -1,7 +1,5 @@
-# Kanidm as the tailnet's login (Tailscale's custom OIDC): a client for Tailscale, and the
-# WebFinger answer on the bare domain that points Tailscale at it, for any address there, public
-# through the tunnel. On with sso/tailscale in secrets.json and a tunnel; the bare domain needs its
-# DNS record, like a public route.
+# Kanidm as the tailnet's login (Tailscale's custom OIDC): a client and the WebFinger answer on
+# the bare domain, public through the tunnel; the bare domain needs its DNS record by hand.
 { lib, ... }:
 {
   flake.modules.nixos.gateway =

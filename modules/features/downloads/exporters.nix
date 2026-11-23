@@ -1,7 +1,5 @@
-# Exporters for the download stack, while this host lists metrics and a host runs monitoring, which
-# scrapes them on the ports written out here and in monitoring/metrics.nix: exportarr for Sonarr,
-# Radarr, Prowlarr and SABnzbd (its queue), each with its key dashboard/<name>/key. They answer on
-# the overlay only.
+# exportarr for Sonarr, Radarr, Prowlarr and SABnzbd's queue, each with dashboard/<name>/key, while
+# this host lists metrics and a host runs monitoring; they answer on the overlay only.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
@@ -14,6 +12,7 @@
         lib.elem "metrics" host.features
         && lib.any (data: lib.elem "monitoring" data.host.features) (lib.attrValues cluster.hosts);
 
+      # monitoring/metrics.nix scrapes these same ports
       arr = lib.optionalAttrs (config.axon.volumes ? media) {
         sonarr = 9707;
         radarr = 9708;
@@ -52,7 +51,7 @@
         }
 
         (lib.mkIf (hasKey "usenet") {
-          # exportarr has no NixOS module for SABnzbd, so the unit is written out as the module would
+          # nixpkgs has no exportarr module for SABnzbd: the unit is written out as one would
           systemd.services.exportarr-sabnzbd = {
             description = "Prometheus exporter for SABnzbd";
             wantedBy = [ "multi-user.target" ];

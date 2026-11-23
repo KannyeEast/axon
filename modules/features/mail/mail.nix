@@ -1,9 +1,5 @@
-# The account mail leaves through: an SMTP relay ([smtp] in host.toml), reached with STARTTLS, as
-# a home connection can't deliver mail itself. One login (secrets.json mail/login, mail/token)
-# sends for every service, each from its own address on the cluster domain, so the relay must
-# accept any sender on that domain. Alerts, failed units among them, are mailed by Alertmanager on
-# the host running monitoring to srv-alert@ the cluster domain, filed away by a Sieve rule on the
-# local part.
+# The SMTP relay ([smtp]) every service's mail leaves through: a home connection can't deliver mail.
+# One login sends from every service's address, so the relay must accept any sender on the domain.
 { lib, ... }:
 let
   inherit (lib) mkOption types;

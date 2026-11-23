@@ -1,8 +1,6 @@
-# SABnzbd: downloads from Usenet, outside the VPN (the provider connection is SSL; nobody else
-# sees it). Unfinished downloads on the scratch volume, finished ones next to the torrents on the
-# media volume by category (movies, tv) for Radarr and Sonarr; in its state folder without those
-# volumes. UI settings (provider, connections) are kept; declared ones win on every start. The API
-# key is dashboard/usenet/key where secrets.json has it; else SABnzbd keeps its own.
+# SABnzbd at usenet.<domain>: Usenet downloads, outside the VPN (its provider connection is SSL).
+# Reach: tailnet, the gateway's login.
+# In its UI only: the provider and its connections, in sabnzbd.ini, backed up.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
@@ -13,6 +11,7 @@
       finished = "${volumes.media or state}/downloads";
       incomplete = "${volumes.scratch or state}/usenet";
       port = 8080;
+      # without it in secrets.json, SABnzbd keeps the key it made itself
       key = "dashboard/usenet/key";
       hasKey = lib.hasAttrByPath (lib.splitString "/" key) config.axon.secrets;
       folders = [
@@ -37,8 +36,7 @@
             # Radarr and Sonarr, in the media group, move and delete what lands here
             permissions = "775";
             api_key = lib.mkIf hasKey "@api_key@";
-            # empty means no article cache: every article goes straight to disk. Its own default
-            # for new installs is a quarter of the memory, at most this
+            # unset, every article goes straight to disk; new installs default to at most this
             cache_limit = "1G";
             # its web UI's one-time tips message, seen
             notified_new_skin = 2;

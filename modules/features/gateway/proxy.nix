@@ -1,6 +1,4 @@
-# Consumer of axon.services: every routed service gets <service>.<domain> on the tailnet, proxied
-# as is; with gate (all but public ones by default) the login at login.<domain> (login.nix) stands
-# in front. Public ones are on the tunnel as well.
+# Caddy: every routed service at <name>.<domain> on the tailnet, behind the login where gated.
 # One wildcard certificate from Let's Encrypt via a Cloudflare DNS challenge covers them all.
 { lib, ... }:
 {
@@ -52,7 +50,6 @@
       services.caddy = {
         enable = true;
         virtualHosts = {
-          # anything not routed below
           "*.${domain}" = {
             useACMEHost = domain;
             extraConfig = "abort";

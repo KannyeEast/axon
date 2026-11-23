@@ -1,18 +1,13 @@
-# Finding things: Prowlarr manages the indexers for Radarr (movies) and Sonarr (shows),
-# Bazarr fetches subtitles. All tailnet-only, behind the gateway's login where it runs. They fill
-# the movies/ and shows/ folders on the media volume, so they only run on a host that has one.
-# Their API keys are dashboard/<name>/key where secrets.json has it; else each keeps its own.
-# Kept only in their UIs (config.db, backed up): download clients with their keys, root folders,
-# Connect entries, Prowlarr's indexers and the apps it syncs them to; Bazarr's providers and
-# language profiles (its config.yaml).
+# Radarr, Sonarr, Prowlarr and Bazarr at <name>.<domain>: movies, shows, indexers and subtitles.
+# Reach: tailnet, the gateway's login; their own where the gateway has none.
+# In their UIs only: download clients, root folders, Connect, indexers, subtitle sources; backed up.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
     { config, pkgs, ... }:
     let
       inherit (config.axon.volumes) media;
-      # order: Jellyfin and Seerr first, then the downloaders, then these four (Media fills rows
-      # left to right). attention: widget values marked amber above 0
+      # order: after Jellyfin, Seerr and the downloaders; attention: widget values amber above 0
       apps = {
         radarr = {
           port = 7878;
@@ -49,11 +44,9 @@
         ];
       };
 
-      # they insist on a login method: External where the gateway's login stands in front, else
-      # Forms, off for local addresses with the tailnet's 100.64.0.0/10 counted as local (a
-      # setting config.xml has and the UI doesn't). Settings here win over config.xml
+      # they insist on a login method: External behind the gateway's login, else Forms, off for
+      # local addresses with the tailnet's 100.64.0.0/10 counted local (config.xml only, not the UI)
       settings = name: {
-        # names they answer to: their route and their own address
         server.allowedHosts =
           let
             inherit (config.axon.services.${name}) route;
@@ -76,6 +69,7 @@
       # the first line of a log entry in the .NET apps; a stack trace follows it
       logStart = "^\\[(Trace|Debug|Info|Warn|Error|Fatal)\\]";
 
+      # without its key in secrets.json, an app keeps the one it made itself
       secret = name: "dashboard/${name}/key";
       hasKey = name: lib.hasAttrByPath (lib.splitString "/" (secret name)) config.axon.secrets;
       keyed = lib.filter hasKey [

@@ -2,15 +2,13 @@
 # (read-only) and the keys in ~/.config/sandbox/secrets.env; not ~, not the SSH keys.
 # `sandbox claude` runs Claude Code in it (`sandbox claude --rc` reachable from claude.ai and the
 # app); bare `sandbox` is a shell for trying untrusted code. Its home (Claude's login, shell
-# history) persists in ~/.local/share/sandbox. It runs on the owner's rootless Docker
-# (dev/containers.nix).
+# history) persists in ~/.local/share/sandbox.
 { lib, ... }:
 {
   flake.modules.nixos.dev =
     { config, pkgs, ... }:
     let
-      # Docker hands the container the host's upstream servers; the tailnet's resolver also knows
-      # the other hosts by name
+      # Docker passes the host's upstream DNS; the tailnet's resolver also knows the hosts by name
       inherit (config.axon.overlay) network;
       image = pkgs.dockerTools.streamLayeredImage {
         name = "sandbox";

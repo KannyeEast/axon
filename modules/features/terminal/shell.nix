@@ -1,6 +1,5 @@
 # The terminal: zsh, tmux and neovim with their plugins, and the everyday CLI tools.
-# Nix installs them and loads the plugins (they need store paths); every setting is a
-# dotfile (.zshrc, .config/tmux/tmux.conf, .config/starship.toml, .config/nvim/init.lua).
+# Settings: .zshrc, .config/tmux/tmux.conf, .config/starship.toml, .config/nvim/init.lua.
 {
   flake.modules.nixos.terminal =
     {
@@ -52,7 +51,7 @@
         plugins = [ pkgs.tmuxPlugins.sensible ];
       };
 
-      # nvim as $EDITOR. With plugins the wrapper skips ~/.config/nvim/init.lua, so it loads it here.
+      # with plugins the wrapper skips ~/.config/nvim/init.lua, so customLuaRC loads it
       programs.neovim = {
         enable = true;
         defaultEditor = true;

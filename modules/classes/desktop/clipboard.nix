@@ -1,6 +1,6 @@
-# Clipboard history through cliphist. Passwords stay out of it: KeePassXC marks what it copies as
-# secret and cliphist doesn't store that. `clipboard-pick` lists the history in fuzzel and pastes
-# the chosen entry into the focused window.
+# cliphist: clipboard history, text and images; KeePassXC marks its copies secret, so they stay out.
+# Settings: none.
+# Windows: none; `clipboard-pick` lists the history in fuzzel and pastes the pick. Key: Mod+V.
 { ... }:
 {
   flake.modules.nixos.desktop =
@@ -33,6 +33,5 @@
       environment.systemPackages = [ pick ];
     };
 
-  # the history itself, text and images (screenshots), kept by home-manager's watcher units
   flake.modules.homeManager.desktop.services.cliphist.enable = true;
 }

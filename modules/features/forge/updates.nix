@@ -1,10 +1,5 @@
-# Renovate on the forge host: every night it opens pull requests on this Forgejo for newer flake
-# inputs and container images, as renovate.json5 at the repository's root says; the check and
-# review workflow then handles them like any other pull request. It works as the Forgejo account
-# whose token is forge/renovate-token in secrets.json, on the repository cluster.toml [repo]
-# origin names, and only when that lives on this Forgejo. With forge/github-token as well, it asks
-# GitHub with that token, past the limit on anonymous calls. Its clone and cache don't survive a
-# reboot; the next run makes them again.
+# Renovate: nightly pull requests for newer flake inputs and images, as renovate.json5 says, when
+# cluster.toml [repo]'s origin is this Forgejo; its clone and cache are made again after a reboot.
 { lib, ... }:
 {
   flake.modules.nixos.forge =
@@ -36,7 +31,7 @@
           platform = "forgejo";
           endpoint = "${route.origin}/api/v1";
           repositories = [ (lib.removePrefix "https://${origin.host}/" origin.web) ];
-          # a repository without its renovate.json5 is left alone, not sent a pull request adding one
+          # a repository without renovate.json5 is left alone, not sent a pull request adding one
           onboarding = false;
           # the repository's schedules read in this host's time
           timezone = config.axon.locale.timezone;

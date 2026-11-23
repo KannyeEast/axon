@@ -1,8 +1,5 @@
-# pgweb at databases.<domain> where the host keeps axon.databases: a read-only view of every one
-# of them, tailnet only, behind the gateway's login. Its Postgres role, named like its unit's
-# dynamic user so peer authentication lets it in, may read all data and change none. The tile
-# shows the databases' size and connections, how long ago the oldest dump ran and whether Postgres
-# is up, from Prometheus (metrics/exporters.nix).
+# pgweb at databases.<domain>: a read-only view of every database the host keeps (axon.databases).
+# Reach: tailnet, the gateway's login.
 { lib, ... }:
 {
   flake.modules.nixos.dev =
@@ -10,9 +7,8 @@
     let
       inherit (config.axon) databases host;
       port = 8083;
-      # lib/pq sorts a URL's settings and takes the last host: the query's socket directory wins
-      # only over a URL host that sorts before "/", such as "-". Without a URL host, switching
-      # databases in the UI would put the database's name there
+      # lib/pq sorts a URL's settings: the socket wins only over a host sorting before "/" ("-");
+      # without a host, switching databases in the UI puts the database's name there
       bookmarks = pkgs.writeTextDir "${host.name}.toml" ''
         url = "postgres://pgweb@-/${lib.head databases}?host=/run/postgresql"
       '';
@@ -20,6 +16,7 @@
       own = ''{host="${host.name}",datname!~"postgres|template.*"}'';
     in
     lib.mkIf (databases != [ ]) {
+      # named like the unit's dynamic user, so peer authentication lets it in
       services.postgresql.ensureUsers = [ { name = "pgweb"; } ];
       # ensureUsers has no role memberships; reading isn't connecting, and Nextcloud's install takes
       # that right from everyone else on its database
@@ -38,9 +35,8 @@
         serviceConfig = {
           DynamicUser = true;
           Restart = "on-failure";
-          # only the bookmark connects: no form to reach other servers, while --lock-session would
-          # also stop switching databases. At info it logs every request, at warn every 4xx: the
-          # start page's status check tries HEAD first, which it answers 404
+          # only the bookmark connects; --lock-session would also stop switching databases.
+          # warn logs every 4xx, and the start page's check tries HEAD first, which gets a 404
           ExecStart = "${lib.getExe pkgs.pgweb} --bind=127.0.0.1 --listen=${toString port} --bookmarks-dir=${bookmarks} --bookmarks-only --bookmark=${host.name} --readonly --log-level=error";
         };
       };

@@ -1,8 +1,5 @@
-# Turns every hosts/<name>/host.toml into nixosConfigurations.<name>, in two passes before NixOS
-# evaluates: class, features and hardware.quirks are read raw, as imports can't depend on config;
-# then each file is checked against the schema pieces of core, its class and its features
-# (cluster.toml against the cluster schema), defaults filled in. A host gets its own tables as
-# config.axon.<table> and every host's as config.axon.cluster.hosts.
+# Turns every hosts/<name>/host.toml into nixosConfigurations.<name>, checked against the schema
+# pieces of core, its class and its features; its tables become config.axon.<table>.
 {
   inputs,
   config,
@@ -20,10 +17,10 @@ let
   hostsDir = root + "/hosts";
   clusterFile = root + "/cluster.toml";
 
-  # a folder starting with _ is kept for reference and never built (e.g. hosts/_old)
   isHost =
     name: type:
     type == "directory" && !lib.hasPrefix "_" name && lib.pathExists (hostsDir + "/${name}/host.toml");
+  # class, features and hardware.quirks are read raw: imports can't depend on config
   raw = lib.optionalAttrs (lib.pathExists hostsDir) (
     lib.genAttrs (lib.attrNames (lib.filterAttrs isHost (lib.readDir hostsDir))) (
       name: lib.importTOML (hostsDir + "/${name}/host.toml")
@@ -32,7 +29,6 @@ let
 
   list = lib.concatStringsSep ", ";
 
-  # [ "core" <class> <features…> ], failing early with the file to fix
   bundles =
     name: data:
     let
@@ -64,7 +60,6 @@ let
       ]
       ++ map checkFeature wanted;
 
-  # host.toml against the schema pieces of its bundles
   check =
     name: data:
     removeAttrs
@@ -89,8 +84,7 @@ let
 
   hosts = lib.mapAttrs check raw;
 
-  # cluster.toml against its schema. A name in a relation that is neither a host nor [external]
-  # is left out with a warning, so a cluster can be brought up one machine at a time.
+  # an unknown name in a relation is left out, so a cluster can come up one machine at a time
   cluster =
     let
       data = if lib.pathExists clusterFile then lib.importTOML clusterFile else { };
@@ -132,7 +126,6 @@ let
     inputs.nixos-hardware.nixosModules.${module}
       or (throw "hosts/${name}/host.toml: unknown hardware quirk '${module}' (see nixos-hardware's flake outputs)");
 
-  # config.axon.<table> for every table of this host, plus config.axon.cluster
   data =
     name:
     let

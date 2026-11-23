@@ -1,8 +1,6 @@
-# Contract: axon.spaces. A service's own space: the btrfs subvolume <data>/<name> on a host with
-# a data volume, which host.toml [limits] can cap; /var/lib/<name> without one. A unit per space
-# creates it before the service starts; storage-limits applies [limits], so a changed limit takes
-# effect on the next switch without moving data. A plain folder holding files is left alone with
-# a warning in its unit's log; an empty one (from the service's tmpfiles) becomes a subvolume.
+# Contract: axon.spaces. A service's own space: the btrfs subvolume <data>/<name>, which [limits]
+# can cap, or /var/lib/<name> on a host without a data volume. Its unit creates it before the
+# services in `units` start.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -32,7 +30,6 @@ in
       btrfs = lib.getExe' pkgs.btrfs-progs "btrfs";
 
       onVolume = lib.filterAttrs (_: space: space.onVolume) spaces;
-      # what [limits] may name: whole volumes and the spaces on them
       limitable = lib.attrNames volumes ++ lib.attrNames onVolume;
       paths = volumes // lib.mapAttrs' (name: space: lib.nameValuePair name space.path) onVolume;
 
@@ -67,8 +64,7 @@ in
             ''
         );
 
-      # quotas are switched on, per filesystem, only where something is limited: through the volume
-      # it lives on, which is mounted even while a space doesn't exist yet
+      # quotas go on only where something is limited, through the volume: it exists before the space
       limited = lib.filterAttrs (name: _: paths ? ${name}) limits;
       volumeOf = name: volumes.${name} or volumes.data;
       applyLimits = pkgs.writeShellScript "storage-limits" ''
@@ -131,7 +127,7 @@ in
       };
 
       config = {
-        # a space on a volume persists with it; the fallback in /var/lib is persisted here
+        # a space on a volume persists with it; only the /var/lib fallback is listed
         axon.persist.state.directories = lib.mkAfter (
           lib.mapAttrsToList (_: space: {
             directory = space.path;

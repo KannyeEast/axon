@@ -1,12 +1,7 @@
-# n8n at automation.<domain>: workflows that tie the services together. Tailnet only, behind the
-# gate and n8n's own login, whose owner account is made on the first visit. Callers on this host
-# send webhooks to its internal address, past the gate. The workflows are the files in
-# .config/n8n/workflows from the checkout (hosts/<name>/home wins per file), imported before every
-# start and on a change; those with "active": true are published. A UI edit is lost on the next
-# start unless downloaded back into its file; a deleted file leaves its workflow in n8n. Workflow
-# nodes read the API keys (secrets.json's dashboard/<name>/key as <NAME>_API_KEY) from n8n's
-# environment. The rest lives in its database, encrypted with a key n8n makes itself in the same
-# folder.
+# n8n at automation.<domain>: workflows that tie the services together.
+# Reach: tailnet, the gateway's login and n8n's own.
+# In its UI only: all but the workflows, in its database and key, backed up with its state folder.
+# By hand: make the owner account on the first visit.
 { lib, ... }:
 {
   flake.modules.nixos.automation =
@@ -39,6 +34,7 @@
           done
         '';
       };
+      # an import overwrites UI edits; a deleted file's workflow stays in n8n
       load = pkgs.writeShellApplication {
         name = "n8n-import";
         runtimeInputs = [
@@ -117,7 +113,6 @@
           RuntimeDirectory = "n8n-import";
           ExecStartPre = "+${lib.getExe copy}";
           ExecStart = lib.getExe load;
-          # n8n's own sandbox
           inherit (n8n.serviceConfig)
             DynamicUser
             StateDirectory

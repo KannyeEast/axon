@@ -1,7 +1,5 @@
-# Radarr's and Sonarr's quality profiles and custom formats as a file: Recyclarr applies
-# .config/recyclarr/recyclarr.yml (and settings.yml, for formats of our own) from the checkout
-# (hosts/<name>/home wins over home/) when it changes and nightly, as TRaSH's guides move on. The
-# file reads the keys as !env_var RADARR_API_KEY and SONARR_API_KEY.
+# Recyclarr applies .config/recyclarr/recyclarr.yml (and settings.yml for own formats) to Radarr
+# and Sonarr on change and nightly, as TRaSH's guides move on; keys as !env_var <APP>_API_KEY.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =

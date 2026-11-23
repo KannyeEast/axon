@@ -1,5 +1,5 @@
-# IT Tools at tools.<domain> on servers: converters, encoders and generators in the browser, so
-# nothing is pasted into a website. A static page, tailnet only, behind the gateway's login.
+# IT Tools at tools.<domain>: converters and generators, so nothing is pasted into a website.
+# Reach: tailnet, the gateway's login.
 { lib, ... }:
 {
   flake.modules.nixos.dev =

@@ -25,7 +25,6 @@
         notifications.wall.enable = false;
       };
 
-      # a hung machine reboots by itself
       systemd.settings.Manager.RuntimeWatchdogSec = "30s";
 
       assertions = [

@@ -1,7 +1,5 @@
-# Exporters for the cluster's Prometheus (the monitoring feature): the system (node), with the state
-# of every system service and timer, the disks' SMART health and, where the host keeps
-# axon.databases, Postgres. They answer on the overlay only. The node exporter also serves the
-# textfiles other parts of this feature leave in /run/prometheus-node-exporter-text.
+# Exporters for Prometheus, on the overlay only: the system with its services and timers, the
+# disks' SMART health, and Postgres where the host keeps axon.databases.
 { lib, ... }:
 {
   flake.modules.nixos.metrics =
@@ -11,10 +9,7 @@
       dir = "/run/prometheus-node-exporter-text";
       exporters = config.services.prometheus.exporters;
 
-      # one mountpoint per filesystem: /home, /nix and /persist are subvolumes of the boot disk,
-      # and a data disk's further mounts are the same filesystem as its first; bind mounts
-      # (impermanence's persisted folders, a feature's folders below a data disk's first mount)
-      # aren't filesystems of their own
+      # one mountpoint per filesystem; the rest are subvolumes, further mounts or bind mounts
       dataDisks = lib.attrValues (
         lib.filterAttrs (label: fs: label != "boot" && fs.mounts or { } != { }) disk
       );
@@ -28,8 +23,7 @@
       services.prometheus.exporters = {
         node = {
           enable = true;
-          # failed services for the UnitFailed alert, timers for when each last ran (the database
-          # dumps); other unit types only add series
+          # services for UnitFailed, timers for the dumps' last run; other units only add series
           enabledCollectors = [ "systemd" ];
           extraFlags = [
             "--collector.filesystem.mount-points-exclude=^(${excluded})($|/)"
@@ -56,8 +50,7 @@
       ]
       ++ lib.optional (databases != [ ]) exporters.postgres.port;
 
-      # monitoring/metrics.nix scrapes Postgres where a server lists files or forge, whose services
-      # keep the databases: no other host's list says where Postgres runs
+      # monitoring/metrics.nix finds Postgres only through files or forge in a feature list
       warnings =
         lib.optional
           (

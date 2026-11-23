@@ -1,6 +1,5 @@
-# Dotfiles: home/ is shared, hosts/<name>/home wins per file (axon.dotfiles); both mirror $HOME as
-# symlinks into the live checkout; Nix never reads them. A watcher links added, removed or renamed
-# files within a moment, and a 15 minute resync restores links deleted from ~.
+# Dotfiles: home/ and hosts/<name>/home (which wins per file) linked into $HOME from the live
+# checkout; a watcher relinks on change, and a resync every 15 minutes restores deleted links.
 { inputs, lib, ... }:
 {
   flake.modules.nixos.core =

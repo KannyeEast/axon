@@ -1,11 +1,7 @@
-# Paperless-ngx at docs.<domain> on servers: scanned documents, OCR'd and filed. Tailnet only, its
-# own login; without a gateway on this host it stays on localhost. The NixOS module, on the host's
-# Postgres and its own Redis, with Tika and Gotenberg for Office files and mails. Documents on the data volume (or in the state folder without one).
-# The nightly export (originals, OCR'd copies, tags and metadata) is what gets backed up; Paperless
-# stops while it runs.
-# First account by hand after install: sudo paperless-manage createsuperuser
-# With a login provider (axon.sso) an account is linked to it once (My Profile → Connect new social
-# account) and then logs in there; nobody signs up through it, and the password form stays.
+# Paperless-ngx at docs.<domain>: scanned documents, OCR'd and filed.
+# Reach: tailnet, its own login; axon.sso's once an account is linked to it (My Profile).
+# In its UI only: tags and metadata, backed up with the documents by the nightly export.
+# By hand: `sudo paperless-manage createsuperuser`.
 { lib, ... }:
 {
   flake.modules.nixos.files =
@@ -42,6 +38,7 @@
         consumptionDir = "${data}/consume";
         database.createLocally = true;
         configureTika = true;
+        # the backup; Paperless stops while it runs
         exporter = {
           enable = true;
           directory = "${data}/export";
@@ -126,8 +123,8 @@
 
       axon.databases = [ "paperless" ];
 
-      # the search index as an entry of its own: the module's tmpfiles rule for it runs before the
-      # dataDir's mount on a switch and ends up hidden under it, and the scheduler won't start without
+      # the search index gets its own entry: the module's tmpfiles rule runs before the dataDir's
+      # mount on a switch and is hidden under it, and the scheduler won't start without it
       axon.persist.state.directories =
         map
           (directory: {

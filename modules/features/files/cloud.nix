@@ -1,12 +1,7 @@
-# Nextcloud at cloud.<domain> on servers. Files on the data volume (or in the state folder without
-# one), app state with the host's state (the state volume, else the boot disk), database in the
-# host's Postgres. Public through the tunnel so share links work without Tailscale; its own login
-# guards it. Without a gateway on this host it stays on localhost. First account by hand after
-# install, then two-factor in the web UI:
-#   nextcloud-occ user:add <you> && nextcloud-occ group:adduser admin <you>
-# With a login provider (axon.sso) the family logs in there too; the password form stays.
-# Major versions upgrade one at a time: bump the package by one, switch, repeat.
-# Kept only in its UI (database and app state, backed up): users, groups, shares.
+# Nextcloud at cloud.<domain>: file storage.
+# Reach: public, its own login and axon.sso's where there is one.
+# In its UI only: users, groups and shares, in its database and app state, backed up.
+# By hand: `nextcloud-occ user:add <you> && nextcloud-occ group:adduser admin <you>`, then two-factor in the UI.
 { lib, ... }:
 {
   flake.modules.nixos.files =
@@ -31,6 +26,7 @@
 
         services.nextcloud = {
           enable = true;
+          # major versions upgrade one at a time: bump by one, switch, repeat
           package = pkgs.nextcloud35;
           hostName = route.name;
           https = routed;
@@ -53,8 +49,7 @@
           };
           phpOptions = {
             "opcache.interned_strings_buffer" = "16";
-            # the module ties this to maxUploadSize, but uploads stream and one process needn't be
-            # able to take all the memory
+            # the module ties this to maxUploadSize, but uploads stream
             memory_limit = lib.mkForce "1G";
           };
         };
@@ -107,6 +102,7 @@
           ];
           route = {
             inherit port;
+            # share links work without Tailscale
             public = true;
             # / redirects to https on this plain http port
             health = "/status.php";
@@ -143,14 +139,12 @@
         services.nextcloud = {
           # this also closes the app store, which file storage alone doesn't need
           extraApps = { inherit (config.services.nextcloud.package.packages.apps) user_oidc; };
-          # the provider answers on this host (127.0.0.1); Nextcloud refuses local addresses without it
+          # the provider answers on 127.0.0.1, a local address Nextcloud refuses without it
           settings.allow_local_remote_servers = true;
         };
 
-        # the provider as user_oidc stores it, updated on every setup run. The login is the short
-        # name (preferred_username), as is, so it lands in the account of that name, made on the
-        # first login where none exists; each login copies display name and mail address from the
-        # provider, and Nextcloud's own second factor is asked only on the password form
+        # updated on every setup run; --unique-uid=0 keeps the short name, so a login lands in the
+        # account of that name; Nextcloud's own second factor is asked only on the password form
         systemd.services.nextcloud-setup.script = lib.mkAfter ''
           nextcloud-occ user_oidc:provider Kanidm \
             --clientid=${client.id} \

@@ -1,7 +1,6 @@
-# Jellyfin plays what's on the media volume, shared through the media group; without one it starts
-# with no library on disk. It brings its own login and is public. Kept only in its UI (its config
-# folder and database, backed up): libraries, users, encoding, plugins and their settings (Webhook
-# destinations, Jellyfin Enhanced, Moonbase).
+# Jellyfin at jellyfin.<domain>: movies and shows from the media volume.
+# Reach: public, its own login.
+# In its UI only: libraries, users, encoding, plugins and their settings, backed up with its state.
 { lib, ... }:
 {
   flake.modules.nixos.media =
@@ -20,8 +19,7 @@
       systemd.services.jellyfin = {
         # the library is on a data disk that may be missing at boot (nofail)
         unitConfig.RequiresMountsFor = lib.optional (volumes ? media) volumes.media;
-        # its log levels per source over logging.default.json: scheduled tasks (the Webhook
-        # plugin's run every minute) and chatty plugins log their routine at info
+        # scheduled tasks and chatty plugins log their routine at info
         serviceConfig.ExecStartPre = [
           # as jellyfin, making its config folder where a new persist mount hid tmpfiles' one
           "${lib.getExe' pkgs.coreutils "install"} -D -m 0644 ${

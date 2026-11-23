@@ -1,11 +1,5 @@
-# Grafana at grafana.<domain>: graphs over Prometheus and logs from Loki, data sources and
-# dashboards provisioned from here; Logs Drilldown shows the logs per service, Metrics Drilldown
-# browses the metrics without a query. With a login provider (axon.sso) its admins group logs in
-# there as Admin; the host.toml user stays the local admin, with monitoring/password, for the API.
-# Without a gateway on this host it stays on localhost, with only its own login. The "Start page"
-# dashboard: two tables the gateway's start page embeds, graphs of the last day below, then how
-# full each volume or space capped by [limits] is (metrics/spaces.nix) and, where a host runs
-# Postgres (monitoring/metrics.nix), its databases' size, connections and last dumps.
+# Grafana at grafana.<domain>: graphs over Prometheus, logs from Loki, the start page's tables.
+# Reach: tailnet, the gateway's login.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -20,7 +14,7 @@
       client = sso.clients.grafana;
       port = 3001;
       state = "/var/lib/grafana";
-      inherit (services.grafana.route) name origin;
+      inherit (services.grafana.route) name origin url;
 
       percent = {
         unit = "percent";
@@ -66,7 +60,6 @@
             }
           ];
         };
-      # a value coloured by how close it is to its limit; "–" where a host has none
       level = orange: red: [
         (property "noValue" "–")
         (property "custom.cellOptions" { type = "color-text"; })
@@ -80,8 +73,7 @@
         ]
         ++ level orange red;
 
-      # instant values side by side, one row per label set: columns are { name = expr; } in order,
-      # and every query aggregates down to the labels in keys
+      # columns are { name = expr; } in order; every query must aggregate down to the labels in keys
       table =
         title: keys: columns:
         let
@@ -131,8 +123,6 @@
       # tunnels and bridges carry the same traffic a second time
       physical = ''device=~"en.*|eth.*|wl.*"'';
 
-      # every disk of every scraped host, by its host.toml label: the boot disk as "system" through
-      # /, any other through its first mount
       scraped = lib.filterAttrs (_: data: lib.elem "metrics" data.host.features) cluster.hosts;
       disks = lib.concatMap (
         name:
@@ -302,7 +292,6 @@
           }
         )
       ];
-      # two per row, in this order
       panels = overview ++ graphs ++ spaces ++ lib.optionals postgres databases;
 
       start = lib.toJSON {
@@ -357,15 +346,12 @@
           };
           # read-only without its own login; the start page's frames need it
           "auth.anonymous".enabled = true;
-          # at info it logs each search index build and panel query; the search's manifest watcher
-          # warns on every poll that there are no app manifests, and an expired session cookie
-          # (Grafana then goes on anonymously) is a warning too
+          # info logs every query; the two filtered sources warn per poll and per expired cookie
           log = {
             level = "warn";
             filters = "search-manifest-watcher:error authn.service:error";
           };
-          # endpoints and claims as Kanidm names them; with no login attribute the login is the
-          # mail address, so it can't collide with the local admin's name
+          # no login attribute, so the login is the mail address and can't collide with the admin's
           "auth.generic_oauth" = lib.mkIf (sso.provider != null) {
             enabled = true;
             name = "Kanidm";
@@ -429,8 +415,8 @@
 
       axon.sso.clients.grafana = {
         service = "grafana";
-        landing = "${origin}/login/generic_oauth";
-        redirects = [ "${origin}/login/generic_oauth" ];
+        landing = "${url}/login/generic_oauth";
+        redirects = [ "${url}/login/generic_oauth" ];
         group = "admins";
       };
 

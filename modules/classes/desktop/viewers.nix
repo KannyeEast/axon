@@ -1,5 +1,6 @@
-# Viewers: images in Loupe, text in GNOME Text Editor, videos in mpv (uosc interface, thumbnails,
-# media keys through MPRIS), archives in File Roller. ~/.config/mimeapps.list maps the types.
+# Viewers: Loupe (images), GNOME Text Editor, mpv (uosc, thumbnails, MPRIS), File Roller.
+# Settings: ~/.config/mimeapps.list, ~/.config/mpv/mpv.conf.
+# Windows: org.gnome.Loupe, org.gnome.TextEditor, mpv (floats), org.gnome.FileRoller.
 {
   flake.modules.nixos.desktop =
     { pkgs, ... }:

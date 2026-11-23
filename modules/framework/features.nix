@@ -1,5 +1,4 @@
-# The registry: every class and feature the framework knows about, and the pieces of
-# host.toml each of them owns. hosts.nix, the docs and the installer all read these.
+# The registry: every class and feature, and the host.toml tables each of them owns.
 { config, lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -45,7 +44,6 @@ in
       );
     };
 
-    # a host.toml table owned by a feature the host doesn't list is an error
     schema = mkOption {
       type = types.attrsOf types.deferredModule;
       default = { };
@@ -60,7 +58,7 @@ in
   };
 
   config = {
-    # for the installer's lists of classes, features and storage profiles
+    # read by install.sh for its lists of classes, features and storage profiles
     flake.axon = {
       inherit (config.axon) classes features profiles;
     };

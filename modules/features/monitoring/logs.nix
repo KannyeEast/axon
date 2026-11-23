@@ -1,8 +1,5 @@
-# Loki: the journal of every host listing metrics (metrics/logs.nix), kept 30 days in its own
-# space and not backed up, as logs are only for finding faults. Other hosts push over the
-# overlay, without a login; Grafana reads it. Its ruler sends alerts on log lines to Alertmanager.
-# The write-ahead log lives on the state volume: Loki stops taking logs once the WAL's disk is 90%
-# full, and the space shares its disk with media.
+# Loki: every host's journal, kept 30 days in its own space and not backed up, as logs are only for
+# finding faults; its ruler sends alerts on log lines to Alertmanager.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -10,6 +7,7 @@
     let
       port = 3100;
       data = config.axon.spaces.loki.path;
+      # on the state volume: Loki stops taking logs once the WAL's disk is 90% full
       wal = "/var/lib/loki-wal";
 
       # the ruler reads <dir>/<tenant>/*.yaml; without auth the tenant is "fake"

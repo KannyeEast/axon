@@ -1,5 +1,4 @@
-# deploy.nodes.<host> for deploy-rs: logs in as root, builds on the host and rolls back when the
-# host stops answering after the switch.
+# deploy.nodes.<host> for deploy-rs: built on the host, rolled back when it stops answering.
 {
   inputs,
   config,
@@ -10,8 +9,7 @@
   flake.deploy.nodes = lib.mapAttrs (
     name: host:
     let
-      # the activation helper from nixpkgs' deploy-rs, which the binary cache has; the flake's own
-      # would be compiled against this nixpkgs
+      # nixpkgs' deploy-rs is in the binary cache; the flake's own would be compiled here
       pkgs = host.pkgs.appendOverlays [
         inputs.deploy-rs.overlays.default
         (final: prev: {

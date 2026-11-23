@@ -1,6 +1,5 @@
-# A Stream Deck as a control surface. A daemon runs commands from its dials and keys and draws
-# their state on the deck. What each control does lives in the dotfiles, in
-# .config/control-surface/layout.toml, which the daemon reloads when saved.
+# Control surface: a daemon runs commands from a Stream Deck's dials and keys and draws their state.
+# Settings: ~/.config/control-surface/layout.toml, reloaded on save.
 { lib, ... }:
 {
   flake.modules.nixos.deck =

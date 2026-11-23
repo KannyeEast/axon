@@ -4,8 +4,7 @@
 let
   inherit (lib) mkOption types;
 
-  # git@codeberg.org:me/axon.git and https://codeberg.org/me/axon.git -> [ "codeberg.org" "me/axon.git" ];
-  # null for any other form
+  # git@host:path and https://host/path -> [ host path ]; null for any other form
   partsOf =
     url:
     let
@@ -73,8 +72,7 @@ in
       };
 
       config = {
-        # the checkout's remotes live here alone: a clone keeps none of its own, as a second url
-        # on a remote makes git push to both
+        # the remotes live here alone: a second url on a clone's own remote makes git push to both
         programs.git.enable = true;
         programs.git.config = lib.mkIf (repo.remotes != { }) {
           includeIf."gitdir:${config.axon.repo}/".path = "${pkgs.writeText "axon-remotes" (

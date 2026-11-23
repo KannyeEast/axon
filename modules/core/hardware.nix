@@ -1,6 +1,5 @@
-# nixpkgs' facter module turns hosts/<name>/facter.json into platform, firmware, microcode,
-# initrd and driver settings. This file adds what the report leaves open and derives axon.laptop
-# and axon.nvidia from it.
+# What nixpkgs' facter module leaves open from hosts/<name>/facter.json, and axon.laptop and
+# axon.nvidia derived from the report.
 { lib, ... }:
 let
   vendors = {
@@ -53,8 +52,7 @@ in
 
       config = lib.mkMerge [
         {
-          # a throw, not an assertion: the platform comes from the report, so without a usable one
-          # evaluation stops on nixpkgs.hostPlatform before assertions run
+          # a throw: without a usable report, nixpkgs.hostPlatform fails before assertions run
           hardware.facter.reportPath =
             if
               lib.pathExists reportFile && lib.readFile reportFile != "" && (lib.importJSON reportFile) ? system

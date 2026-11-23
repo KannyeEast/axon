@@ -1,7 +1,5 @@
-# Mullvad over WireGuard in a network namespace on servers. Whatever axon.vpn.confined lists runs
-# inside it, and if the tunnel drops that service has no network at all. The host reaches those
-# services through the namespace bridge (axon.vpn.network.address). Mullvad has no port forwarding,
-# so peers can't connect in.
+# Mullvad over WireGuard in a namespace for what axon.vpn.confined lists, which has no network
+# without the tunnel. Mullvad has no port forwarding, so peers can't connect in.
 { inputs, lib, ... }:
 {
   flake.modules.nixos.vpn =
@@ -46,9 +44,8 @@
             enable = true;
             vpnNamespace = "vpn";
           };
-          # glibc asks systemd-resolved first, through a socket VPN-Confinement leaves open; that
-          # resolver runs outside the tunnel. An empty folder over it makes resolved look absent,
-          # so lookups go on to the tunnel's own DNS.
+          # glibc asks systemd-resolved first, which runs outside the tunnel (a DNS leak); an empty
+          # folder over its socket makes it look absent, so lookups go to the tunnel's own DNS
           serviceConfig.TemporaryFileSystem = [ "/run/systemd/resolve:ro" ];
         }) vpn.confined;
       };

@@ -1,6 +1,5 @@
-# restic, one repository per target. What gets backed up is whatever services declare in
-# axon.services.<name>.backup.paths; targets live in secrets.json under backup.<name> as
-# repository_unencrypted, schedule_unencrypted, password and env. With no targets it does nothing.
+# restic, one repository per target, for every service's backup.paths. A target is backup.<name>
+# in secrets.json: repository_unencrypted, schedule_unencrypted, password and env.
 { lib, ... }:
 {
   flake.modules.nixos.backup =

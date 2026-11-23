@@ -1,8 +1,7 @@
-# Immich at photos.<domain> on servers: phone photo backup with face and place search. Originals
-# on the data volume (or in the state folder without one), database in the host's Postgres,
-# machine learning on the CPU. Each account is its own library, shared through albums or partner
-# sharing; the first one made in the web UI is the admin. Settings come from here, read-only in
-# the UI. With a login provider (axon.sso) the family logs in there, matched by mail address.
+# Immich at photos.<domain>: phone photo backup with face and place search.
+# Reach: public, its own login and axon.sso's (matched by mail address) where there is one.
+# In its UI only: accounts, albums and sharing, in its database, backed up; settings come from here.
+# By hand: the first account made in the web UI is the admin.
 { lib, ... }:
 {
   flake.modules.nixos.files =
@@ -87,8 +86,7 @@
         units = [ "immich-server" ];
       };
 
-      # thumbnails and transcoded videos, which the timeline loads by the hundred,
-      # stay on the state volume
+      # thumbnails and videos the timeline loads by the hundred stay on the state volume
       fileSystems = lib.listToAttrs (
         map (dir: {
           name = "${data}/${dir}";
@@ -112,9 +110,8 @@
 
       axon.databases = [ "immich" ];
 
-      # the models in /var/cache/immich, so they aren't downloaded on every boot; the generated
-      # folders as entries of their own, as a tmpfiles rule inside /var/lib/immich runs before its
-      # mount on a switch and ends up hidden under it
+      # the models persist, so they aren't downloaded on every boot; the generated folders get their
+      # own entries, as a tmpfiles rule inside /var/lib/immich runs before its mount and is hidden
       axon.persist.state.directories =
         map
           (directory: {

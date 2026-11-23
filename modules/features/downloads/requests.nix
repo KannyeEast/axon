@@ -1,14 +1,7 @@
-# Seerr takes requests and hands them to Radarr (movies) and Sonarr (shows). It brings its own
-# login and is tailnet only: the family requests from Moonfin, which reaches it through Moonbase on
-# this host. Needs the library the arr stack fills, so it runs where that does. Kept only in its UI
-# (settings.json, backed up): its links to Jellyfin, Radarr and Sonarr, users, override rules and
-# mail notifications (axon.mail's login, sent from requests@ the cluster domain, entered by hand).
-# A scoped user sees in Jellyfin only what they requested or put on their watchlist here: the owner
-# adds the tag `scoped` to that user's "Allow items with tags" in Jellyfin, and the n8n workflow
-# "Scope tags" (automation) tags those titles for them. It hides titles; it is not access control.
-# Moonbase's Seerr URL is 127.0.0.1:8098, _scope-filter.py in front of Seerr: it drops the link to a
-# Jellyfin item the person can't see (a movie becomes requestable), so Moonfin opens Seerr's page,
-# and calls the workflow on a request or watchlist change.
+# Seerr at requests.<domain>: requests, handed to Radarr (movies) and Sonarr (shows).
+# Reach: tailnet, the gateway's login and Seerr's own.
+# In its UI only: its links to the arr apps and Jellyfin, users, rules and mail; backed up.
+# By hand: its mail settings (axon.mail's login); a scoped user's Jellyfin tag `scoped`; Moonbase's Seerr URL http://127.0.0.1:8098 in Jellyfin.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
@@ -100,6 +93,7 @@
         (lib.mkIf filtered {
           sops.secrets.${keys.jellyfin} = { };
 
+          # Moonbase's Seerr URL; it hides titles from scoped users, which is not access control
           systemd.services.scope-filter = {
             description = "Seerr for Moonbase, without links to Jellyfin items the person can't see";
             wantedBy = [ "multi-user.target" ];
