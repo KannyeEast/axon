@@ -1,26 +1,31 @@
-# SABnzbd: downloads from Usenet, outside the VPN (the provider connection is SSL; nobody else
-# sees it). Unfinished downloads on the scratch volume, finished ones next to the torrents on the
-# media volume by category (movies, tv) for Radarr and Sonarr; in its state folder without those
-# volumes. UI settings (provider, connections) are kept; declared ones win on every start. The API
-# key is dashboard/usenet/key where secrets.json has it; else SABnzbd keeps its own.
+# SABnzbd at usenet.<domain>: Usenet downloads, outside the VPN (its provider connection is SSL).
+# Reach: tailnet, the gateway's login.
+# In its UI only: the provider and its connections, in sabnzbd.ini, backed up.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
-    { config, pkgs, ... }:
+    { config, ... }:
     let
-      inherit (config.axon) routed services volumes;
+      inherit (config.axon)
+        hasSecret
+        routed
+        services
+        volumes
+        ;
+      inherit (config.axon.services.usenet) route;
+      port = 8080;
       state = "/var/lib/sabnzbd";
       finished = "${volumes.media or state}/downloads";
       incomplete = "${volumes.scratch or state}/usenet";
-      port = 8080;
-      key = "dashboard/usenet/key";
-      hasKey = lib.hasAttrByPath (lib.splitString "/" key) config.axon.secrets;
+      # without it in secrets.json, SABnzbd keeps the key it made itself
+      key = services.usenet.apiKey;
       folders = [
         finished
         incomplete
       ];
     in
     {
+      # ── service ────────
       services.sabnzbd = {
         enable = true;
         group = "media";
@@ -30,15 +35,14 @@
             inherit port;
             # only the tailnet reaches the UI; SABnzbd only checks the name it's reached by. It
             # listens on loopback, so the forwarded address (tailnet, not local to it) adds nothing
-            host_whitelist = lib.optionalString routed services.usenet.route.host;
+            host_whitelist = lib.optionalString routed route.host;
             verify_xff_header = false;
             download_dir = incomplete;
             complete_dir = finished;
             # Radarr and Sonarr, in the media group, move and delete what lands here
             permissions = "775";
-            api_key = lib.mkIf hasKey "@api_key@";
-            # empty means no article cache: every article goes straight to disk. Its own default
-            # for new installs is a quarter of the memory, at most this
+            api_key = lib.mkIf (hasSecret key) "@api_key@";
+            # unset, every article goes straight to disk; new installs default to at most this
             cache_limit = "1G";
             # its web UI's one-time tips message, seen
             notified_new_skin = 2;
@@ -54,39 +58,37 @@
             };
           };
         };
-        secretValues = lib.mkIf hasKey { "@api_key@" = config.sops.secrets.${key}.path; };
+        secretValues = lib.mkIf (hasSecret key) { "@api_key@" = config.sops.secrets.${key}.path; };
       };
 
+      # ── units ────────
+      systemd.services.sabnzbd.serviceConfig = {
+        # the module forks it (-d); in the foreground it also logs to the journal, not only to
+        # its own file
+        Type = lib.mkForce "simple";
+        ExecStart = lib.mkForce "${lib.getExe config.services.sabnzbd.package} -f ${state}/sabnzbd.ini";
+        # systemd sets it on every start, over the mode the folder was made with
+        StateDirectoryMode = "0750";
+      };
+
+      # ── secrets ────────
       # read by its preStart, which runs as sabnzbd
-      sops.secrets.${key} = lib.mkIf hasKey {
+      sops.secrets.${key} = lib.mkIf (hasSecret key) {
         owner = config.services.sabnzbd.user;
         restartUnits = [ "sabnzbd.service" ];
       };
 
-      # the folders may be on data disks that are missing at boot (nofail): wait for them, and
-      # make the folders once they're mounted (tmpfiles may run before that)
-      systemd.services.sabnzbd = {
-        unitConfig.RequiresMountsFor = folders;
-        serviceConfig = {
-          ExecStartPre = map (
-            dir: "+${lib.getExe' pkgs.coreutils "install"} -d -o root -g media -m 2775 ${dir}"
-          ) folders;
-          # the module forks it (-d); in the foreground it also logs to the journal, not only to
-          # its own file
-          Type = lib.mkForce "simple";
-          ExecStart = lib.mkForce "${lib.getExe config.services.sabnzbd.package} -f ${state}/sabnzbd.ini";
-        };
-      };
+      # ── data ────────
+      axon.folders = lib.genAttrs folders (_: {
+        user = "root";
+        group = "media";
+        mode = "2775";
+        units = [ "sabnzbd" ];
+      });
 
-      axon.persist.state.directories = [
-        {
-          directory = state;
-          user = "sabnzbd";
-          group = "media";
-          mode = "0750";
-        }
-      ];
+      axon.persist.state.directories = [ state ];
 
+      # ── registration ────────
       axon.services.usenet = {
         units = [ "sabnzbd" ];
         route = { inherit port; };

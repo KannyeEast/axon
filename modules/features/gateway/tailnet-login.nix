@@ -1,7 +1,5 @@
-# Kanidm as the tailnet's login (Tailscale's custom OIDC): a client for Tailscale, and the
-# WebFinger answer on the bare domain that points Tailscale at it, for any address there, public
-# through the tunnel. On with sso/tailscale in secrets.json and a tunnel; the bare domain needs its
-# DNS record, like a public route.
+# Kanidm as the tailnet's login (Tailscale's custom OIDC): a client and the WebFinger answer on
+# the bare domain, public through the tunnel; the bare domain needs its DNS record by hand.
 { lib, ... }:
 {
   flake.modules.nixos.gateway =
@@ -10,15 +8,12 @@
       inherit (config.axon)
         domain
         gateway
+        hasSecret
         sso
         ;
       port = 8099;
       secret = "sso/tailscale";
-      issuer = "${sso.provider}/oauth2/openid/tailscale";
-      active =
-        sso.provider != null
-        && gateway.tunnel != null
-        && lib.hasAttrByPath (lib.splitString "/" secret) config.axon.secrets;
+      active = sso.provider != null && gateway.tunnel != null && hasSecret secret;
       # the address is echoed back, so only plain ones are answered
       address = "^acct:[A-Za-z0-9._+-]+@${lib.replaceStrings [ "." ] [ "[.]" ] domain}$";
       answer = lib.toJSON {
@@ -26,14 +21,12 @@
         links = [
           {
             rel = "http://openid.net/specs/connect/1.0/issuer";
-            href = issuer;
+            href = sso.provider.issuer "tailscale";
           }
         ];
       };
     in
     lib.mkIf active {
-      sops.secrets.${secret}.owner = "kanidm";
-
       services.kanidm.provision.systems.oauth2.tailscale = {
         displayName = "Tailscale";
         originUrl = [ "https://login.tailscale.com/a/oauth_response" ];
@@ -67,5 +60,7 @@
 
       services.cloudflared.tunnels.${gateway.tunnel}.ingress.${domain} =
         "http://127.0.0.1:${toString port}";
+
+      sops.secrets.${secret}.owner = "kanidm";
     };
 }

@@ -1,6 +1,6 @@
-# Contract: axon.services. What a service offers the rest of the cluster. On a host without the
-# gateway or backup feature nobody reads it; a server warns (server/headless.nix), as its routes
-# then reach no other machine.
+# Contract: axon.services. What a service offers the rest of the cluster: the gateway reads its
+# routes and start-page tiles, backup its paths, metrics its units for the log labels. A server
+# without the gateway warns (server/headless.nix), as its routes then reach no other machine.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -35,6 +35,12 @@ in
         description = "Set by the gateway: this host serves the routes in axon.services. Consumers fall back when it doesn't.";
       };
 
+      options.axon.gated = mkOption {
+        type = types.bool;
+        default = false;
+        description = "Set by the gateway: its login is in effect on this host.";
+      };
+
       options.axon.routes = mkOption {
         type = types.attrsOf types.raw;
         readOnly = true;
@@ -57,10 +63,14 @@ in
                   type = types.nullOr (
                     types.submodule (route: {
                       options = {
-                        port = mkOption { type = types.port; };
+                        port = mkOption {
+                          type = types.port;
+                          description = "The port the service listens on.";
+                        };
                         address = mkOption {
                           type = types.str;
                           default = "127.0.0.1";
+                          description = "The address the service listens on.";
                         };
                         host = mkOption {
                           type = types.str;
@@ -75,13 +85,6 @@ in
                           default = "https://${route.config.host}";
                           defaultText = "https://<host>";
                           description = "Where clients reach it, through the gateway.";
-                        };
-                        endpoint = mkOption {
-                          type = types.str;
-                          readOnly = true;
-                          default = "${route.config.address}:${toString route.config.port}";
-                          defaultText = "<address>:<port>";
-                          description = "Where the service itself answers, on this host.";
                         };
                         name = mkOption {
                           type = types.str;
@@ -105,8 +108,10 @@ in
                         internal = mkOption {
                           type = types.str;
                           readOnly = true;
-                          default = "${if route.config.tls then "https" else "http"}://${route.config.endpoint}";
-                          defaultText = "http://<endpoint>, https:// with tls";
+                          default = "${
+                            if route.config.tls then "https" else "http"
+                          }://${route.config.address}:${toString route.config.port}";
+                          defaultText = "http://<address>:<port>, https:// with tls";
                           description = "The service's own address, for callers on this host.";
                         };
                         public = mkOption {
@@ -119,6 +124,13 @@ in
                           default = !route.config.public;
                           defaultText = "!public";
                           description = "The gateway's login (oauth2-proxy) in front of the route; false for what can't follow a browser login.";
+                        };
+                        gated = mkOption {
+                          type = types.bool;
+                          readOnly = true;
+                          default = route.config.gate && config.axon.gated;
+                          defaultText = "gate, where the gateway's login is in effect";
+                          description = "The gateway's login is in front of the route.";
                         };
                         health = mkOption {
                           type = types.str;
@@ -134,10 +146,16 @@ in
                   default = null;
                   description = "A tile on the gateway's start page, linked to the route.";
                   type = types.nullOr (
-                    types.submodule (dashboard: {
+                    types.submodule {
                       options = {
-                        name = mkOption { type = types.str; };
-                        group = mkOption { type = types.str; };
+                        name = mkOption {
+                          type = types.str;
+                          description = "The tile's title.";
+                        };
+                        group = mkOption {
+                          type = types.str;
+                          description = "The start-page group the tile sits in.";
+                        };
                         order = mkOption {
                           type = types.int;
                           default = 100;
@@ -146,6 +164,7 @@ in
                         description = mkOption {
                           type = types.str;
                           default = "";
+                          description = "The line under the tile's title.";
                         };
                         icon = mkOption {
                           type = types.str;
@@ -159,13 +178,12 @@ in
                         key = mkOption {
                           type = types.bool;
                           default = false;
-                          description = "The widget needs the service's API key, kept in the gateway host's secrets.json at dashboard/<name>/key.";
+                          description = "The widget needs the service's API key, <name>/api-key in the gateway host's secrets.json.";
                         };
-                        secrets = mkOption {
-                          type = types.attrsOf types.str;
-                          default = lib.optionalAttrs dashboard.config.key { key = "dashboard/${name}/key"; };
-                          defaultText = "{ key = \"dashboard/<name>/key\"; } with key, else { }";
-                          description = "Widget field -> key in the gateway host's secrets.json that holds its value.";
+                        space = mkOption {
+                          type = types.nullOr types.str;
+                          default = null;
+                          description = "The volume or space in host.toml [limits] whose use its tile shows, against that limit.";
                         };
                         instances = mkOption {
                           default = { };
@@ -191,20 +209,23 @@ in
                                 description = mkOption {
                                   type = types.nullOr types.str;
                                   default = null;
+                                  description = "Its line under the title instead of the service's.";
                                 };
                               };
                             }
                           );
                         };
                       };
-                    })
+                    }
                   );
                 };
 
-                space = mkOption {
-                  type = types.nullOr types.str;
-                  default = null;
-                  description = "The volume or space in host.toml [limits] whose use its tile shows, against that limit.";
+                apiKey = mkOption {
+                  type = types.str;
+                  readOnly = true;
+                  default = "${name}/api-key";
+                  defaultText = "<name>/api-key";
+                  description = "The name of the service's API key in secrets.json, for whatever on this host calls its API.";
                 };
 
                 units = mkOption {
@@ -229,6 +250,7 @@ in
                   exclude = mkOption {
                     type = types.listOf types.str;
                     default = [ ];
+                    description = "Left out of the backup, below paths.";
                   };
                 };
               };

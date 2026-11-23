@@ -1,4 +1,6 @@
-# The Nextcloud client on desktops: it syncs Nextcloud folders to this machine.
+# Nextcloud client: syncs Nextcloud folders to this desktop.
+# Settings: none.
+# Windows: com.nextcloud.desktopclient.nextcloud.
 { lib, ... }:
 {
   flake.modules.nixos.files =

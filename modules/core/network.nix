@@ -10,10 +10,7 @@
 
       axon.persist.directories = [
         "/var/lib/NetworkManager"
-        {
-          directory = "/etc/NetworkManager/system-connections";
-          mode = "0700";
-        }
+        "/etc/NetworkManager/system-connections"
       ];
     };
 }

@@ -1,6 +1,6 @@
-# Every [disk.<label>] in host.toml but disk.boot: one btrfs filesystem each, on one disk or an
-# array. disko has no multi-device type, so the first device carries the filesystem and names the
-# others for mkfs.btrfs; the others get an empty table.
+# Contract: axon.volumes. This host's data disks, name to mountpoint, from every [disk.<label>] in
+# host.toml but disk.boot, one btrfs filesystem each. A feature that can't work without a volume
+# asserts it; one that can falls back to its state folder.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -17,8 +17,7 @@ let
     raid6 = 4;
   };
 
-  # metadata as safe as the data: mkfs.btrfs defaults to DUP on one device and raid1 on several,
-  # which covers single and raid0; parity profiles can lose metadata on a crash, so mirror it
+  # metadata as safe as the data: mkfs's default covers single and raid0, raid5/6 get a mirror
   metadataFor =
     profile:
     if profile == "raid5" || profile == "raid6" then
@@ -36,6 +35,8 @@ let
     "x-systemd.device-timeout=10s"
   ];
 
+  # disko has no multi-device type: the first device carries the filesystem and names the others
+  # for mkfs.btrfs; the others get an empty table
   disks =
     label: fs:
     let
@@ -82,7 +83,6 @@ let
     );
 in
 {
-  # the schema's profile list (core/host.nix) and the installer read these too
   options.axon.profiles = mkOption {
     type = types.attrsOf types.ints.positive;
     readOnly = true;
@@ -97,6 +97,7 @@ in
       storage = removeAttrs config.axon.disk [ "boot" ];
     in
     {
+      # ── contract ────────
       options.axon.volumes = mkOption {
         type = types.attrsOf types.str;
         readOnly = true;
@@ -105,16 +106,19 @@ in
         description = "This host's data disks, name to mountpoint. A feature that can't work without a volume asserts it; one that can falls back to its state folder.";
       };
 
-      config = {
-        assertions = lib.mapAttrsToList (label: fs: {
-          assertion = lib.length fs.devices >= minimum.${fs.profile};
-          message = "hosts/${host.name}/host.toml: disk.${label} uses ${fs.profile}, which needs ${toString minimum.${fs.profile}} devices";
-        }) storage;
+      options.axon.dumps = mkOption {
+        type = types.str;
+        readOnly = true;
+        default = config.axon.volumes.data or "/var/backup";
+        defaultText = "volumes.data, else /var/backup";
+        description = "The folder for dumps and exports a backup reads: the data volume, else /var/backup on the state disk.";
+      };
 
+      config = {
+        # ── settings ────────
         disko.devices.disk = lib.concatMapAttrs disks storage;
 
-        # disko mounts by the first device's path; by label the mount still finds the filesystem
-        # after that disk is replaced
+        # by label, not disko's first device path, so the mount survives replacing that disk
         fileSystems = lib.concatMapAttrs (
           label: fs:
           lib.mapAttrs' (
@@ -123,6 +127,12 @@ in
         ) storage;
 
         services.btrfs.autoScrub.enable = true;
+
+        # ── checks ────────
+        assertions = lib.mapAttrsToList (label: fs: {
+          assertion = lib.length fs.devices >= minimum.${fs.profile};
+          message = "hosts/${host.name}/host.toml: disk.${label} uses ${fs.profile}, which needs ${toString minimum.${fs.profile}} devices";
+        }) storage;
       };
     };
 }

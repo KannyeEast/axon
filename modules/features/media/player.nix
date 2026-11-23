@@ -1,7 +1,6 @@
-# The Jellyfin player (jellyfin-mpv-shim): browses the library in its own window and plays the
-# files as they are in mpv, so the server doesn't transcode what a browser can't play (HDR, Dolby
-# Vision, remux containers, lossless audio). Started minimized with the session, it is a cast
-# target in Jellyfin's web UI and apps right away; launching it again shows the window.
+# Jellyfin player (jellyfin-mpv-shim): plays files as they are, so the server doesn't transcode.
+# Settings: .config/jellyfin-mpv-shim/mpv.conf.
+# Windows: com.github.iwalton3.jellyfin-mpv-shim.
 { lib, ... }:
 {
   flake.modules.nixos.media =

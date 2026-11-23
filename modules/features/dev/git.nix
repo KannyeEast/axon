@@ -1,14 +1,10 @@
 # git's identity and commit signing, from host.toml; home-manager writes them into git's config.
+{ lib, ... }:
 {
   flake.modules.homeManager.dev =
-    {
-      config,
-      lib,
-      osConfig,
-      ...
-    }:
+    { config, osConfig, ... }:
     let
-      inherit (osConfig.axon) user cluster;
+      inherit (osConfig.axon) cluster user;
 
       # every user key in the cluster may sign; allowed_signers wants "<principal> <type> <key>"
       strip = key: lib.concatStringsSep " " (lib.take 2 (lib.splitString " " key));

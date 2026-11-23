@@ -20,13 +20,6 @@ in
     {
       imports = [ inputs.disko.nixosModules.disko ];
 
-      assertions = [
-        {
-          assertion = lib.length boot.devices == 1;
-          message = "hosts/${host.name}/host.toml: disk.boot takes exactly one device";
-        }
-      ];
-
       disko.devices.disk.main = {
         type = "disk";
         device = lib.head boot.devices;
@@ -72,5 +65,12 @@ in
           };
         };
       };
+
+      assertions = [
+        {
+          assertion = lib.length boot.devices == 1;
+          message = "hosts/${host.name}/host.toml: disk.boot takes exactly one device";
+        }
+      ];
     };
 }

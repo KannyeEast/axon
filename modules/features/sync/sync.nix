@@ -1,6 +1,5 @@
-# Syncthing between cluster members. Who shares what is a relation, declared once in cluster.toml
-# [sync]. A folder named like one of this host's volumes lives on that volume, everywhere else in
-# ~/<folder>.
+# Syncthing at sync.<domain>: folders between cluster members, shared as cluster.toml [sync] says.
+# Reach: tailnet, the gateway's login.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -14,18 +13,17 @@ in
   };
 
   flake.modules.nixos.sync =
-    { config, pkgs, ... }:
+    { config, ... }:
     let
       inherit (config.axon)
+        cluster
         home
         host
         user
-        cluster
         volumes
         ;
       peerPort = 22000;
 
-      # folders this host is a member of, and everyone it shares them with
       folders = lib.attrNames (lib.filterAttrs (_: members: lib.elem host.name members) cluster.sync);
       peersOf = folder: lib.remove host.name cluster.sync.${folder};
       peers = lib.unique (lib.concatLists (map peersOf folders));
@@ -37,7 +35,6 @@ in
             id =
               cluster.hosts.${peer}.sync.id
                 or (throw "cluster.toml: ${peer} shares a folder but its host.toml doesn't list the sync feature");
-            # hosts reach each other by name over the tailnet
             addresses = [ "tcp://${peer}:${toString peerPort}" ];
           }
         else if (cluster.external.${peer}.sync or null) != null then
@@ -49,6 +46,7 @@ in
       onVolumes = lib.filter (folder: volumes ? ${folder}) folders;
     in
     {
+      # ── service ────────
       services.syncthing = {
         enable = true;
         user = user.name;
@@ -60,13 +58,11 @@ in
             relaysEnabled = false;
             urAccepted = -1;
           };
-          # behind the gateway the UI is asked for as sync.<domain>, which its host check
-          # rejects; it still only listens on localhost, and only the tailnet reaches the gateway.
-          # Elsewhere the check stays: it keeps websites out of the local UI (DNS rebinding).
+          # behind the gateway its host check rejects sync.<domain>; it still listens on localhost.
+          # Elsewhere the check stays: it keeps websites out of the local UI (DNS rebinding)
           gui = {
             insecureSkipHostcheck = config.axon.routed;
-            # no login of its own (one set in its UI is cleared): the gateway's login stands in
-            # front of its route, and elsewhere only this machine reaches it
+            # no own login (one set in its UI is cleared): the gateway's login or localhost guard it
             user = "";
             password = "";
           };
@@ -74,8 +70,7 @@ in
           folders = lib.genAttrs folders (folder: {
             path = pathOf folder;
             devices = peersOf folder;
-            # sync passes on a deletion or a damaged file as readily as a good change; the machine
-            # receiving it keeps the old copy in .stversions for 30 days
+            # deletions and damage sync like good changes; the receiver keeps the old copy 30 days
             versioning = {
               type = "staggered";
               params.maxAge = "2592000";
@@ -84,25 +79,18 @@ in
         };
       };
 
-      systemd.services.syncthing = lib.mkMerge [
-        {
-          # the level as a syslog prefix, which journald reads; as INF/WRN in the text it counts
-          # as info
-          environment.STLOGFORMATLEVELSYSLOG = "true";
-        }
-        # A folder on a volume needs that disk. Volumes mount with nofail, so without it Syncthing
-        # would start against the bare mountpoint on the root filesystem. The folder is handed to
-        # the user only once the disk is mounted (the volume itself is mounted as root).
-        (lib.mkIf (onVolumes != [ ]) {
-          unitConfig.RequiresMountsFor = map pathOf onVolumes;
-          serviceConfig.ExecStartPre = map (
-            folder:
-            "+${lib.getExe' pkgs.coreutils "install"} -d -o ${user.name} -g users -m 0700 ${pathOf folder}"
-          ) onVolumes;
-        })
-      ];
+      # ── units ────────
+      # the level as a syslog prefix, which journald reads; INF/WRN in the text count as info
+      systemd.services.syncthing.environment.STLOGFORMATLEVELSYSLOG = "true";
 
-      axon.overlay.tcpPorts = [ peerPort ];
+      # ── data ────────
+      # a volume mounts as root, so its folder is handed to the user
+      axon.folders = lib.genAttrs (map pathOf onVolumes) (_: {
+        user = user.name;
+        group = "users";
+        mode = "0700";
+        units = [ "syncthing" ];
+      });
 
       axon.persist.state.directories = [
         {
@@ -113,6 +101,10 @@ in
         }
       ];
 
+      # ── contracts ────────
+      axon.overlay.tcpPorts = [ peerPort ];
+
+      # ── registration ────────
       axon.services.sync = {
         units = [
           "syncthing"

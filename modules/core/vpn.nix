@@ -44,11 +44,6 @@ in
             }
           );
         };
-        hostPorts = mkOption {
-          type = types.listOf types.port;
-          default = [ ];
-          description = "TCP ports on the host that confined services may reach.";
-        };
       };
 
       config.assertions = [

@@ -1,7 +1,5 @@
-# CI: a Forgejo runner that runs jobs on this host (runs-on: native) with Nix, git and Node at
-# hand; only this forge's repositories send it jobs. It registers with the UUID in host.toml
-# [forge] runner and the token in secrets.json at forge/runner, both shown when the runner is
-# created (Site Administration → Actions → Runners → Create new runner). No UUID, no runner.
+# CI: a Forgejo runner for this forge's jobs (runs-on: native) on this host, with Nix, git and Node.
+# Its UUID and token come from Site Administration > Actions > Runners > Create new runner.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -21,14 +19,13 @@ in
       inherit (config.axon) forge services;
     in
     lib.mkIf (forge.runner != null) {
-      sops.secrets."forge/runner" = { };
-
+      # ── service ────────
       services.forgejo-runner.instances.native = {
         enable = true;
         settings = {
           runner.labels = [ "native:host" ];
           server.connections.forgejo = {
-            url = "http://${services.git.route.endpoint}/";
+            url = "${services.git.route.internal}/";
             uuid = forge.runner;
             # the module requires it null when the token comes from a file (token_url below)
             token = null;
@@ -51,20 +48,21 @@ in
         ];
       };
 
-      # it registers with Forgejo on start, so Forgejo comes first. A deploy's switch lands while
-      # the job its push started still runs, so it leaves the runner alone; a changed runner takes
-      # effect on the next reboot or `systemctl restart`
+      # ── units ────────
+      # it registers on start, so Forgejo comes first; a switch leaves it alone, as the job that
+      # deploys may run on it: a changed runner takes effect on reboot or `systemctl restart`
       systemd.services.forgejo-runner-native = {
         after = [ "forgejo.service" ];
         wants = [ "forgejo.service" ];
         restartIfChanged = false;
       };
 
+      # ── secrets ────────
+      sops.secrets."forge/runner" = { };
+
+      # ── data ────────
       axon.persist.state.directories = [
-        {
-          directory = "/var/lib/private/forgejo-runner";
-          mode = "0700";
-        }
+        "/var/lib/private/forgejo-runner"
       ];
     };
 }

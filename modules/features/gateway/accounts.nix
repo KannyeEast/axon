@@ -1,8 +1,7 @@
-# Kanidm at auth.<domain>: the one login for every service that has one (axon.sso). It provisions
-# the groups family and admins and a client per axon.sso.clients entry of this host, its secret
-# from secrets.json as sso/<client>. People and their groups are made by hand with the kanidm
-# CLI and never appear here. It serves only HTTPS, with the gateway's certificate; what is backed
-# up is its nightly online backup, not the live database.
+# Kanidm at auth.<domain>: the one login for every service that has one (axon.sso).
+# Reach: public, its own login.
+# In its UI only: people and their groups, backed up through its nightly online backup.
+# By hand: make people and add them to family or admins with the kanidm CLI.
 { lib, ... }:
 {
   flake.modules.nixos.gateway =
@@ -22,23 +21,7 @@
       };
     in
     {
-      axon.sso.provider = url;
-      # provisioning runs in the unit's start, so clients exist once it's up
-      axon.sso.unit = "kanidm.service";
-
-      sops.secrets = {
-        "kanidm/admin-password".owner = "kanidm";
-        "kanidm/idm-admin-password".owner = "kanidm";
-      }
-      // lib.mapAttrs' (
-        name: client:
-        lib.nameValuePair "sso/${name}" {
-          owner = client.user;
-          group = "kanidm";
-          mode = "0440";
-        }
-      ) sso.clients;
-
+      # ── service ────────
       services.kanidm = {
         package = pkgs.kanidmWithSecretProvisioning_1_12;
         server = {
@@ -50,8 +33,7 @@
             bindaddress = "127.0.0.1:${toString port}";
             tls_chain = "${cert}/fullchain.pem";
             tls_key = "${cert}/key.pem";
-            # every caller is Caddy or cloudflared on this host; without this its logs show only
-            # 127.0.0.1. It takes the first address, which a client can set through the tunnel
+            # logs the client, not the proxy; a client can set the first address through the tunnel
             http_client_address_info.x-forward-for = [ "127.0.0.1" ];
             online_backup = {
               # beside the state, not in it: inside, the first switch creates it before the state's
@@ -93,16 +75,32 @@
       # this host's services reach Kanidm by name without DNS
       networking.hosts."127.0.0.1" = [ host ];
 
+      # ── units ────────
       systemd.services.kanidm = {
         # the certificate exists, a placeholder at first, once acme-<domain> ran
         wants = [ "acme-${domain}.service" ];
         after = [ "acme-${domain}.service" ];
-        # the certificate files belong to Caddy's group (proxy.nix)
+        # the certificate files belong to Caddy's group
         serviceConfig.SupplementaryGroups = [ config.services.caddy.group ];
       };
       # Kanidm reads its certificate only when it starts
       security.acme.certs.${domain}.reloadServices = [ "kanidm.service" ];
 
+      # ── secrets ────────
+      sops.secrets = {
+        "kanidm/admin-password".owner = "kanidm";
+        "kanidm/idm-admin-password".owner = "kanidm";
+      }
+      // lib.mapAttrs' (
+        name: client:
+        lib.nameValuePair "sso/${name}" {
+          owner = client.user;
+          group = "kanidm";
+          mode = "0440";
+        }
+      ) sso.clients;
+
+      # ── data ────────
       axon.persist.state.directories =
         map
           (directory: {
@@ -116,6 +114,19 @@
             online_backup.path
           ];
 
+      # ── contracts ────────
+      axon.sso.provider = {
+        authorize = "${url}/ui/oauth2";
+        token = "${url}/oauth2/token";
+        userinfo = client: "${url}/oauth2/openid/${client}/userinfo";
+        issuer = client: "${url}/oauth2/openid/${client}";
+        # Kanidm lists groups as <name>@<its domain>
+        group = group: "${group}@${host}";
+        # provisioning runs in the unit's start, so clients exist once it's up
+        unit = "kanidm.service";
+      };
+
+      # ── registration ────────
       axon.services.auth = {
         units = [ "kanidm" ];
         route = {

@@ -1,28 +1,19 @@
-# Alloy ships this host's journal to Loki on every host listing monitoring (monitoring/logs.nix),
-# with the labels host, unit, level, service_name and, for Docker containers, container. Without
-# such a host it stays off. Its UI answers on localhost only.
-# level is journald's priority keyword. What a program prints to stdout lands as info, so for
-# those lines it comes from the line itself where that names one ([error], level=warn, ERROR); so
-# for a container's stderr, which Docker marks err.
-# Where a service declares logStart, the lines that follow an entry's first one (a stack trace)
-# join it, so it is one entry with the first line's level.
+# Alloy ships this host's journal to Loki on the monitoring hosts, labelled host, unit, level,
+# service_name and container; an info line's level comes from the line where it names one.
 { lib, ... }:
 {
   flake.modules.nixos.metrics =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) cluster host services;
-      containers = config.virtualisation.oci-containers;
+      inherit (config.axon) host hostsWith services;
       # Loki's port on the monitoring hosts
       port = 3100;
-      monitors = lib.attrNames (
-        lib.filterAttrs (_: data: lib.elem "monitoring" data.host.features) cluster.hosts
-      );
+      containers = config.virtualisation.oci-containers;
+      monitors = lib.attrNames (hostsWith "monitoring");
       address = name: if name == host.name then "127.0.0.1" else name;
 
-      # Docker's journald driver logs each container line with CONTAINER_NAME; oci-containers runs
-      # `docker run` attached in the container's unit, which logs the same lines a second time.
-      # That unit's output is dropped, the docker CLI's own errors with it (journalctl -u keeps them)
+      # the attached `docker run` in a container's unit logs each line a second time; dropped, the
+      # docker CLI's own errors go with it (journalctl -u keeps them)
       attached = lib.optionals (containers.backend == "docker") (
         lib.mapAttrsToList (_: container: "${container.serviceName}.service") containers.containers
       );
@@ -34,9 +25,7 @@
         }
       '';
 
-      # service_name, the rows of Grafana's Logs Drilldown: the program, overridden by the unit
-      # without instance and .service, by the container, and last by the axon.services entry the
-      # unit or container belongs to
+      # service_name: the rows of Grafana's Logs Drilldown
       derive = source: regex: ''
         rule {
           source_labels = [${lib.toJSON source}]
@@ -58,8 +47,7 @@
           lib.filterAttrs (_: container: lib.elem container.serviceName data.units) containers.containers
         );
 
-      # journald's keywords and how programs write them; the short forms count only in brackets or
-      # after level=, since words like ERR and INF also turn up in plain text
+      # short forms count only in brackets or after level=: ERR and INF turn up in plain text
       levels = {
         emerg = [
           "emerg"
@@ -106,8 +94,7 @@
       long = lib.concatStringsSep "|" (
         map lib.toUpper (lib.filter (token: lib.stringLength token > 3) tokens)
       );
-      # the first of level=<word> or "level":"<word>", [word], WORD in capitals, or a short form right
-      # after a leading timestamp (zerolog's console format: 2026-01-02T15:04:05Z ERR …)
+      # level=<word>, "level":"<word>", [word], WORD, or a short form after a timestamp (zerolog)
       named = ''(?i:\b(?:level|lvl|severity)"?\s*[=:]\s*"?)(?P<a>[A-Za-z]+)|\[(?P<b>(?i:${any}))\]|\b(?P<c>${long})\b|^\d{4}-\d{2}-\d{2}T\S+ (?P<d>(?i:${any}))\b'';
       keyword = ''{{- $levels := dict${
         lib.concatStrings (
@@ -214,8 +201,7 @@
           '')
           [
             "{level=\"info\"}"
-            # Docker's journald driver marks all of a container's stderr as err, and some (Home
-            # Assistant) print every line there
+            # Docker marks a container's stderr err; some (Home Assistant) print every line there
             "{level=\"err\", container=~\".+\"}"
           ]
         }
@@ -245,10 +231,7 @@
           '';
 
       axon.persist.state.directories = [
-        {
-          directory = "/var/lib/private/alloy";
-          mode = "0700";
-        }
+        "/var/lib/private/alloy"
       ];
     };
 }

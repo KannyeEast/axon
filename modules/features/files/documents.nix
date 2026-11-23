@@ -1,11 +1,7 @@
-# Paperless-ngx at docs.<domain> on servers: scanned documents, OCR'd and filed. Tailnet only, its
-# own login; without a gateway on this host it stays on localhost. The NixOS module, on the host's
-# Postgres and its own Redis, with Tika and Gotenberg for Office files and mails. Documents on the data volume (or in the state folder without one).
-# The nightly export (originals, OCR'd copies, tags and metadata) is what gets backed up; Paperless
-# stops while it runs.
-# First account by hand after install: sudo paperless-manage createsuperuser
-# With a login provider (axon.sso) an account is linked to it once (My Profile → Connect new social
-# account) and then logs in there; nobody signs up through it, and the password form stays.
+# Paperless-ngx at docs.<domain>: scanned documents, OCR'd and filed.
+# Reach: tailnet, its own login; axon.sso's once an account is linked to it (My Profile).
+# In its UI only: tags and metadata, backed up with the documents by the nightly export.
+# By hand: `sudo paperless-manage createsuperuser`.
 { lib, ... }:
 {
   flake.modules.nixos.files =
@@ -13,12 +9,13 @@
     let
       inherit (config.axon) routed services sso;
       inherit (services.docs) route;
-      client = sso.clients.paperless;
-      data = config.axon.spaces.paperless.path;
       port = 28981;
       provider = "kanidm";
+      client = sso.clients.paperless;
+      data = config.axon.spaces.paperless.path;
     in
     lib.mkIf (config.axon.host.class == "server") {
+      # ── service ────────
       services.paperless = {
         enable = true;
         # the database was migrated by 3.5.1; an older package can't run on it
@@ -42,6 +39,7 @@
         consumptionDir = "${data}/consume";
         database.createLocally = true;
         configureTika = true;
+        # the backup; Paperless stops while it runs
         exporter = {
           enable = true;
           directory = "${data}/export";
@@ -65,6 +63,8 @@
 
       # its default 3000 is AdGuard's
       services.gotenberg.port = 3002;
+
+      # ── units ────────
       # it pushes OpenTelemetry data to a collector on localhost by default and logs every failure
       systemd.services.gotenberg.environment = {
         OTEL_METRICS_EXPORTER = "none";
@@ -72,14 +72,12 @@
         OTEL_LOGS_EXPORTER = "none";
       };
 
-      # at notice it logs each of its snapshots, every few minutes
-      services.redis.servers.paperless.logLevel = "warning";
-
       # on a new space the empty folders tmpfiles made at boot give way to a subvolume; Paperless
       # won't start without them, so they are made again inside it
       systemd.services.storage-paperless.serviceConfig.ExecStartPost =
         "${lib.getExe' config.systemd.package "systemd-tmpfiles"} --create --prefix=${data}";
 
+      # ── secrets ────────
       sops.templates."paperless.env" = lib.mkIf (sso.provider != null) {
         # in single quotes systemd and paperless-manage's shell both take the JSON verbatim
         content = ''
@@ -90,7 +88,7 @@
                   provider_id = provider;
                   name = "Kanidm";
                   client_id = client.id;
-                  secret = config.sops.placeholder."sso/${client.id}";
+                  secret = client.placeholder;
                   settings = {
                     server_url = client.issuer;
                     # the provider requires it; allauth leaves it off
@@ -107,13 +105,13 @@
         restartUnits = [ "paperless-web.service" ];
       };
 
+      # ── login ────────
       axon.sso.clients.paperless = {
-        displayName = "Paperless";
-        landing = route.url;
+        service = "docs";
         redirects = [ "${route.url}/accounts/oidc/${provider}/login/callback/" ];
-        inherit (services.docs.dashboard) icon;
       };
 
+      # ── data ────────
       axon.spaces.paperless = {
         user = "paperless";
         group = "paperless";
@@ -128,8 +126,8 @@
 
       axon.databases = [ "paperless" ];
 
-      # the search index as an entry of its own: the module's tmpfiles rule for it runs before the
-      # dataDir's mount on a switch and ends up hidden under it, and the scheduler won't start without
+      # the search index gets its own entry: the module's tmpfiles rule runs before the dataDir's
+      # mount on a switch and is hidden under it, and the scheduler won't start without it
       axon.persist.state.directories =
         map
           (directory: {
@@ -141,11 +139,10 @@
           [
             config.services.paperless.dataDir
             "${config.services.paperless.dataDir}/index"
-          ]
-        ++ [ "/var/lib/redis-paperless" ];
+          ];
 
+      # ── registration ────────
       axon.services.docs = {
-        space = "paperless";
         units = [
           "paperless-consumer"
           "paperless-exporter"
@@ -166,6 +163,7 @@
           group = "Files";
           description = "Documents";
           icon = "paperless-ngx.svg";
+          space = "paperless";
           widget.type = "paperlessngx";
           key = true;
         };

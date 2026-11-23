@@ -1,12 +1,7 @@
-# n8n at automation.<domain>: workflows that tie the services together. Tailnet only, behind the
-# gate and n8n's own login, whose owner account is made on the first visit. Callers on this host
-# send webhooks to its internal address, past the gate. The workflows are the files in
-# .config/n8n/workflows from the checkout (hosts/<name>/home wins per file), imported before every
-# start and on a change; those with "active": true are published. A UI edit is lost on the next
-# start unless downloaded back into its file; a deleted file leaves its workflow in n8n. Workflow
-# nodes read the API keys (secrets.json's dashboard/<name>/key as <NAME>_API_KEY) from n8n's
-# environment. The rest lives in its database, encrypted with a key n8n makes itself in the same
-# folder.
+# n8n at automation.<domain>: workflows that tie the services together.
+# Reach: tailnet, the gateway's login and n8n's own.
+# In its UI only: all but the workflows, in its database and key, backed up with its state folder.
+# By hand: make the owner account on the first visit.
 { lib, ... }:
 {
   flake.modules.nixos.automation =
@@ -16,16 +11,14 @@
       inherit (config.axon.services.automation) route;
       inherit (config.services.prometheus) alertmanager;
       state = "/var/lib/private/n8n";
-      dirs = map (home: "${home}/.config/n8n/workflows") (lib.reverseList config.axon.dotfiles);
       # n8n's DynamicUser can't read the checkout under the user's 0700 home: root copies the files
       # here first, later ones replacing earlier ones of the same name
       copied = "/run/n8n-import";
-      n8n = config.systemd.services.n8n;
+      dirs = map (home: "${home}/.config/n8n/workflows") (lib.reverseList config.axon.dotfiles);
 
-      secret = name: "dashboard/${name}/key";
-      keys = lib.attrNames (
-        lib.filterAttrs (_: secrets: secrets ? key) (config.axon.secrets.dashboard or { })
-      );
+      secret = name: "${name}/api-key";
+      # every service's API key in secrets.json, also of one on another host
+      keys = lib.attrNames (lib.filterAttrs (_: area: area ? "api-key") config.axon.secrets);
       envName = name: "${lib.toUpper (lib.replaceStrings [ "-" ] [ "_" ] name)}_API_KEY";
 
       copy = pkgs.writeShellApplication {
@@ -39,6 +32,7 @@
           done
         '';
       };
+      # an import overwrites UI edits; a deleted file's workflow stays in n8n
       load = pkgs.writeShellApplication {
         name = "n8n-import";
         runtimeInputs = [
@@ -47,13 +41,12 @@
         ];
         text = ''
           shopt -s nullglob
-          failed=0
           # n8n skips such a file with only a warning, and gives one without an id a new copy each time
           for file in ${copied}/*.json; do
             if ! jq -e 'type == "object" and (.id | type) == "string" and has("nodes") and has("connections")' "$file" >/dev/null; then
-              echo "$(basename "$file"): not a workflow with id, nodes and connections, skipped"
+              # critical, so it is mailed: the workflow isn't running
+              echo "<2>$(basename "$file"): not a workflow with id, nodes and connections, skipped"
               rm "$file"
-              failed=1
             fi
           done
           files=(${copied}/*.json)
@@ -66,11 +59,11 @@
               fi
             done
           fi
-          exit "$failed"
         '';
       };
     in
     {
+      # ── service ────────
       services.n8n = {
         enable = true;
         environment = {
@@ -84,6 +77,8 @@
           N8N_LOG_FORMAT = "json";
           # workflow nodes read the API keys and addresses below as {{ $env.X }}
           N8N_BLOCK_ENV_ACCESS_IN_NODE = false;
+          # its current default; unset, it warns on every start that the default turns false later
+          N8N_UNVERIFIED_PACKAGES_ENABLED = true;
           AXON_HOST = host.name;
         }
         // lib.optionalAttrs alertmanager.enable {
@@ -91,52 +86,18 @@
         };
       };
 
-      systemd.services.n8n.serviceConfig.EnvironmentFile = lib.mkIf (
-        keys != [ ]
-      ) config.sops.templates."n8n.env".path;
-
-      sops.secrets = lib.genAttrs (map secret keys) (_: { });
-      sops.templates."n8n.env" = lib.mkIf (keys != [ ]) {
-        content = lib.concatMapStrings (
-          name: "${envName name}=${config.sops.placeholder.${secret name}}\n"
-        ) keys;
-        restartUnits = [ "n8n.service" ];
-      };
-
-      # a broken file fails this unit, not n8n
-      systemd.services.n8n-import = {
-        description = "Import the n8n workflows from the checkout";
-        wantedBy = [ "n8n.service" ];
-        before = [ "n8n.service" ];
-        environment = removeAttrs n8n.environment [ "PATH" ];
-        serviceConfig = {
-          Type = "oneshot";
-          User = "n8n";
-          RuntimeDirectory = "n8n-import";
-          ExecStartPre = "+${lib.getExe copy}";
-          ExecStart = lib.getExe load;
-          # n8n's own sandbox
-          inherit (n8n.serviceConfig)
-            DynamicUser
-            StateDirectory
-            LoadCredential
-            NoNewPrivileges
-            PrivateTmp
-            PrivateDevices
-            DevicePolicy
-            ProtectSystem
-            ProtectHome
-            ProtectControlGroups
-            ProtectKernelModules
-            ProtectKernelTunables
-            RestrictAddressFamilies
-            RestrictNamespaces
-            RestrictRealtime
-            RestrictSUIDSGID
-            MemoryDenyWriteExecute
-            LockPersonality
-            ;
-        };
+      # ── units ────────
+      # the import is part of every start: as its own unit a switch ran it apart from n8n, which
+      # then kept the workflows it had started with. A failed import (-) doesn't stop n8n
+      systemd.services.n8n.serviceConfig = {
+        EnvironmentFile = lib.mkIf (keys != [ ]) config.sops.templates."n8n.env".path;
+        RuntimeDirectory = "n8n-import";
+        ExecStartPre = [
+          "+${lib.getExe copy}"
+          "-${lib.getExe load}"
+        ];
+        # the import takes about 5 s per workflow
+        TimeoutStartSec = "10min";
       };
       systemd.paths.n8n-workflows = {
         wantedBy = [ "paths.target" ];
@@ -151,21 +112,23 @@
         };
       };
 
-      warnings =
-        lib.optional (!alertmanager.enable)
-          "hosts/${host.name}/host.toml: no Alertmanager on this host, so n8n's failed workflows and reminders aren't mailed; list monitoring here to mail them";
+      # ── secrets ────────
+      sops.secrets = lib.genAttrs (map secret keys) (_: { });
+      sops.templates."n8n.env" = lib.mkIf (keys != [ ]) {
+        content = lib.concatMapStrings (
+          name: "${envName name}=${config.sops.placeholder.${secret name}}\n"
+        ) keys;
+        restartUnits = [ "n8n.service" ];
+      };
 
-      axon.persist.state.directories = [
-        {
-          directory = state;
-          mode = "0700";
-        }
-      ];
+      # ── data ────────
+      axon.persist.state.directories = [ state ];
 
+      # ── registration ────────
       axon.services.automation = {
         units = [
           "n8n"
-          "n8n-import"
+          "n8n-workflows"
         ];
         route = {
           port = 5678;
@@ -179,5 +142,10 @@
         };
         backup.paths = [ state ];
       };
+
+      # ── checks ────────
+      warnings =
+        lib.optional (!alertmanager.enable)
+          "hosts/${host.name}/host.toml: no Alertmanager on this host, so n8n's failed workflows and reminders aren't mailed; list monitoring here to mail them";
     };
 }

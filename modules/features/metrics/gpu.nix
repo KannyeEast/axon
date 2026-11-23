@@ -1,17 +1,14 @@
-# NVIDIA GPU load, memory and temperature for Prometheus. The node exporter can't read the
-# proprietary driver, so a service asks nvidia-smi every 15 seconds and leaves the values in a
-# textfile the node exporter serves (exporters.nix): every host has one, so Prometheus needs no
-# list of GPU hosts.
-# Not on laptops, where asking keeps the GPU awake. While nvidia-smi fails (a driver update before
-# the reboot), the values are gone.
+# NVIDIA GPU load, memory and temperature: the node exporter can't read the proprietary driver,
+# so a service leaves nvidia-smi's values in a textfile the node exporter serves.
 { lib, ... }:
 {
   flake.modules.nixos.metrics =
     { config, pkgs, ... }:
     let
-      dir = "/run/prometheus-node-exporter-text";
       inherit (config.axon) laptop nvidia;
+      dir = "/run/prometheus-node-exporter-text";
 
+      # while nvidia-smi fails (a driver updated before the reboot) the values are gone
       poll = pkgs.writeShellApplication {
         name = "gpu-metrics";
         runtimeInputs = [ config.hardware.nvidia.package.bin ];
@@ -33,6 +30,7 @@
         '';
       };
     in
+    # not on laptops: polling keeps the GPU awake
     lib.mkIf (nvidia && !laptop) {
       systemd.services.gpu-metrics = {
         description = "NVIDIA GPU values for the node exporter";

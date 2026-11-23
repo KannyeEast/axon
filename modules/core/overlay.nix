@@ -1,7 +1,6 @@
 # Contract: axon.overlay. The private network between machines (Tailscale) that cluster relations
-# run over. A host joins by being named in a cluster.toml relation, or when monitoring on one host
-# scrapes metrics on another; any other stays off, needs no key, keeps the listed ports closed and
-# has a null network.
+# run over. A host joins when a cluster.toml relation or a cross-host metrics scrape names it; any
+# other stays off without a key, keeps the listed ports closed and has a null network.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -10,13 +9,14 @@ in
   flake.modules.nixos.core =
     { config, ... }:
     let
-      inherit (config.axon) cluster host overlay;
+      inherit (config.axon)
+        cluster
+        host
+        hostsWith
+        overlay
+        ;
       lists = feature: lib.elem feature host.features;
-      othersList =
-        feature:
-        lib.any (data: lib.elem feature data.host.features) (
-          lib.attrValues (removeAttrs cluster.hosts [ host.name ])
-        );
+      othersList = feature: removeAttrs (hostsWith feature) [ host.name ] != { };
       member =
         lib.elem host.name (
           lib.attrNames cluster.ssh
@@ -26,6 +26,7 @@ in
         || (lists "monitoring" && othersList "metrics");
     in
     {
+      # ── contract ────────
       options.axon.overlay = {
         network = mkOption {
           default = null;
@@ -66,15 +67,7 @@ in
       };
 
       config = lib.mkIf member {
-        axon.overlay.network = {
-          ipv4 = "100.64.0.0/10";
-          ipv6 = "fd7a:115c:a1e0::/48";
-          domain = "ts.net";
-          resolver = "100.100.100.100";
-        };
-
-        sops.secrets."tailscale/authkey" = { };
-
+        # ── settings ────────
         services.tailscale = {
           enable = true;
           openFirewall = true;
@@ -87,17 +80,29 @@ in
           allowedUDPPorts = overlay.udpPorts;
         };
 
-        axon.links.Tailscale = {
-          url = "https://console.tailscale.com";
-          icon = "tailscale.svg";
-        };
+        # ── secrets ────────
+        sops.secrets."tailscale/authkey" = { };
 
+        # ── data ────────
         axon.persist.directories = [
           {
             directory = "/var/lib/tailscale";
             mode = "0700";
           }
         ];
+
+        # ── contracts ────────
+        axon.overlay.network = {
+          ipv4 = "100.64.0.0/10";
+          ipv6 = "fd7a:115c:a1e0::/48";
+          domain = "ts.net";
+          resolver = "100.100.100.100";
+        };
+
+        axon.links.Tailscale = {
+          url = "https://console.tailscale.com";
+          icon = "tailscale.svg";
+        };
       };
     };
 }

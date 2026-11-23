@@ -1,15 +1,44 @@
-# On desktops, KeePassXC is the password manager and the system secret store (Secret Service),
-# so apps that save passwords put them in the vault. Its settings, including [FdoSecrets], are
-# dotfiles; this only installs it and starts it with the session.
+# KeePassXC: the password manager and the system secret store (Secret Service).
+# Settings: .config/keepassxc/keepassxc.ini.
+# Windows: org.keepassxc.KeePassXC. Key: Mod+P.
 { lib, ... }:
 {
   flake.modules.nixos.passwords =
     { config, pkgs, ... }:
+    let
+      start = "${lib.getExe pkgs.keepassxc} --minimized";
+    in
     lib.mkIf (config.axon.host.class == "desktop") {
+      # ── program ────────
       environment.systemPackages = [ pkgs.keepassxc ];
 
-      # the browser extension, the link that lets it talk to the app, and the browser's own password
-      # saving out of the way
+      # ── session ────────
+      systemd.user.services.keepassxc = {
+        description = "KeePassXC";
+        wantedBy = [ "graphical-session.target" ];
+        partOf = [ "graphical-session.target" ];
+        after = [ "graphical-session.target" ];
+        serviceConfig = {
+          ExecStart = start;
+          Restart = "on-failure";
+        };
+      };
+
+      # ── system ────────
+      # two secret stores fight over the same D-Bus name; niri turns gnome-keyring on
+      services.gnome.gnome-keyring.enable = false;
+      # KeePassXC ships no D-Bus activation file, so an app asking before it is up drops its saved
+      # login (Nextcloud at login); with this, D-Bus holds the call until the service owns the name
+      services.dbus.packages = [
+        (pkgs.writeTextDir "share/dbus-1/services/org.freedesktop.secrets.service" ''
+          [D-BUS Service]
+          Name=org.freedesktop.secrets
+          Exec=${start}
+          SystemdService=keepassxc.service
+        '')
+      ];
+
+      # ── contracts ────────
       axon.browser = {
         extensions."keepassxc-browser@keepassxc.org" = {
           id = "keepassxc-browser";
@@ -20,32 +49,6 @@
         policies = {
           OfferToSaveLogins = false;
           PasswordManagerEnabled = false;
-        };
-      };
-
-      # two secret stores fight over the same D-Bus name; niri turns gnome-keyring on
-      services.gnome.gnome-keyring.enable = false;
-
-      # KeePassXC ships no activation file for the secret store's name, so an app that asks before
-      # KeePassXC is up finds no store and drops its saved login (Nextcloud at login). With this,
-      # D-Bus holds the call until the service below owns the name
-      services.dbus.packages = [
-        (pkgs.writeTextDir "share/dbus-1/services/org.freedesktop.secrets.service" ''
-          [D-BUS Service]
-          Name=org.freedesktop.secrets
-          Exec=${lib.getExe pkgs.keepassxc} --minimized
-          SystemdService=keepassxc.service
-        '')
-      ];
-
-      systemd.user.services.keepassxc = {
-        description = "KeePassXC";
-        wantedBy = [ "graphical-session.target" ];
-        partOf = [ "graphical-session.target" ];
-        after = [ "graphical-session.target" ];
-        serviceConfig = {
-          ExecStart = "${lib.getExe pkgs.keepassxc} --minimized";
-          Restart = "on-failure";
         };
       };
     };

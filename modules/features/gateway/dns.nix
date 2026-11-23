@@ -1,28 +1,18 @@
-# DNS filtering for the tailnet (AdGuard Home). Settings are owned by Nix; the web UI is for
-# looking, not changing. Point the tailnet's DNS at this host in the Tailscale admin console.
-# Public routes resolve to the tunnel everywhere else; here they answer like the tailnet-only
-# start page, so tailnet devices reach them directly, without the tunnel's upload cap.
+# AdGuard Home at dns.<domain>: DNS filtering for the tailnet.
+# Reach: tailnet, the gateway's login.
+# By hand: point the tailnet's DNS at this host in the Tailscale admin console.
 { lib, ... }:
 {
   flake.modules.nixos.gateway =
     { config, ... }:
     let
-      inherit (config.axon.overlay) network;
       inherit (config.axon) routes;
+      inherit (config.axon.overlay) network;
       port = 3000;
       public = lib.filterAttrs (_: service: service.route.public) routes;
     in
     {
-      axon.persist.state.directories = [
-        {
-          directory = "/var/lib/private/AdGuardHome";
-          mode = "0700";
-        }
-      ];
-
-      # free port 53 for the dns to use
-      services.resolved.settings.Resolve.DNSStubListener = false;
-
+      # ── service ────────
       services.adguardhome = {
         enable = true;
         mutableSettings = false;
@@ -45,8 +35,7 @@
             cache_optimistic = true;
           };
 
-          # lookups of this host's own services (mostly the route checks of monitoring) would
-          # drown out the devices' traffic in the numbers
+          # lookups of its own services (the route checks) would drown out the devices' traffic
           statistics = {
             ignored = [ "||${config.axon.domain}^" ];
             ignored_enabled = true;
@@ -56,6 +45,7 @@
             ignored_enabled = true;
           };
 
+          # public routes answer like the start page: tailnet devices skip the tunnel's upload cap
           filtering = {
             # a name as the answer makes it a CNAME, which AdGuard then resolves upstream
             rewrites = lib.mapAttrsToList (_: service: {
@@ -88,11 +78,21 @@
         };
       };
 
+      # frees port 53
+      services.resolved.settings.Resolve.DNSStubListener = false;
+
+      # ── data ────────
+      axon.persist.state.directories = [
+        "/var/lib/private/AdGuardHome"
+      ];
+
+      # ── contracts ────────
       axon.overlay = {
         tcpPorts = [ 53 ];
         udpPorts = [ 53 ];
       };
 
+      # ── registration ────────
       axon.services.dns = {
         units = [ "adguardhome" ];
         route.port = port;

@@ -1,18 +1,14 @@
-# Finding things: Prowlarr manages the indexers for Radarr (movies) and Sonarr (shows),
-# Bazarr fetches subtitles. All tailnet-only, behind the gateway's login where it runs. They fill
-# the movies/ and shows/ folders on the media volume, so they only run on a host that has one.
-# Their API keys are dashboard/<name>/key where secrets.json has it; else each keeps its own.
-# Kept only in their UIs (config.db, backed up): download clients with their keys, root folders,
-# Connect entries, Prowlarr's indexers and the apps it syncs them to; Bazarr's providers and
-# language profiles (its config.yaml).
+# Radarr, Sonarr, Prowlarr and Bazarr at <name>.<domain>: movies, shows, indexers and subtitles.
+# Reach: tailnet, the gateway's login; their own where the gateway has none.
+# In their UIs only: download clients, root folders, Connect, indexers, subtitle sources; backed up.
 { lib, ... }:
 {
   flake.modules.nixos.downloads =
-    { config, pkgs, ... }:
+    { config, ... }:
     let
+      inherit (config.axon) hasSecret services;
       inherit (config.axon.volumes) media;
-      # order: Jellyfin and Seerr first, then the downloaders, then these four (Media fills rows
-      # left to right). attention: widget values marked amber above 0
+      # order: after Jellyfin, Seerr and the downloaders; attention: widget values amber above 0
       apps = {
         radarr = {
           port = 7878;
@@ -49,35 +45,30 @@
         ];
       };
 
-      # they insist on a login method: External where the gateway's login stands in front, else
-      # Forms, off for local addresses with the tailnet's 100.64.0.0/10 counted as local (a
-      # setting config.xml has and the UI doesn't). Settings here win over config.xml
+      # the first line of a log entry in the .NET apps; a stack trace follows it
+      logStart = "^\\[(Trace|Debug|Info|Warn|Error|Fatal)\\]";
+
+      # they insist on a login method: External behind the gateway's login, else Forms, off for
+      # local addresses with the tailnet's 100.64.0.0/10 counted local (config.xml only, not the UI)
       settings = name: {
-        # names they answer to: their route and their own address
         server.allowedHosts =
           let
             inherit (config.axon.services.${name}) route;
           in
           lib.concatStringsSep "," [
             route.host
-            (lib.head (lib.splitString ":" (lib.removePrefix "http://" route.internal)))
+            route.address
           ];
         auth = {
-          method =
-            if config.axon.services.${name}.route.gate && config.services.oauth2-proxy.enable then
-              "External"
-            else
-              "Forms";
+          method = if services.${name}.route.gated then "External" else "Forms";
           required = "DisabledForLocalAddresses";
           trustCgnatIpAddresses = true;
         };
       };
 
-      # the first line of a log entry in the .NET apps; a stack trace follows it
-      logStart = "^\\[(Trace|Debug|Info|Warn|Error|Fatal)\\]";
-
-      secret = name: "dashboard/${name}/key";
-      hasKey = name: lib.hasAttrByPath (lib.splitString "/" (secret name)) config.axon.secrets;
+      # without its key in secrets.json, an app keeps the one it made itself
+      secret = name: services.${name}.apiKey;
+      hasKey = name: hasSecret (secret name);
       keyed = lib.filter hasKey [
         "radarr"
         "sonarr"
@@ -109,8 +100,11 @@
       };
     in
     lib.mkIf (config.axon.volumes ? media) {
+      # ── service ────────
       services.radarr = {
         enable = true;
+        # its default, .config/Radarr inside the state folder, has tmpfiles make .config root's
+        dataDir = "/var/lib/radarr";
         group = "media";
         settings = settings "radarr";
         environmentFiles = envFile "radarr";
@@ -134,6 +128,20 @@
         environmentFiles = envFile "prowlarr";
       };
 
+      # ── units ────────
+      systemd.services = lib.mkMerge [
+        (lib.genAttrs [ "radarr" "sonarr" "bazarr" ] (_: {
+          unitConfig.RequiresMountsFor = [ media ];
+          # Bazarr writes subtitles into the folders Radarr and Sonarr make, so what one creates
+          # stays group-writable; forced over their modules' 0022
+          serviceConfig.UMask = lib.mkForce "0002";
+        }))
+        # systemd sets it on every start, over the mode the folder was made with; Radarr has no
+        # StateDirectory, and Bazarr's module makes its folder 0700 by tmpfiles
+        { sonarr.serviceConfig.StateDirectoryMode = "0750"; }
+      ];
+
+      # ── secrets ────────
       sops.secrets = lib.listToAttrs (
         map (name: lib.nameValuePair (secret name) { restartUnits = [ "${name}.service" ]; }) keyed
       );
@@ -146,45 +154,57 @@
         ) (lib.remove "bazarr" keyed)
       );
 
-      systemd.services = lib.mkMerge [
-        (lib.genAttrs [ "radarr" "sonarr" "bazarr" ] (_: {
-          unitConfig.RequiresMountsFor = [ media ];
-          # Bazarr writes subtitles into the folders Radarr and Sonarr make, so what one creates
-          # stays group-writable; forced over their modules' 0022
-          serviceConfig.UMask = lib.mkForce "0002";
-        }))
-        # the library folders, made once the disk is mounted (tmpfiles may run before that)
-        (lib.mapAttrs
-          (_: dir: {
-            serviceConfig.ExecStartPre = [
-              "+${lib.getExe' pkgs.coreutils "install"} -d -o root -g media -m 2775 ${media}/${dir}"
-            ];
-          })
+      # ── data ────────
+      # the library folders; Bazarr writes subtitles into both, and both apps import from downloads
+      axon.folders =
+        lib.mapAttrs'
+          (
+            app: dir:
+            lib.nameValuePair "${media}/${dir}" {
+              user = "root";
+              group = "media";
+              mode = "2775";
+              units = [
+                app
+                "bazarr"
+              ];
+            }
+          )
           {
             radarr = "movies";
             sonarr = "shows";
           }
-        )
+        // {
+          "${media}/downloads" = {
+            user = "root";
+            group = "media";
+            mode = "2775";
+            units = [
+              "radarr"
+              "sonarr"
+            ];
+          };
+        };
+
+      # Radarr has no StateDirectory and Bazarr's folder comes from tmpfiles, so impermanence makes
+      # theirs with owner and mode
+      axon.persist.state.directories = [
+        {
+          directory = "/var/lib/bazarr";
+          user = "bazarr";
+          group = "media";
+        }
+        {
+          directory = "/var/lib/radarr";
+          user = "radarr";
+          group = "media";
+          mode = "0700";
+        }
+        "/var/lib/sonarr"
+        "/var/lib/private/prowlarr"
       ];
 
-      # Radarr's module only declares .config/Radarr, so tmpfiles makes .config root's and then
-      # refuses the unsafe step from radarr's folder into it: Radarr is never created
-      systemd.tmpfiles.rules = [ "d /var/lib/radarr/.config 0750 radarr media -" ];
-
-      axon.persist.state.directories =
-        map (app: {
-          directory = "/var/lib/${app}";
-          user = app;
-          group = "media";
-          mode = "0750";
-        }) (lib.attrNames apps)
-        ++ [
-          {
-            directory = "/var/lib/private/prowlarr";
-            mode = "0700";
-          }
-        ];
-
+      # ── registration ────────
       axon.services =
         lib.mapAttrs (name: app: {
           units = [ name ];

@@ -9,20 +9,44 @@ in
   flake.modules.nixos.core =
     { config, ... }:
     let
+      inherit (config.axon) services;
       inherit (config.axon.sso) provider;
     in
     {
       options.axon.sso = {
         provider = mkOption {
-          type = types.nullOr types.str;
           default = null;
-          description = "The login provider's base URL, set by the provider. Consumers must work with null.";
-        };
-
-        unit = mkOption {
-          type = types.nullOr types.str;
-          default = null;
-          description = "The provider's systemd unit on this host, started once its clients exist; for consumers that reach it while starting.";
+          description = "The login provider's facts, set by the provider; consumers must work with null.";
+          type = types.nullOr (
+            types.submodule {
+              options = {
+                authorize = mkOption {
+                  type = types.str;
+                  description = "The URL of the authorization endpoint.";
+                };
+                token = mkOption {
+                  type = types.str;
+                  description = "The URL of the token endpoint.";
+                };
+                userinfo = mkOption {
+                  type = types.functionTo types.str;
+                  description = "Client id to the URL of its userinfo endpoint.";
+                };
+                issuer = mkOption {
+                  type = types.functionTo types.str;
+                  description = "Client id to its OpenID Connect issuer.";
+                };
+                group = mkOption {
+                  type = types.functionTo types.str;
+                  description = "Group name to its value in the groups claim.";
+                };
+                unit = mkOption {
+                  type = types.str;
+                  description = "The provider's systemd unit on this host, started once its clients exist; for consumers that reach it while starting.";
+                };
+              };
+            }
+          );
         };
 
         clients = mkOption {
@@ -30,12 +54,40 @@ in
           description = "Services that log users in at the provider, by client id.";
           type = types.attrsOf (
             types.submodule (
-              { name, ... }:
+              { name, ... }@client:
+              let
+                inherit (client.config) service;
+                entry = services.${service};
+                tile =
+                  if entry.dashboard != null then
+                    entry.dashboard
+                  else
+                    throw "axon.sso.clients.${name}: service ${service} has no dashboard; set displayName";
+              in
               {
                 options = {
-                  displayName = mkOption { type = types.str; };
+                  service = mkOption {
+                    type = types.nullOr types.str;
+                    default = null;
+                    description = "The axon.services entry the client logs users in for; its tile's name and icon and its url are the defaults of displayName, icon and landing.";
+                  };
+                  displayName = mkOption {
+                    type = types.str;
+                    default =
+                      if service != null then tile.name else throw "axon.sso.clients.${name}: set displayName or service";
+                    defaultText = "the service's dashboard.name";
+                    description = "The client's name in the provider's app list.";
+                  };
                   landing = mkOption {
                     type = types.str;
+                    default =
+                      if service == null then
+                        throw "axon.sso.clients.${name}: set landing or service"
+                      else if entry.route != null then
+                        entry.route.url
+                      else
+                        throw "axon.sso.clients.${name}: service ${service} has no route; set landing";
+                    defaultText = "the service's route.url";
                     description = "Where the provider's app list leads.";
                   };
                   redirects = mkOption {
@@ -52,7 +104,8 @@ in
                   };
                   icon = mkOption {
                     type = types.nullOr types.str;
-                    default = null;
+                    default = if service != null && entry.dashboard != null then entry.dashboard.icon else null;
+                    defaultText = "the service's dashboard.icon, else null";
                     description = "An svg from homarr-labs/dashboard-icons for the provider's app list, e.g. immich.svg.";
                   };
                   user = mkOption {
@@ -66,12 +119,13 @@ in
                     readOnly = true;
                     default = name;
                     defaultText = "<name>";
+                    description = "The client's id at the provider.";
                   };
                   issuer = mkOption {
                     type = types.nullOr types.str;
                     readOnly = true;
-                    default = if provider != null then "${provider}/oauth2/openid/${name}" else null;
-                    defaultText = "<provider>/oauth2/openid/<name>, null without a provider";
+                    default = if provider != null then provider.issuer name else null;
+                    defaultText = "provider.issuer <name>, null without a provider";
                     description = "The client's OpenID Connect issuer; the provider has one per client.";
                   };
                   secret = mkOption {
@@ -80,6 +134,20 @@ in
                     default = config.sops.secrets."sso/${name}".path;
                     defaultText = "the path of the sops secret sso/<name>";
                     description = "The client secret, from secrets.json; readable by the provider and user.";
+                  };
+                  placeholder = mkOption {
+                    type = types.str;
+                    readOnly = true;
+                    default = config.sops.placeholder."sso/${name}";
+                    defaultText = "the sops placeholder of sso/<name>";
+                    description = "The client secret's placeholder in a sops template.";
+                  };
+                  groupClaim = mkOption {
+                    type = types.nullOr types.str;
+                    readOnly = true;
+                    default = if provider != null then provider.group client.config.group else null;
+                    defaultText = "provider.group <group>, null without a provider";
+                    description = "The allowed group as the provider lists it in the groups claim.";
                   };
                 };
               }

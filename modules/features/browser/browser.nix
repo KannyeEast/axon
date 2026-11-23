@@ -1,5 +1,6 @@
-# Zen as the default browser; the other files here set it up. What other features need from
-# it arrives through axon.browser.
+# Zen: the default browser.
+# Settings: ~/.config/zen/<profile> (user.js, chrome, declared files, bookmarks.html).
+# Windows: zen-beta. Key: Mod+B.
 { inputs, ... }:
 {
   flake.modules.homeManager.browser =
