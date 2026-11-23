@@ -47,16 +47,6 @@
           };
         }
       );
-      seeding = pkgs.writeShellScript "home-assistant-seed" ''
-        cd ${state}
-        [ -e configuration.yaml ] && exit 0
-        install -m 0644 ${seed} configuration.yaml
-        install -D -m 0600 ${networkStore} .storage/http
-        echo '[]' > automations.yaml
-        echo '{}' > scripts.yaml
-        echo '[]' > scenes.yaml
-        mkdir -p themes
-      '';
     in
     {
       # ── service ────────
@@ -69,7 +59,26 @@
       };
 
       # ── units ────────
-      systemd.services.docker-home-assistant.serviceConfig.ExecStartPre = [ "${seeding}" ];
+      # a first configuration, each file only while it is missing; HA edits them from then on
+      systemd.tmpfiles.settings.home-assistant = {
+        "${state}/configuration.yaml".C = {
+          mode = "0644";
+          argument = "${seed}";
+        };
+        "${state}/.storage".d = { };
+        "${state}/.storage/http".C = {
+          mode = "0600";
+          argument = "${networkStore}";
+        };
+        "${state}/automations.yaml".f.argument = "[]";
+        "${state}/scripts.yaml".f.argument = "{}";
+        "${state}/scenes.yaml".f.argument = "[]";
+        "${state}/themes".d = { };
+      };
+      # the state volume may mount after tmpfiles ran at boot
+      systemd.services.docker-home-assistant.serviceConfig.ExecStartPre = [
+        "${config.systemd.package}/bin/systemd-tmpfiles --create --prefix=${state}"
+      ];
 
       # ── data ────────
       axon.persist.state.directories = [
