@@ -2,7 +2,8 @@
 # with the labels host, unit, level, service_name and, for Docker containers, container. Without
 # such a host it stays off. Its UI answers on localhost only.
 # level is journald's priority keyword. What a program prints to stdout lands as info, so for
-# those lines it comes from the line itself where that names one ([error], level=warn, ERROR).
+# those lines it comes from the line itself where that names one ([error], level=warn, ERROR); so
+# for a container's stderr, which Docker marks err.
 # Where a service declares logStart, the lines that follow an entry's first one (a stack trace)
 # join it, so it is one entry with the first line's level.
 { lib, ... }:
@@ -105,15 +106,16 @@
       long = lib.concatStringsSep "|" (
         map lib.toUpper (lib.filter (token: lib.stringLength token > 3) tokens)
       );
-      # the first of level=<word> or "level":"<word>", [word], or WORD in capitals
-      named = ''(?i:\b(?:level|lvl|severity)"?\s*[=:]\s*"?)(?P<a>[A-Za-z]+)|\[(?P<b>(?i:${any}))\]|\b(?P<c>${long})\b'';
+      # the first of level=<word> or "level":"<word>", [word], WORD in capitals, or a short form right
+      # after a leading timestamp (zerolog's console format: 2026-01-02T15:04:05Z ERR …)
+      named = ''(?i:\b(?:level|lvl|severity)"?\s*[=:]\s*"?)(?P<a>[A-Za-z]+)|\[(?P<b>(?i:${any}))\]|\b(?P<c>${long})\b|^\d{4}-\d{2}-\d{2}T\S+ (?P<d>(?i:${any}))\b'';
       keyword = ''{{- $levels := dict${
         lib.concatStrings (
           lib.mapAttrsToList (
             level: names: lib.concatMapStrings (name: " \"${name}\" \"${level}\"") names
           ) levels
         )
-      } -}}{{- with coalesce .a .b .c -}}{{- get $levels (lower .) | default "info" -}}{{- else -}}info{{- end -}}'';
+      } -}}{{- with coalesce .a .b .c .d -}}{{- get $levels (lower .) | default "info" -}}{{- else -}}info{{- end -}}'';
 
       source = pkgs.writeText "config.alloy" ''
         loki.relabel "journal" {
@@ -140,6 +142,7 @@
           }
         ${copy "__journal_priority_keyword" "level"}
         ${copy "__journal_container_name" "container"}
+        ${copy "__journal_syslog_identifier" "identifier"}
         ${derive "__journal_syslog_identifier" "(.+)"}
         ${derive "unit" "([^@]+)(@.*)?\\.service"}
         ${derive "container" "(.+)"}
@@ -163,6 +166,19 @@
         loki.process "level" {
           forward_to = [loki.write.monitoring.receiver]
 
+          // systemd's lines about a job that ran fine (timers every few minutes make thousands a
+          // day); its lines about failures stay
+          stage.match {
+            selector = "{identifier=\"systemd\"}"
+            stage.drop {
+              expression = ${lib.toJSON "^(Starting .+\\.\\.\\.|Started .+\\.|Finished .+\\.|.+: Deactivated successfully\\.|.+: Consumed .+)$"}
+              drop_counter_reason = "systemd_routine"
+            }
+          }
+          stage.label_drop {
+            values = ["identifier"]
+          }
+
           // terminal colours some programs print into the journal too; they hide the level
           stage.replace {
             expression = ${lib.toJSON "(\\x1b\\[[0-9;]*m)"}
@@ -179,20 +195,30 @@
           '') (lib.filterAttrs (_: data: data.logStart != null) services)
         )}
 
-          stage.match {
-            selector = "{level=\"info\"}"
+        ${lib.concatMapStrings
+          (selector: ''
+            stage.match {
+              selector = ${lib.toJSON selector}
 
-            stage.regex {
-              expression = ${lib.toJSON named}
+              stage.regex {
+                expression = ${lib.toJSON named}
+              }
+              stage.template {
+                source = "level"
+                template = ${lib.toJSON keyword}
+              }
+              stage.labels {
+                values = {level = ""}
+              }
             }
-            stage.template {
-              source = "level"
-              template = ${lib.toJSON keyword}
-            }
-            stage.labels {
-              values = {level = ""}
-            }
-          }
+          '')
+          [
+            "{level=\"info\"}"
+            # Docker's journald driver marks all of a container's stderr as err, and some (Home
+            # Assistant) print every line there
+            "{level=\"err\", container=~\".+\"}"
+          ]
+        }
         }
 
         loki.write "monitoring" {

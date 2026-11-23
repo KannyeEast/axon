@@ -72,6 +72,9 @@
         OTEL_LOGS_EXPORTER = "none";
       };
 
+      # at notice it logs each of its snapshots, every few minutes
+      services.redis.servers.paperless.logLevel = "warning";
+
       # on a new space the empty folders tmpfiles made at boot give way to a subvolume; Paperless
       # won't start without them, so they are made again inside it
       systemd.services.storage-paperless.serviceConfig.ExecStartPost =
@@ -122,6 +125,8 @@
           "paperless-web"
         ];
       };
+
+      axon.databases = [ "paperless" ];
 
       # the search index as an entry of its own: the module's tmpfiles rule for it runs before the
       # dataDir's mount on a switch and ends up hidden under it, and the scheduler won't start without

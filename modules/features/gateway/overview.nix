@@ -2,8 +2,9 @@
 # linked to its route, with a status dot and, where it sets a widget, live numbers (amber where the
 # widget's highlight marks one). A tile shows no numbers until its key is in secrets.json (some
 # services make theirs only once they run). A service whose space [limits] caps shows its
-# use against that limit, from Prometheus (metrics/spaces.nix). Below the tiles, axon.links and [gateway]
-# links; _start-page.js adds the header, attention bar, group chips and the tiles' logs links.
+# use against that limit, from Prometheus (metrics/spaces.nix), which prometheusmetric widgets
+# query too. Below the tiles, axon.links and [gateway] links; _start-page.js adds the header,
+# attention bar, group chips and the tiles' logs links.
 { lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -19,7 +20,7 @@ in
           icon = "router.svg";
         };
       };
-      description = "More links on the start page, name to url, icon and optionally group (Infrastructure by default): what runs outside the cluster and no feature knows about.";
+      description = "More links on the start page, name to url, icon and optionally group (Admin by default): what runs outside the cluster and no feature knows about.";
     };
   };
 
@@ -87,17 +88,17 @@ in
       tile =
         service: name: instance:
         let
+          widget = lib.defaultTo { } service.dashboard.widget // instance.widget or { };
+          fromPrometheus = widget.type or null == "prometheusmetric";
           widgets =
-            lib.optional
-              (hasKeys service && (service.dashboard.widget != null || instance.widget or { } != { }))
-              (
-                {
-                  url = service.route.internal;
-                }
-                // lib.defaultTo { } service.dashboard.widget
-                // lib.mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
-                // instance.widget or { }
-              )
+            lib.optional (hasKeys service && widget != { } && (fromPrometheus -> prometheus != null)) (
+              {
+                url = if fromPrometheus then prometheus else service.route.internal;
+              }
+              // lib.defaultTo { } service.dashboard.widget
+              // lib.mapAttrs (_: secret: "{{${envName secret}}}") service.dashboard.secrets
+              // instance.widget or { }
+            )
             # on the tile that leads to the service itself, not on those linking elsewhere
             ++ lib.optional (
               prometheus != null
@@ -111,7 +112,7 @@ in
             href = lib.defaultTo service.route.url (instance.link or null);
             description = lib.defaultTo service.dashboard.description (instance.description or null);
             inherit (service.dashboard) icon;
-            siteMonitor = service.route.internal + service.dashboard.monitor;
+            siteMonitor = service.route.internal + service.route.health;
           }
           // lib.optionalAttrs (widgets != [ ]) { inherit widgets; };
         };
@@ -148,8 +149,7 @@ in
         "Media"
         "Files"
         "Home"
-        "Network"
-        "Code"
+        "Infrastructure"
       ];
       # groups of graphs: last, two per row, so they get the width
       wide = [ "System" ];
@@ -259,6 +259,14 @@ in
       };
 
       axon.links = gateway.links;
+
+      # Homepage shows only one of a services group and a link group of the same name
+      assertions = [
+        {
+          assertion = lib.intersectLists linkGroups groups == [ ];
+          message = "axon.links: group ${lib.concatStringsSep ", " (lib.intersectLists linkGroups groups)} is also a services group, so its links don't show; give the links another group";
+        }
+      ];
 
       warnings =
         lib.optional (waiting != [ ])

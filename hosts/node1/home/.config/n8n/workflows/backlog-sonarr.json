@@ -1,0 +1,323 @@
+{
+  "id": "workflowSonarr01",
+  "name": "Backlog search, Sonarr",
+  "nodes": [
+    {
+      "id": "66ad1046-cd0e-5845-9afe-e23ec73c56f0",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        400
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 3,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2b91f5ee-bd0f-5c94-a99e-e2c2010d7115",
+      "name": "Sonarr missing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        320
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8989/api/v3/command",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $env.SONARR_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"name\": \"MissingEpisodeSearch\"}",
+        "options": {}
+      }
+    },
+    {
+      "id": "fbe277a8-d61c-53a5-8406-c212231c347a",
+      "name": "Sonarr cutoff unmet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        480
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8989/api/v3/command",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $env.SONARR_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"name\": \"CutoffUnmetEpisodeSearch\"}",
+        "options": {}
+      }
+    },
+    {
+      "id": "ad07fd3b-0049-56c8-b8fb-89f2180cb5fc",
+      "name": "Sonarr profiles",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        800
+      ],
+      "parameters": {
+        "url": "http://127.0.0.1:8989/api/v3/qualityprofile",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $env.SONARR_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "fa260680-7fa1-561a-9187-5eba220cf9d4",
+      "name": "Sonarr series",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        800
+      ],
+      "parameters": {
+        "url": "http://127.0.0.1:8989/api/v3/series",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $env.SONARR_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "3d1cb389-0b59-595b-a9a1-6c9a2b872bb6",
+      "name": "Sonarr monitored series",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        800
+      ],
+      "parameters": {
+        "jsCode": "return $input.all().filter(s => s.json.monitored);"
+      }
+    },
+    {
+      "id": "519c057b-385e-594a-bfd2-066c8d8f5cb9",
+      "name": "Sonarr episodes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        800
+      ],
+      "parameters": {
+        "url": "http://127.0.0.1:8989/api/v3/episode",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "seriesId",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "includeEpisodeFile",
+              "value": "true"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $env.SONARR_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "644aa30a-aaf0-5fc3-8e49-ac5838e74553",
+      "name": "Sonarr pick upgrades",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        800
+      ],
+      "parameters": {
+        "jsCode": "// monitored episodes whose file scores below its series' profile's format cutoff; 800 at random, within the indexers' daily API limits\nconst cutoff = Object.fromEntries($('Sonarr profiles').all().map(p => [p.json.id, p.json.cutoffFormatScore]));\nconst profile = Object.fromEntries($('Sonarr monitored series').all().map(s => [s.json.id, s.json.qualityProfileId]));\nconst below = $input.all().map(e => e.json)\n  .filter(e => e.monitored && e.hasFile && e.episodeFile\n    && e.episodeFile.customFormatScore < cutoff[profile[e.seriesId]])\n  .map(e => e.id);\nfor (let i = below.length - 1; i > 0; i--) {\n  const j = Math.floor(Math.random() * (i + 1));\n  [below[i], below[j]] = [below[j], below[i]];\n}\nconst ids = below.slice(0, 800);\nreturn ids.length ? [{ json: { name: 'EpisodeSearch', episodeIds: ids } }] : [];"
+      }
+    },
+    {
+      "id": "652c8301-9d4c-5f4c-9538-1c7551105b53",
+      "name": "Sonarr search upgrades",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1360,
+        800
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8989/api/v3/command",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $env.SONARR_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "fe694777-aacf-456e-a7a6-02e4dd051dac",
+      "name": "Key set",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        130,
+        400
+      ],
+      "parameters": {
+        "jsCode": "// a host without Sonarr's key has nothing to search\nreturn $env.SONARR_API_KEY ? $input.all() : [];"
+      }
+    }
+  ],
+  "connections": {
+    "Sonarr profiles": {
+      "main": [
+        [
+          {
+            "node": "Sonarr series",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sonarr series": {
+      "main": [
+        [
+          {
+            "node": "Sonarr monitored series",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sonarr monitored series": {
+      "main": [
+        [
+          {
+            "node": "Sonarr episodes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sonarr episodes": {
+      "main": [
+        [
+          {
+            "node": "Sonarr pick upgrades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sonarr pick upgrades": {
+      "main": [
+        [
+          {
+            "node": "Sonarr search upgrades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Key set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Key set": {
+      "main": [
+        [
+          {
+            "node": "Sonarr missing",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Sonarr cutoff unmet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Sonarr profiles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "workflowAlerts01"
+  },
+  "active": true
+}

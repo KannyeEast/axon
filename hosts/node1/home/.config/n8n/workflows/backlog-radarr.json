@@ -1,0 +1,287 @@
+{
+  "id": "workflowRadarr01",
+  "name": "Backlog search, Radarr",
+  "nodes": [
+    {
+      "id": "66ad1046-cd0e-5845-9afe-e23ec73c56f0",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        400
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 3,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "512149a5-388f-5efb-a0a2-6c82ab2d5128",
+      "name": "Radarr missing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:7878/api/v3/command",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $env.RADARR_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"name\": \"MissingMoviesSearch\"}",
+        "options": {}
+      }
+    },
+    {
+      "id": "7f8ca890-4a56-5ee9-8e8e-32cb94f2aa08",
+      "name": "Radarr cutoff unmet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        160
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:7878/api/v3/command",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $env.RADARR_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"name\": \"CutoffUnmetMoviesSearch\"}",
+        "options": {}
+      }
+    },
+    {
+      "id": "bcea8e2f-2025-527e-abf8-90b47c5ee57b",
+      "name": "Radarr profiles",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        640
+      ],
+      "parameters": {
+        "url": "http://127.0.0.1:7878/api/v3/qualityprofile",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $env.RADARR_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "5f5ccbe1-54d2-5eff-8545-0858b5b59c67",
+      "name": "Radarr movies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        640
+      ],
+      "parameters": {
+        "url": "http://127.0.0.1:7878/api/v3/movie",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $env.RADARR_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "a448fdad-14c5-5fcb-a8db-b9c9ad80ab3a",
+      "name": "Radarr files",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        640
+      ],
+      "parameters": {
+        "url": "=http://127.0.0.1:7878/api/v3/moviefile?{{ $('Radarr movies').all().filter(m => m.json.monitored && m.json.hasFile).map(m => 'movieId=' + m.json.id).join('&') }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $env.RADARR_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "376fd46d-294d-5579-b0ca-d61bd37e5c54",
+      "name": "Radarr pick upgrades",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        640
+      ],
+      "parameters": {
+        "jsCode": "// movies whose file scores below its profile's format cutoff; 200 of them at random, within the indexers' daily API limits\nconst cutoff = Object.fromEntries($('Radarr profiles').all().map(p => [p.json.id, p.json.cutoffFormatScore]));\nconst profile = Object.fromEntries($('Radarr movies').all().map(m => [m.json.id, m.json.qualityProfileId]));\nconst below = [...new Set($input.all().map(f => f.json)\n  .filter(f => f.customFormatScore < cutoff[profile[f.movieId]])\n  .map(f => f.movieId))];\nfor (let i = below.length - 1; i > 0; i--) {\n  const j = Math.floor(Math.random() * (i + 1));\n  [below[i], below[j]] = [below[j], below[i]];\n}\nconst ids = below.slice(0, 200);\nreturn ids.length ? [{ json: { name: 'MoviesSearch', movieIds: ids } }] : [];"
+      }
+    },
+    {
+      "id": "bd8c2204-b643-51b7-8999-8d41739e3248",
+      "name": "Radarr search upgrades",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1140,
+        640
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:7878/api/v3/command",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $env.RADARR_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "7f3071cc-5c57-433c-99ba-bef2c3fef333",
+      "name": "Key set",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        130,
+        400
+      ],
+      "parameters": {
+        "jsCode": "// a host without Radarr's key has nothing to search\nreturn $env.RADARR_API_KEY ? $input.all() : [];"
+      }
+    }
+  ],
+  "connections": {
+    "Radarr profiles": {
+      "main": [
+        [
+          {
+            "node": "Radarr movies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Radarr movies": {
+      "main": [
+        [
+          {
+            "node": "Radarr files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Radarr files": {
+      "main": [
+        [
+          {
+            "node": "Radarr pick upgrades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Radarr pick upgrades": {
+      "main": [
+        [
+          {
+            "node": "Radarr search upgrades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Key set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Key set": {
+      "main": [
+        [
+          {
+            "node": "Radarr missing",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Radarr cutoff unmet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Radarr profiles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "workflowAlerts01"
+  },
+  "active": true
+}

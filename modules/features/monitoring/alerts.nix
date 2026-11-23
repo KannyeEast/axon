@@ -1,9 +1,11 @@
 # Alert rules over Prometheus' metrics, and Alertmanager to mail them through axon.mail: one
 # mail when an alert fires and again every 12 hours while it lasts; none when it's over. A
-# failed service on any host listing metrics is one (UnitFailed), mailed by _unit-mail.py with the
-# end of its log from Loki and a link to the rest. Watchdog always fires, so a mail comes once a
-# week. Without an account alerts only show in Alertmanager's UI, at alerts.<domain> where
-# silences are set too.
+# failed service or timer on any host listing metrics is one (UnitFailed), mailed by
+# _unit-mail.py with the end of its log from Loki and a link to the rest. Watchdog always fires,
+# so a mail comes once a week. Without an account alerts only show in Alertmanager's UI, at
+# alerts.<domain> where silences are set too. Where n8n runs on this host, every alert also goes to
+# its webhook `alerts`, firing and resolved, for workflows that act on them; without a workflow on
+# that path n8n answers 404, which Alertmanager logs per alert.
 { lib, ... }:
 {
   flake.modules.nixos.monitoring =
@@ -18,6 +20,7 @@
         ;
       port = 9093;
       hook = 9096;
+      n8n.url = "http://127.0.0.1:${toString config.services.n8n.environment.N8N_PORT}/webhook/alerts";
       grafana = services.grafana.route.url;
       downloads = lib.any (
         data: lib.elem "metrics" data.host.features && lib.elem "downloads" data.host.features
@@ -129,6 +132,7 @@
           page = pkgs.writeText "page.html" mail.page;
           inherit (mail) levels port;
           smtp = mail.host;
+          from = "alerts@${mail.domain}";
           to = mail.alert;
           loki = "http://127.0.0.1:${toString config.services.loki.configuration.server.http_listen_port}";
           grafana = if routed then grafana else "";
@@ -168,10 +172,12 @@
                   (rule "ServiceDown" ''probe_success{job="service"} == 0'' "2m"
                     "{{ $labels.service }} doesn't answer"
                   )
-                  (rule "RouteDown" ''probe_success{job="route"} == 0'' "5m" "{{ $labels.instance }} unreachable")
+                  (rule "RouteDown" ''probe_success{job="route"} == 0'' "5m"
+                    "{{ $labels.service }}: route unreachable"
+                  )
                   (rule "CertificateExpiring" ''probe_ssl_earliest_cert_expiry{job="route"} - time() < 14 * 86400''
                     "0m"
-                    "{{ $labels.instance }} certificate expires in {{ $value | humanizeDuration }}"
+                    "{{ $labels.service }} certificate expires in {{ $value | humanizeDuration }}"
                   )
                   # the node exporter names the unit in name; unit is the label its logs carry
                   (rule "UnitFailed"
@@ -231,16 +237,16 @@
           configuration = {
             global = lib.optionalAttrs (mail != null) {
               smtp_smarthost = "${mail.host}:${toString mail.port}";
-              smtp_from = "$MAIL_FROM";
-              smtp_auth_username = "$MAIL_FROM";
+              smtp_from = "alerts@${mail.domain}";
+              smtp_auth_username = "$MAIL_LOGIN";
               smtp_auth_password = "$MAIL_TOKEN";
             };
             route = {
               receiver = receiver.name;
+              # one mail per kind of alert and host, listing every service it hits
               group_by = [
                 "alertname"
                 "host"
-                "service"
               ];
               repeat_interval = "12h";
               routes = [
@@ -254,20 +260,35 @@
                 receiver = "unit";
               };
             };
-            receivers = [
-              receiver
-            ]
-            ++ lib.optional (mail != null) {
-              name = "unit";
-              webhook_configs = [
-                {
-                  url = "http://127.0.0.1:${toString hook}/";
-                  send_resolved = false;
-                }
-              ];
-            };
-            # a service that's down takes its route with it, and one mail says so
+            receivers =
+              map
+                (
+                  each:
+                  each
+                  // lib.optionalAttrs config.services.n8n.enable {
+                    webhook_configs = each.webhook_configs or [ ] ++ [ n8n ];
+                  }
+                )
+                (
+                  [ receiver ]
+                  ++ lib.optional (mail != null) {
+                    name = "unit";
+                    webhook_configs = [
+                      {
+                        url = "http://127.0.0.1:${toString hook}/";
+                        send_resolved = false;
+                      }
+                    ];
+                  }
+                );
             inhibit_rules = [
+              # a host that's gone takes everything else of it along, and one mail says so
+              {
+                source_matchers = [ ''alertname="HostDown"'' ];
+                target_matchers = [ ''alertname!="HostDown"'' ];
+                equal = [ "host" ];
+              }
+              # a service that's down takes its route with it
               {
                 source_matchers = [ ''alertname="ServiceDown"'' ];
                 target_matchers = [ ''alertname="RouteDown"'' ];
@@ -276,14 +297,23 @@
                   "service"
                 ];
               }
-            ];
+            ]
+            # a full media space pauses the downloads on purpose (n8n's Media space)
+            ++ lib.optional downloads {
+              source_matchers = [
+                ''alertname="SpaceFull"''
+                ''space="media"''
+              ];
+              target_matchers = [ ''alertname="DownloadsPaused"'' ];
+              equal = [ "host" ];
+            };
           };
         };
       };
 
       sops.templates."alertmanager.env" = lib.mkIf (mail != null) {
         content = ''
-          MAIL_FROM=${mail.address}
+          MAIL_LOGIN=${mail.login}
           MAIL_TOKEN=${mail.token}
         '';
         restartUnits = [

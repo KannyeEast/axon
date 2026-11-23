@@ -1,5 +1,5 @@
 # Immich at photos.<domain> on servers: phone photo backup with face and place search. Originals
-# on the data volume (or in the state folder without one), database in the shared Postgres,
+# on the data volume (or in the state folder without one), database in the host's Postgres,
 # machine learning on the CPU. Each account is its own library, shared through albums or partner
 # sharing; the first one made in the web UI is the admin. Settings come from here, read-only in
 # the UI. With a login provider (axon.sso) the family logs in there, matched by mail address.
@@ -8,7 +8,7 @@
   flake.modules.nixos.files =
     { config, ... }:
     let
-      inherit (config.axon) sso;
+      inherit (config.axon) mail sso;
       inherit (config.axon.services.photos) route;
       client = sso.clients.immich;
       data = config.axon.spaces.immich.path;
@@ -19,6 +19,9 @@
       ];
     in
     lib.mkIf (config.axon.host.class == "server") {
+      # at notice it logs each of its snapshots, every few minutes
+      services.redis.servers.immich.logLevel = "warning";
+
       services.immich = {
         enable = true;
         # "localhost" binds to ::1 only, and the gateway proxies to 127.0.0.1
@@ -27,6 +30,8 @@
         mediaLocation = data;
         settings = {
           server.externalDomain = route.origin;
+          # its database is dumped with the host's others (axon.databases)
+          backup.database.enabled = false;
           storageTemplate = {
             enabled = true;
             template = "{{y}}/{{MM}}/{{dd}}/{{filename}}";
@@ -40,8 +45,32 @@
             signingAlgorithm = "ES256";
             buttonText = "Login with Kanidm";
           };
+          # shared albums and password resets by mail; without an account it sends none
+          notifications.smtp = lib.mkIf (mail != null) {
+            enabled = true;
+            from = "Immich <photos@${mail.domain}>";
+            transport = {
+              inherit (mail) host port;
+              username._secret = config.sops.templates."immich-mail-login".path;
+              password._secret = config.sops.templates."immich-mail-token".path;
+            };
+          };
         };
       };
+
+      # the login and token are sops placeholders, so they reach Immich's settings as files
+      sops.templates = lib.mkIf (mail != null) (
+        lib.mapAttrs
+          (_: content: {
+            inherit content;
+            owner = "immich";
+            restartUnits = [ "immich-server.service" ];
+          })
+          {
+            "immich-mail-login" = mail.login;
+            "immich-mail-token" = mail.token;
+          }
+      );
 
       axon.sso.clients.immich = {
         displayName = "Immich";
@@ -79,6 +108,8 @@
         }) generated
       );
       systemd.services.immich-server.unitConfig.RequiresMountsFor = map (dir: "${data}/${dir}") generated;
+
+      axon.databases = [ "immich" ];
 
       # the models in /var/cache/immich, so they aren't downloaded on every boot; the generated
       # folders as entries of their own, as a tmpfiles rule inside /var/lib/immich runs before its
@@ -122,12 +153,11 @@
           };
           key = true;
         };
-        # thumbs/ and encoded-video/ are rebuilt from the originals; backups/ holds Immich's own database dumps
+        # thumbs/ and encoded-video/ are rebuilt from the originals
         backup.paths = map (dir: "${data}/${dir}") [
           "library"
           "upload"
           "profile"
-          "backups"
         ];
       };
     };

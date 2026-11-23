@@ -1,0 +1,41 @@
+window-rule {
+    geometry-corner-radius 16
+    clip-to-geometry true
+}
+
+// Keep credentials out of screenshots and screen shares
+window-rule {
+    match app-id=r#"^org\.keepassxc\.KeePassXC$"#
+    block-out-from "screen-capture"
+}
+
+window-rule {
+    match app-id=r#"^org\.gnome\.Nautilus$"# title=r#"^(Open|Save)"#
+    open-floating true
+}
+
+// Small or short-lived windows: players, utilities, an IDE's project picker
+window-rule {
+    match app-id=r#"^mpv$"#
+    match app-id=r#"^com\.github\.iwalton3\.jellyfin-mpv-shim$"#
+    match app-id=r#"^zen-beta$"# title=r#"^Picture-in-Picture$"#
+    match app-id=r#"^org\.gnome\.Calculator$"#
+    match app-id=r#"^org\.pulseaudio\.pavucontrol$"#
+    match app-id=r#"^jetbrains-"# title=r#"^Welcome to "#
+    open-floating true
+}
+
+// Password prompts (soteria, the polkit agent) land in front and stay put
+window-rule {
+    match app-id=r#"^gay\.vaskel\.soteria$"#
+    open-floating true
+    open-focused true
+}
+
+// KeePassXC's prompts (passkeys, browser access, unlock) answer another app's request, so
+// niri wouldn't focus them by itself
+window-rule {
+    match app-id=r#"^org\.keepassxc\.KeePassXC$"# title=r#"^(KeePassXC - |Unlock Database - KeePassXC$)"#
+    open-floating true
+    open-focused true
+}

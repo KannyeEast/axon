@@ -1,0 +1,77 @@
+{
+  "defaultRouteExternal": "most-recent-space",
+  "routes": [
+    {
+      "id": "spaces/Admin/accounts",
+      "matchType": "regex",
+      "openIn": "{6698068a-20c7-436b-9351-b024cde94686}",
+      "reference": "^https?://[^/]*(proton\\.me|simplelogin|keepass)"
+    },
+    {
+      "id": "spaces/Admin/bank",
+      "matchType": "regex",
+      "openIn": "{6698068a-20c7-436b-9351-b024cde94686}",
+      "reference": "^https?://[^/]*(sparkasse)"
+    },
+    {
+      "id": "spaces/Admin/shopping",
+      "matchType": "regex",
+      "openIn": "{6698068a-20c7-436b-9351-b024cde94686}",
+      "reference": "^https?://[^/]*(amazon|ebay|kleinanzeigen)"
+    },
+    {
+      "id": "spaces/Development/docs",
+      "matchType": "regex",
+      "openIn": "{779e73b8-5f81-4538-9d92-e7da96824c56}",
+      "reference": "^https?://[^/]*(rust-lang|crates\\.io|docs\\.rs|developer\\.mozilla|devdocs|kernel\\.org|man7)"
+    },
+    {
+      "id": "spaces/Development/forges",
+      "matchType": "regex",
+      "openIn": "{779e73b8-5f81-4538-9d92-e7da96824c56}",
+      "reference": "^https?://[^/]*(github|gitlab|codeberg|sr\\.ht|sourcehut)"
+    },
+    {
+      "id": "spaces/Development/help",
+      "matchType": "regex",
+      "openIn": "{779e73b8-5f81-4538-9d92-e7da96824c56}",
+      "reference": "^https?://[^/]*(stackoverflow|stackexchange|serverfault|superuser)"
+    },
+    {
+      "id": "spaces/Development/infra",
+      "matchType": "regex",
+      "openIn": "{779e73b8-5f81-4538-9d92-e7da96824c56}",
+      "reference": "^https?://[^/]*(dash\\.cloudflare|192\\.168\\.|tailscale|vexelvault\\.com)"
+    },
+    {
+      "id": "spaces/Development/nix",
+      "matchType": "regex",
+      "openIn": "{779e73b8-5f81-4538-9d92-e7da96824c56}",
+      "reference": "^https?://[^/]*(nixos|nixpkgs|noogle|nixpk\\.gs|nix-community|determinate)"
+    },
+    {
+      "id": "spaces/Development/tools",
+      "matchType": "regex",
+      "openIn": "{779e73b8-5f81-4538-9d92-e7da96824c56}",
+      "reference": "^https?://[^/]*(regex101|starship\\.rs|quickshell|just\\.systems)"
+    },
+    {
+      "id": "spaces/Entertainment/music",
+      "matchType": "regex",
+      "openIn": "{a8fde799-77d2-4b1c-8c83-37dce87d30be}",
+      "reference": "^https?://[^/]*(spotify|bandcamp|soundcloud|last\\.fm)"
+    },
+    {
+      "id": "spaces/Entertainment/streaming",
+      "matchType": "regex",
+      "openIn": "{a8fde799-77d2-4b1c-8c83-37dce87d30be}",
+      "reference": "^https?://[^/]*(netflix|formula1|streamed|dpdns)"
+    },
+    {
+      "id": "spaces/Entertainment/video",
+      "matchType": "regex",
+      "openIn": "{a8fde799-77d2-4b1c-8c83-37dce87d30be}",
+      "reference": "^https?://[^/]*(youtube|youtu\\.be|twitch|vimeo|odysee)"
+    }
+  ]
+}

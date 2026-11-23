@@ -1,0 +1,19 @@
+[
+  {
+    "data": {
+      "state": {
+        "options": {
+          "assignedMe": true,
+          "authorMe": true,
+          "repoExcludes": [],
+          "reviewRequested": false
+        },
+        "type": "issues"
+      }
+    },
+    "dismissedItems": [],
+    "id": "3c9e1f7a-5b24-4d80-9a6c-e2f4b8d10c57",
+    "tabsState": [],
+    "type": "github"
+  }
+]

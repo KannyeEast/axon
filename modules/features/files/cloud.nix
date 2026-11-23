@@ -1,11 +1,12 @@
 # Nextcloud at cloud.<domain> on servers. Files on the data volume (or in the state folder without
 # one), app state with the host's state (the state volume, else the boot disk), database in the
-# shared Postgres. Public through the tunnel so share links work without Tailscale; its own login
+# host's Postgres. Public through the tunnel so share links work without Tailscale; its own login
 # guards it. Without a gateway on this host it stays on localhost. First account by hand after
 # install, then two-factor in the web UI:
 #   nextcloud-occ user:add <you> && nextcloud-occ group:adduser admin <you>
 # With a login provider (axon.sso) the family logs in there too; the password form stays.
 # Major versions upgrade one at a time: bump the package by one, switch, repeat.
+# Kept only in its UI (database and app state, backed up): users, groups, shares.
 { lib, ... }:
 {
   flake.modules.nixos.files =
@@ -24,6 +25,9 @@
     in
     lib.mkMerge [
       (lib.mkIf (config.axon.host.class == "server") {
+        # at notice it logs each of its snapshots, every few minutes
+        services.redis.servers.nextcloud.logLevel = "warning";
+
         services.nextcloud = {
           enable = true;
           package = pkgs.nextcloud35;
@@ -80,6 +84,8 @@
           ];
         };
 
+        axon.databases = [ "nextcloud" ];
+
         axon.persist.state.directories = [
           {
             directory = "/var/lib/nextcloud";
@@ -104,14 +110,14 @@
           route = {
             inherit port;
             public = true;
+            # / redirects to https on this plain http port
+            health = "/status.php";
           };
           dashboard = {
             name = "Nextcloud";
             group = "Files";
             description = "Files";
             icon = "nextcloud.svg";
-            # / redirects to https on this plain http port
-            monitor = "/status.php";
             widget = {
               type = "nextcloud";
               # four values make labels like "ACTIVE USERS" wrap, and the whole row grows with them
@@ -161,9 +167,7 @@
         sops.templates."nextcloud.json" = {
           owner = "nextcloud";
           content = lib.toJSON {
-            mail_from_address = mail.user;
-            mail_domain = mail.domain;
-            mail_smtpname = mail.address;
+            mail_smtpname = mail.login;
             mail_smtppassword = mail.token;
           };
         };
@@ -173,6 +177,8 @@
             mail_smtphost = mail.host;
             mail_smtpport = mail.port;
             mail_smtpauth = true;
+            mail_from_address = "cloud";
+            mail_domain = mail.domain;
           };
           secretFile = config.sops.templates."nextcloud.json".path;
         };

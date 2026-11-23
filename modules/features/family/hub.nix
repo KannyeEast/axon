@@ -1,5 +1,5 @@
-# Home Assistant at ha.<domain>, public: the household's hub, with the Companion app on the
-# phones. Its own login guards it (TOTP per user, a ban after failed logins). The official
+# Home Assistant at ha.<domain>, tailnet only: the household's hub, with the Companion app on the
+# phones. Its own login guards it (TOTP per user, a ban after failed logins), not the gateway's. The official
 # container on the host's network, listening on 127.0.0.1. Its configuration is HA's own, made in
 # its UI; a first one is seeded only when none exists, with what the gateway needs. The image runs
 # as root inside: its process supervisor requires it.
@@ -85,9 +85,12 @@
 
       axon.services.ha = {
         units = [ "docker-home-assistant" ];
+        # its log entries' first line; a traceback follows it
+        logStart = "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}";
         route = {
           inherit port;
-          public = true;
+          # the Companion app can't follow the gateway's browser login; HA's own login guards it
+          gate = false;
         };
         dashboard = {
           name = "Home Assistant";

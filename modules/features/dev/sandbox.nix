@@ -114,8 +114,9 @@
             args=(claude)
             [ -e "$config/claude/settings.json" ] \
               && args+=(--settings /home/sandbox/.config/claude/settings.json)
-            # MCP servers of our own; the file is mirrored like the rest of ~/.config/claude
-            [ -e "$config/claude/mcp.json" ] && args+=(--mcp-config /home/sandbox/.claude/mcp.json)
+            # MCP servers of our own; the file is mirrored like the rest of ~/.config/claude. With
+            # "=": the option takes several values and would swallow a subcommand (setup-token)
+            [ -e "$config/claude/mcp.json" ] && args+=(--mcp-config=/home/sandbox/.claude/mcp.json)
             args+=("''${@:2}")
           fi
 

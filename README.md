@@ -13,8 +13,9 @@ servers alike; a host's `host.toml` describes the host and nothing else.
   `stable` after every merge. Only `stable` and `main` go to the mirrors.
 - `modules/` is found, not wired: core for every host, one class (`desktop` or `server`), and the
   features a host subscribes to, one folder each under `modules/features/`.
-- Dotfiles live in `home/`, with `hosts/<name>/home` winning per file, and are linked live into
-  `$HOME`; Nix never reads them.
+- Dotfiles are the owner's files, independent of the features: `home/` holds the terminal every
+  host uses, `hosts/<name>/home` the rest of that host's (copied between hosts that share it) and
+  wins per file. Both are linked live into `$HOME`; Nix never reads them.
 
 Working on it with an assistant: [AGENTS.md](AGENTS.md); choices that are deliberate: [DECISIONS.md](DECISIONS.md).
 

@@ -99,7 +99,7 @@
         # without users AdGuard's API needs no login
         dashboard = {
           name = "AdGuard Home";
-          group = "Network";
+          group = "Infrastructure";
           description = "DNS filtering for the tailnet";
           icon = "adguard-home.svg";
           widget.type = "adguard";

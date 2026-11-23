@@ -8,12 +8,9 @@
   flake.modules.nixos.downloads =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) host repo user;
+      inherit (config.axon) user;
       state = "/var/lib/decluttarr";
-      files = map (home: "${home}/.config/decluttarr/config.yaml") [
-        "${repo}/hosts/${host.name}/home"
-        "${repo}/home"
-      ];
+      files = map (home: "${home}/.config/decluttarr/config.yaml") config.axon.dotfiles;
       keys = lib.filterAttrs (_: key: lib.hasAttrByPath (lib.splitString "/" key) config.axon.secrets) {
         radarr = "dashboard/radarr/key";
         sonarr = "dashboard/sonarr/key";

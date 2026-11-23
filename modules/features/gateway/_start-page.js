@@ -235,7 +235,8 @@
       );
       list.dataset.items = signature;
     }
-    setText(bar.querySelector(".start-attention-count"), `${items.length} need attention`);
+    // the amber dot says it; the count is for screen readers
+    setAttribute(bar.querySelector(".start-attention-count"), "aria-label", `${items.length} need attention`);
     setShown(bar, items.length > 0);
   }
 
