@@ -281,7 +281,7 @@ use it.
 | State, a subfolder upstream creates with tmpfiles | its own persist entry |
 | Which persist list | a service's state: `axon.persist.state.directories` (the appdata space where a data disk holds it); the system's own: `axon.persist.directories` (the boot disk). In the file that creates the state |
 | User data (files, photos, documents) | an `axon.spaces` entry named after its service, or after the feature when several services share it, and listed in the feature's registry `spaces.<class>` for each class that registers it. One registrant sets `user`, `group` and `mode`; every file adds `units` naming each unit that uses it |
-| Writing to a space | its `units`, which wait for its mount: data disks mount with `nofail`, and without it the unit writes to root. A folder there the service needs: an `axon.folders` entry, with `units` naming every unit that uses it |
+| Writing to a space | its `units`, which wait for its mount and for its tmpfiles rules, which core runs again once it is mounted: data disks mount with `nofail`, and without it the unit writes to root. A folder there the service needs: an `axon.folders` entry, with `units` naming every unit that uses it |
 | Backup | `backup.paths` for what can't be rebuilt, `exclude` for what can; a database through its dump or export, never its live files |
 | A dump or export a backup reads | `"${config.axon.spaces.backups.path}/<name>"`, its units in the `backups` space's `units` and its folder an `axon.folders` entry |
 | The start page | a `dashboard` entry: name, group, icon, a widget where Homepage has one, and the `space` its tile shows |

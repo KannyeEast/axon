@@ -38,6 +38,8 @@ in
       # the spaces core places: on a data disk, or on the boot disk unless the registrant keeps them
       placed = lib.filterAttrs (_: space: space.disk != null || space.fallback) spaces;
       onBoot = lib.filterAttrs (_: space: space.disk == null && space.fallback) spaces;
+      onData = lib.filterAttrs (_: space: space.disk != null) spaces;
+      tmpfilesOf = space: "tmpfiles-${utils.escapeSystemdPath space.path}";
       on = label: lib.filterAttrs (_: space: space.disk == label) spaces;
       # each disk that lists a space
       listed = lib.zipAttrs (
@@ -216,12 +218,33 @@ in
               }
             ) storage)
           ]
+          # tmpfiles-setup runs before nofail mounts, and waiting for them would hold the boot: the
+          # rules under a space on a data disk run again once it is mounted
+          ++ lib.mapAttrsToList (_: space: {
+            ${tmpfilesOf space} = {
+              description = "tmpfiles rules under ${space.path}";
+              wantedBy = [ "multi-user.target" ];
+              unitConfig.RequiresMountsFor = [ space.path ];
+              serviceConfig = {
+                Type = "oneshot";
+                RemainAfterExit = true;
+                ExecStart = "${config.systemd.package}/bin/systemd-tmpfiles --create --prefix=${space.path}";
+              };
+            };
+          }) onData
           # data disks mount with nofail: never write to root instead
           ++ lib.mapAttrsToList (
             _: space:
-            lib.genAttrs space.units (_: {
-              unitConfig.RequiresMountsFor = [ space.path ];
-            })
+            lib.genAttrs space.units (
+              _:
+              {
+                unitConfig.RequiresMountsFor = [ space.path ];
+              }
+              // lib.optionalAttrs (space.disk != null) {
+                wants = [ "${tmpfilesOf space}.service" ];
+                after = [ "${tmpfilesOf space}.service" ];
+              }
+            )
           ) placed
         );
 
