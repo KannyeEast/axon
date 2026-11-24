@@ -75,7 +75,7 @@
         "${state}/scenes.yaml".f.argument = "[]";
         "${state}/themes".d = { };
       };
-      # the state volume may mount after tmpfiles ran at boot
+      # the appdata space may mount after tmpfiles ran at boot
       systemd.services.docker-home-assistant.serviceConfig.ExecStartPre = [
         "${config.systemd.package}/bin/systemd-tmpfiles --create --prefix=${state}"
       ];

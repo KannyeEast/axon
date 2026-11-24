@@ -1,6 +1,7 @@
 # Contract: axon.persist. What survives the root wiped on every boot, declared by the module that
-# creates it: machine state on the boot disk, service state on the state volume where there is one.
-# /home is its own subvolume, never rolled back.
+# creates it: machine state on the boot disk, service state in the appdata space where a data disk
+# holds it. appdata mounts in the initrd, so disko makes it at install; adding it to a disk later
+# is by hand. /home is its own subvolume, never rolled back.
 { inputs, lib, ... }:
 let
   inherit (lib) mkOption types;
@@ -29,9 +30,10 @@ in
   flake.modules.nixos.core =
     { config, pkgs, ... }:
     let
+      inherit (config.axon.spaces) appdata;
       cfg = config.axon.persist;
       device = config.fileSystems."/".device;
-      state = config.axon.volumes.state or null;
+      state = if appdata.disk != null then appdata.path else null;
     in
     {
       imports = [ inputs.impermanence.nixosModules.impermanence ];
@@ -46,7 +48,7 @@ in
         state.directories = mkOption {
           type = types.listOf entry;
           default = [ ];
-          description = "A service's directories that survive a reboot: on the state volume when the host has one, with the rest otherwise.";
+          description = "A service's directories that survive a reboot: in the appdata space where a data disk holds it, with the rest otherwise.";
         };
       };
 
@@ -69,7 +71,7 @@ in
           };
         };
 
-        # impermanence needs these in the initrd; a missing state disk (nofail) only costs its services their state
+        # impermanence needs these in the initrd; a missing appdata disk (nofail) only costs its services their state
         fileSystems = {
           "/persist".neededForBoot = true;
         }
@@ -118,6 +120,9 @@ in
           "/var/lib/systemd"
           "/var/log"
         ];
+
+        # without a data disk for it, /persist holds the services' state too
+        axon.spaces.appdata.fallback = false;
       };
     };
 }

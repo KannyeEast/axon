@@ -7,7 +7,7 @@
     { config, ... }:
     let
       inherit (config.axon) hasSecret services;
-      inherit (config.axon.volumes) media;
+      media = config.axon.spaces.media.path;
       # order: after Jellyfin, Seerr and the downloaders; attention: widget values amber above 0
       apps = {
         radarr = {
@@ -103,7 +103,7 @@
         key = true;
       };
     in
-    lib.mkIf (config.axon.volumes ? media) {
+    lib.mkIf (config.axon.onDisk ? media) {
       # ── service ────────
       services.radarr = {
         enable = true;
@@ -139,7 +139,6 @@
       # ── units ────────
       systemd.services = lib.mkMerge [
         (lib.genAttrs [ "radarr" "sonarr" "bazarr" ] (_: {
-          unitConfig.RequiresMountsFor = [ media ];
           # Bazarr writes subtitles into the folders Radarr and Sonarr make, so what one creates
           # stays group-writable; forced over their modules' 0022
           serviceConfig.UMask = lib.mkForce "0002";
@@ -163,6 +162,12 @@
       );
 
       # ── data ────────
+      axon.spaces.media.units = [
+        "radarr"
+        "sonarr"
+        "bazarr"
+      ];
+
       # the library folders; Bazarr writes subtitles into both, and both apps import from downloads
       axon.folders =
         lib.mapAttrs'

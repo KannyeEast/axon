@@ -8,6 +8,7 @@
       inherit (config.axon)
         hostsWith
         services
+        spacePath
         sso
         user
         ;
@@ -128,7 +129,7 @@
         name:
         let
           data = scraped.${name};
-          mounted = lib.filterAttrs (label: disk: label != "boot" && (disk.mounts or { }) != { }) data.disk;
+          mounted = lib.filterAttrs (label: disk: label != "boot" && disk.spaces != { }) data.disk;
         in
         [
           {
@@ -140,7 +141,8 @@
         ++ lib.mapAttrsToList (label: disk: {
           host = name;
           inherit label;
-          mountpoint = lib.head (lib.attrValues disk.mounts);
+          # the one mountpoint metrics/exporters.nix reports for the disk
+          mountpoint = spacePath (lib.head (lib.attrNames disk.spaces));
         }) mounted
       ) (lib.attrNames scraped);
       byDisk =

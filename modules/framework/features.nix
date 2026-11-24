@@ -39,6 +39,20 @@ in
               default = [ ];
               description = "Features that must also be listed on the host";
             };
+            spaces = mkOption {
+              type = types.submodule {
+                options = lib.genAttrs (lib.attrNames config.axon.classes) (
+                  class:
+                  mkOption {
+                    type = types.listOf types.str;
+                    default = [ ];
+                    description = "The spaces its modules register on a ${class}.";
+                  }
+                );
+              };
+              default = { };
+              description = "Per class, the spaces (axon.spaces) its modules register there; install.sh offers them for data disks.";
+            };
             metrics = mkOption {
               type = types.attrsOf (
                 types.submodule {
@@ -47,10 +61,10 @@ in
                       type = types.port;
                       description = "The port its exporter answers on.";
                     };
-                    volume = mkOption {
+                    space = mkOption {
                       type = types.nullOr types.str;
                       default = null;
-                      description = "A volume the host must mount for the exporter to run there.";
+                      description = "A space a data disk of the host must hold for the exporter to run there.";
                     };
                   };
                 }
@@ -82,9 +96,14 @@ in
   };
 
   config = {
-    # read by install.sh for its lists of classes, features and storage profiles
+    # read by install.sh for its lists of classes, features, storage profiles and spaces
     flake.axon = {
-      inherit (config.axon) classes features profiles;
+      inherit (config.axon)
+        classes
+        coreSpaces
+        features
+        profiles
+        ;
     };
   };
 }

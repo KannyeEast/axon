@@ -5,5 +5,9 @@
       "desktop"
       "server"
     ];
+    spaces = {
+      desktop = [ "syncthing" ];
+      server = [ "syncthing" ];
+    };
   };
 }

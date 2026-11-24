@@ -63,7 +63,7 @@ To change one, change it here in the same commit, with the new reason.
 | Nextcloud is file storage only | no calendar, contacts or other apps |
 | One relay login (mail feature, `mail/login`) sends every service's mail, each from `<its axon.services name>@<cluster domain>` | a relay accepts any sender on a domain it verified, so one secret serves all; the sender names the service, and no personal address is used |
 | Postgres and SQLite are the only databases, no MySQL or MariaDB. Postgres (axon.databases) where many users or processes write at once, the app requires it, or the data is long-lived and important: Immich, Nextcloud, Paperless, Forgejo. SQLite where one process writes little and it is the app's default: the arr apps, Seerr, Bazarr, Grafana, Vaultwarden, n8n, Home Assistant, and Jellyfin and Kanidm, which support nothing else | two engines to run, back up and know; Postgres takes concurrent writers and dumps while running, SQLite needs no server where the load is light |
-| A tile's space use comes from its btrfs qgroup (metrics/spaces.nix), not from the app's own widget | apps show the whole volume's size, as btrfs limits don't change what statfs reports |
+| A tile's space use comes from its btrfs qgroup (metrics/spaces.nix), not from the app's own widget | apps show the whole disk's size, as btrfs limits don't change what statfs reports |
 | Avahi only comes with printing | nothing else needs it since the `.local` names went |
 
 ## Backups and monitoring
@@ -72,6 +72,7 @@ To change one, change it here in the same commit, with the new reason.
 |---|---|
 | No backup targets in any `secrets.json`; the backup feature only warns | waiting for a second server or a hosting service |
 | No watchdog outside the cluster | the server stands next to its owner; a future second server would watch node1 |
+| Grafana's start dashboard (monitoring/dashboards.nix) and the Alloy config (metrics/logs.nix) are built in Nix, not `_files` | half of each depends on the cluster (disks, Postgres, the unit-to-service map); Nix helpers read better than an exported dashboard |
 
 ## Desktop
 

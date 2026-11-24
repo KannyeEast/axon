@@ -1,13 +1,14 @@
 # Contract: axon.databases. The Postgres databases this host's services keep, each created by its
 # service's module. With any listed, the host runs its own Postgres and dumps each nightly to the
-# data volume where there is one: a dump beside its database is lost with it.
+# backups space, which a data disk can hold apart from the database: a dump beside it is lost with it.
 { lib, ... }:
 {
   flake.modules.nixos.core =
     { config, ... }:
     let
-      inherit (config.axon) databases volumes;
-      dumps = "${config.axon.dumps}/postgresql";
+      inherit (config.axon) databases;
+      dumps = "${config.axon.spaces.backups.path}/postgresql";
+      units = map (name: "postgresqlBackup-${name}") databases;
     in
     {
       # ── contract ────────
@@ -32,11 +33,7 @@
         };
 
         # ── units ────────
-        # the data disk may be missing at boot (nofail): never write the dumps to root instead
-        systemd.services = lib.genAttrs (map (name: "postgresqlBackup-${name}") databases) (_: {
-          unitConfig.RequiresMountsFor = [ dumps ];
-        });
-        systemd.timers = lib.genAttrs (map (name: "postgresqlBackup-${name}") databases) (_: {
+        systemd.timers = lib.genAttrs units (_: {
           timerConfig.Persistent = true;
         });
 
@@ -48,8 +45,17 @@
             group = "postgres";
             mode = "0750";
           }
-        ]
-        ++ lib.optional (!volumes ? data) dumps;
+        ];
+
+        axon.spaces.backups = { inherit units; };
+
+        # its module's tmpfiles rule may run before the space's mount at boot
+        axon.folders.${dumps} = {
+          user = "postgres";
+          group = "root";
+          mode = "0700";
+          inherit units;
+        };
 
         # ── registration ────────
         axon.services.postgres = {
@@ -57,7 +63,7 @@
             "postgresql"
             "postgresql-setup"
           ]
-          ++ map (name: "postgresqlBackup-${name}") databases;
+          ++ units;
           backup.paths = [ dumps ];
         };
       };

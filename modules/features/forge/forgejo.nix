@@ -104,6 +104,7 @@
 
       axon.spaces.forgejo = {
         inherit (cfg) user group;
+        mode = "0750";
         units = [ "forgejo" ];
       };
 

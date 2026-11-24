@@ -57,7 +57,7 @@ WIPE=()
 DATA_LABELS=()
 DATA_DEVICES=()
 DATA_PROFILES=()
-DATA_MOUNTS=()
+DATA_SPACES=()
 
 # cluster.toml relations: members that log in here, members this host logs in to, [sync] folders
 SSH_IN=()
@@ -170,7 +170,7 @@ fetchSyncKeys() {
 }
 
 # Where the evaluated config keeps Syncthing's keys: its config dir, the persistence root holding
-# it (/persist, or the state volume when the host has one) and that root's filesystem.
+# it (/persist, or the appdata space when a data disk holds it) and that root's filesystem.
 syncPlace() {
   local json
   json="$(nixx eval --json "$FLAKE#nixosConfigurations.$HOSTNAME.config" --apply '
@@ -461,15 +461,9 @@ validLabel() { # a data disk's name, its filesystem label
   fi
 }
 
-validSubvolume() {
-  [[ $1 =~ ^[a-z0-9_-]+$ ]] && return 0
-  logWarn "Subvolume: lowercase letters, digits, hyphens and underscores"
-  return 1
-}
-
-validMountpoint() {
-  [[ $1 =~ ^/[^\"\\[:space:]]*$ ]] && return 0
-  logWarn "Mount point: an absolute path without spaces or quotes"
+validLimit() { # host.toml's disk.<label>.spaces values
+  [[ $1 =~ ^[0-9]+[KMGTP]$ || $1 =~ ^[0-9]{1,3}%$ ]] && return 0
+  logWarn "Limit: a size like 500G or 7T, or a share of the disk like 20%"
   return 1
 }
 
@@ -696,12 +690,12 @@ loadHost() {
 
   # only for the summary; host.toml keeps its tables as they are
   local key
-  DATA_LABELS=() DATA_DEVICES=() DATA_PROFILES=() DATA_MOUNTS=()
+  DATA_LABELS=() DATA_DEVICES=() DATA_PROFILES=() DATA_SPACES=()
   while IFS=$'\t' read -r key; do
     DATA_LABELS+=("$key")
     DATA_DEVICES+=("$(jq -r --arg k "$key" '.disk[$k].devices | join(" ")' <<< "$json")")
     DATA_PROFILES+=("$(jq -r --arg k "$key" '.disk[$k].profile // "single"' <<< "$json")")
-    DATA_MOUNTS+=("$(jq -r --arg k "$key" '.disk[$k].mounts | to_entries | map("\(.key) = \"\(.value)\"") | "{ " + join(", ") + " }"' <<< "$json")")
+    DATA_SPACES+=("$(jq -r --arg k "$key" '.disk[$k].spaces // {} | to_entries | map("\(.key) = \(.value | if . == true then "true" else "\"\(.)\"" end)") | "{ " + join(", ") + " }"' <<< "$json")")
   done < <(jq -r '.disk // {} | keys[] | select(. != "boot")' <<< "$json")
 
   if [[ -z $USERNAME || -z $CLASS ]]; then
@@ -834,7 +828,7 @@ fetchOldKeys() {
     fi
   else
     mkdir -p "$mnt"
-    # on the state volume: mounted by itself, as the config mounts it
+    # in the appdata space: mounted by itself, as the config mounts it
     if [[ $syncing == true && $SYNC_ROOT != /persist ]]; then
       if sudo mount -o "ro${SYNC_SUBVOL:+,subvol=$SYNC_SUBVOL}" "$SYNC_DEVICE" "$mnt" 2>/dev/null; then
         fetchSyncKeys "$mnt$SYNC_DIR"
@@ -936,16 +930,17 @@ gatherDisk() {
   logInfo "Disk: $DISK, ${DISK_GIB}GiB"
 }
 
-# data disks: each [disk.<label>] is one btrfs filesystem, on one disk or an array
+# data disks: each [disk.<label>] is one btrfs filesystem, on one disk or an array, holding
+# spaces the host's features bring; a space no disk takes stays on the boot disk
 gatherData() {
   formHeader "Data disks"
   DATA_LABELS=()
   DATA_DEVICES=()
   DATA_PROFILES=()
-  DATA_MOUNTS=()
+  DATA_SPACES=()
 
-  local -a used=("$DISK_NAME") free picked devices profiles
-  local add fsLabel profile mounts subvol mountpoint row another
+  local -a used=("$DISK_NAME") free picked devices profiles offered placed=()
+  local add fsLabel profile spaces space limit row
 
   while :; do
     mapfile -t free < <(listDisks | awk -v used=" ${used[*]} " 'index(used, " " $1 " ") == 0')
@@ -978,22 +973,29 @@ gatherData() {
       profile="${profiles[0]}"
     fi
 
-    mounts=""
-    subvol="$fsLabel"
-    while :; do
-      formInputOpt subvol "Subvolume" "$subvol" validSubvolume || return 1
-      [[ -n $subvol ]] || continue
-      formInputOpt mountpoint "Mount $subvol at" "/server/$subvol" validMountpoint || return 1
-      mounts+="$subvol = \"$mountpoint\", "
-      formYesNo another "Another subvolume on $fsLabel?" no || return 1
-      [[ $another == yes ]] || break
-      subvol=""
+    # the spaces core and the chosen features bring on this class, less those another disk took
+    mapfile -t offered < <(jq -r --arg class "$CLASS" \
+      --argjson features "$(jsonList "${FEATURES[@]}")" --argjson placed "$(jsonList "${placed[@]}")" '
+      [.coreSpaces[], (.features[$features[]].spaces[$class][])] | unique - $placed | .[]' <<< "$REGISTRY")
+    picked=()
+    if (( ${#offered[@]} > 0 )); then
+      formMulti picked "Spaces on $fsLabel (the rest stay on the boot disk)" "" "${offered[@]}" || return 1
+    fi
+    spaces=""
+    for space in "${picked[@]}"; do
+      formInputOpt limit "Most $space may hold, e.g. 500G or 20% (empty: no limit)" "" validLimit || return 1
+      if [[ -n $limit ]]; then
+        spaces+="$space = \"$limit\", "
+      else
+        spaces+="$space = true, "
+      fi
+      placed+=("$space")
     done
 
     DATA_LABELS+=("$fsLabel")
     DATA_DEVICES+=("${devices[*]}")
     DATA_PROFILES+=("$profile")
-    DATA_MOUNTS+=("{ ${mounts%, } }")
+    DATA_SPACES+=("{ ${spaces%, } }")
     logInfo "disk.$fsLabel: ${#devices[@]} disk(s), $profile"
   done
 }
@@ -1131,7 +1133,7 @@ gatherSummary() {
     row Swap "${SWAP}GiB"
     for i in "${!DATA_LABELS[@]}"; do
       read -ra devices <<< "${DATA_DEVICES[$i]}"
-      row "disk.${DATA_LABELS[$i]}" "${DATA_PROFILES[$i]}, ${#devices[@]} disk(s), ${DATA_MOUNTS[$i]}"
+      row "disk.${DATA_LABELS[$i]}" "${DATA_PROFILES[$i]}, ${#devices[@]} disk(s), ${DATA_SPACES[$i]}"
     done
     if [[ $CLASS == "desktop" ]]; then
       row Reserved "$( (( RESERVE > 0 )) && echo "${RESERVE}GiB" || echo none)"
@@ -1494,7 +1496,7 @@ writeHostToml() {
       echo "[disk.${DATA_LABELS[$i]}]"
       echo "devices = $(tomlList "${devices[@]}")"
       [[ ${DATA_PROFILES[$i]} != single ]] && echo "profile = \"${DATA_PROFILES[$i]}\""
-      echo "mounts = ${DATA_MOUNTS[$i]}"
+      echo "spaces = ${DATA_SPACES[$i]}"
     done
     if [[ -n $SYNC_ID ]]; then
       echo
@@ -1617,7 +1619,7 @@ complete() {
 }
 
 # ── data disks ────────
-# disko formats a data disk only while it holds no filesystem (core/volumes.nix never wipes one),
+# disko formats a data disk only while it holds no filesystem (core/disk.nix never wipes one),
 # and then with mkfs.btrfs -f, over any partitions on it. So each one is looked at first: btrfs
 # with its table's label is kept, an empty one is formatted, anything else is wiped on a typed yes
 # or the install stops.
@@ -1769,7 +1771,7 @@ stageFiles() {
     git -C "$home/axon" config "branch.$branch.$key" "$value"
   done
 
-  # Syncthing's keys where the config persists them: under /persist, or on the state volume
+  # Syncthing's keys where the config persists them: under /persist, or in the appdata space
   SYNC_PATH=""
   if [[ -s $sync/cert.pem ]]; then
     if syncPlace; then

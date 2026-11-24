@@ -28,9 +28,9 @@ in
         hasSecret
         host
         hostsWith
-        limits
         links
         routes
+        spaces
         ;
       port = 8082;
       ph = config.sops.placeholder;
@@ -53,24 +53,26 @@ in
           "http://127.0.0.1:9090"
         else
           "http://${lib.head monitors}:9090";
-      size =
-        limit:
+      # only a space on a data disk has a qgroup to report from
+      placed = name: (spaces.${name}.disk or null) != null;
+      spaceWidget =
+        service:
         let
-          parts = lib.match "([0-9]+)([KMGTP]?)" limit;
-          unit = lib.elemAt parts 1;
-        in
-        "${lib.head parts} ${if unit == "" then "B" else "${unit}iB"}";
-      spaceWidget = service: {
-        type = "prometheusmetric";
-        url = prometheus;
-        metrics = [
-          {
-            label = "of ${size limits.${service.dashboard.space}}";
-            query = ''axon_space_used_bytes{host="${host.name}",space="${service.dashboard.space}"}'';
+          name = service.dashboard.space;
+          field = label: metric: {
+            inherit label;
+            query = ''${metric}{host="${host.name}",space="${name}"}'';
             format.type = "bbytes";
-          }
-        ];
-      };
+          };
+        in
+        {
+          type = "prometheusmetric";
+          url = prometheus;
+          metrics = [
+            (field "used" "axon_space_used_bytes")
+          ]
+          ++ lib.optional (spaces.${name}.limit != null) (field "limit" "axon_space_limit_bytes");
+        };
 
       tile =
         service: name: instance:
@@ -90,7 +92,7 @@ in
             ++ lib.optional (
               prometheus != null
               && service.dashboard.space != null
-              && limits ? ${service.dashboard.space}
+              && placed service.dashboard.space
               && instance.link or null == null
             ) (spaceWidget service);
         in

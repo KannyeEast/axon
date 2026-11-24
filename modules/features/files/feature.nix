@@ -5,5 +5,12 @@
       "desktop"
       "server"
     ];
+    # only its server side keeps data
+    spaces.server = [
+      "backups"
+      "immich"
+      "nextcloud"
+      "paperless"
+    ];
   };
 }

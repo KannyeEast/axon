@@ -1,6 +1,23 @@
 [host]
 class = "server"
-features = ["automation", "backup", "dev", "downloads", "family", "files", "forge", "gateway", "mail", "media", "metrics", "monitoring", "passwords", "sync", "terminal", "vpn"]
+features = [
+    "automation", 
+    "backup", 
+    "dev", 
+    "downloads", 
+    "family", 
+    "files", 
+    "forge", 
+    "gateway", 
+    "mail", 
+    "media", 
+    "metrics", 
+    "monitoring", 
+    "passwords", 
+    "sync", 
+    "terminal", 
+    "vpn"
+]
 state = "26.11" # written once at install, never changed
 key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKMXrIta7SmDEzxW21OIxtMNb1M6t5EVHNOyowknN/1G root@node1"
 
@@ -17,26 +34,21 @@ devices = ["/dev/disk/by-id/nvme-nvme.1987-4134343930373935304238393030393238323
 swap = 17
 
 [disk.bulk]
-devices = ["/dev/disk/by-id/ata-WDC_WD80EFPX-68C4ZN0_WD-RD31AHZH", "/dev/disk/by-id/ata-WDC_WD80EFPX-68C4ZN0_WD-RD31HTJG"]
+devices = [
+    "/dev/disk/by-id/ata-WDC_WD80EFPX-68C4ZN0_WD-RD31AHZH",
+    "/dev/disk/by-id/ata-WDC_WD80EFPX-68C4ZN0_WD-RD31HTJG",
+    "/dev/disk/by-id/ata-WDC_WD80EFPX-68C4ZN0_WD-1F165BEU"
+]
 profile = "raid1"
-mounts = { media = "/server/media", data = "/server/data" }
+spaces = { media = "10T", immich = "500G", nextcloud = "250G", paperless = "100G", forgejo = "45G", loki = "5G", backups = true }
 
 [disk.scratch]
 devices = ["/dev/disk/by-id/ata-INTENSO_SSD_AA000000000000000565"]
-mounts = { scratch = "/server/scratch" }
+spaces = { downloads = true }
 
 [disk.kit]
 devices = ["/dev/disk/by-id/ata-Samsung_SSD_860_EVO_500GB_S4CNNF0M701774A"]
-mounts = { vault = "/server/vault", state = "/server/state" }
-
-# most each may hold on bulk
-[limits]
-media = "7T"
-immich = "500G"
-nextcloud = "250G"
-paperless = "100G"
-forgejo = "45G"
-loki = "5G"
+spaces = { appdata = true, syncthing = true }
 
 [sync]
 id = "7B5WETD-2BBTFMG-OKJBRDP-A5NJ3UC-3A7HECI-IEB6UP4-KZLTLWF-7RVIPQD"

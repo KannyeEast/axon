@@ -20,8 +20,8 @@ in
         home
         host
         user
-        volumes
         ;
+      inherit (config.axon.spaces) syncthing;
       peerPort = 22000;
 
       folders = lib.attrNames (lib.filterAttrs (_: members: lib.elem host.name members) cluster.sync);
@@ -42,8 +42,9 @@ in
         else
           throw "cluster.toml: ${peer} shares a folder but has no syncthing id; give [external.${peer}] a sync id";
 
-      pathOf = folder: volumes.${folder} or "${home}/${folder}";
-      onVolumes = lib.filter (folder: volumes ? ${folder}) folders;
+      held = lib.optionals (syncthing.disk != null) folders;
+      pathOf =
+        folder: if lib.elem folder held then "${syncthing.path}/${folder}" else "${home}/${folder}";
     in
     {
       # ── service ────────
@@ -84,8 +85,14 @@ in
       systemd.services.syncthing.environment.STLOGFORMATLEVELSYSLOG = "true";
 
       # ── data ────────
-      # a volume mounts as root, so its folder is handed to the user
-      axon.folders = lib.genAttrs (map pathOf onVolumes) (_: {
+      # without a data disk for it, the folders stay in the user's home
+      axon.spaces.syncthing = {
+        fallback = false;
+        units = [ "syncthing" ];
+      };
+
+      # the space is root's, so each folder in it is handed to the user
+      axon.folders = lib.genAttrs (map pathOf held) (_: {
         user = user.name;
         group = "users";
         mode = "0700";
@@ -134,7 +141,7 @@ in
           };
           key = true;
         };
-        backup.paths = [ "/var/lib/syncthing" ] ++ map pathOf onVolumes;
+        backup.paths = [ "/var/lib/syncthing" ] ++ map pathOf held;
       };
     };
 }

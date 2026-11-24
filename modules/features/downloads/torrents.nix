@@ -6,13 +6,12 @@
   flake.modules.nixos.downloads =
     { config, ... }:
     let
-      inherit (config.axon) volumes vpn;
+      inherit (config.axon) spaces vpn;
       port = 8081;
       state = "/var/lib/qBittorrent";
       # next to the library, so imports are instant
-      finished = "${volumes.media or state}/downloads";
-      incomplete = "${volumes.scratch}/torrents";
-      folders = [ finished ] ++ lib.optional (volumes ? scratch) incomplete;
+      finished = "${spaces.media.path}/downloads";
+      incomplete = "${spaces.downloads.path}/torrents";
     in
     {
       # ── service ────────
@@ -30,8 +29,6 @@
             IgnoreSlowTorrentsForQueueing = true;
             MaxActiveDownloads = 5;
             MaxActiveTorrents = 5;
-          }
-          // lib.optionalAttrs (volumes ? scratch) {
             TempPathEnabled = true;
             TempPath = incomplete;
           };
@@ -50,7 +47,10 @@
       systemd.services.qbittorrent.serviceConfig.UMask = "0002";
 
       # ── data ────────
-      axon.folders = lib.genAttrs folders (_: {
+      axon.spaces.media.units = [ "qbittorrent" ];
+      axon.spaces.downloads.units = [ "qbittorrent" ];
+
+      axon.folders = lib.genAttrs [ finished incomplete ] (_: {
         user = "root";
         group = "media";
         mode = "2775";
@@ -86,10 +86,7 @@
           icon = "qbittorrent.svg";
           widget.type = "qbittorrent";
         };
-        backup = {
-          paths = [ state ];
-          exclude = lib.optional (!volumes ? media) finished;
-        };
+        backup.paths = [ state ];
       };
     };
 }

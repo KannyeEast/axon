@@ -72,10 +72,11 @@
         OTEL_LOGS_EXPORTER = "none";
       };
 
-      # on a new space the empty folders tmpfiles made at boot give way to a subvolume; Paperless
-      # won't start without them, so they are made again inside it
-      systemd.services.storage-paperless.serviceConfig.ExecStartPost =
-        "${lib.getExe' config.systemd.package "systemd-tmpfiles"} --create --prefix=${data}";
+      # tmpfiles may run before the space mounts (at boot, or on the switch that adds it) and leave
+      # its folders hidden under it; Paperless won't start without them, so its first unit makes them
+      systemd.services.paperless-scheduler.serviceConfig.ExecStartPre = lib.mkBefore [
+        "+${lib.getExe' config.systemd.package "systemd-tmpfiles"} --create --prefix=${data}"
+      ];
 
       # ── secrets ────────
       sops.templates."paperless.env" = lib.mkIf (sso.provider != null) {
@@ -115,6 +116,7 @@
       axon.spaces.paperless = {
         user = "paperless";
         group = "paperless";
+        mode = "0750";
         units = [
           "paperless-consumer"
           "paperless-exporter"

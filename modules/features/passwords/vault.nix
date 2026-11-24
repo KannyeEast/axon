@@ -9,15 +9,13 @@
     let
       inherit (config.axon)
         domain
-        dumps
         hasSecret
         mail
         sso
-        volumes
         ;
       inherit (config.axon.services.vault) route;
       port = 8222;
-      backups = "${dumps}/vaultwarden";
+      backups = "${config.axon.spaces.backups.path}/vaultwarden";
       client = sso.clients.vaultwarden;
       hasAdmin = hasSecret "vaultwarden/admin-token";
       env =
@@ -60,10 +58,7 @@
       };
 
       # ── units ────────
-      systemd.services = {
-        vaultwarden.serviceConfig.RuntimeDirectory = "vaultwarden";
-        backup-vaultwarden.unitConfig.RequiresMountsFor = [ backups ];
-      };
+      systemd.services.vaultwarden.serviceConfig.RuntimeDirectory = "vaultwarden";
 
       # ── secrets ────────
       sops.secrets."vaultwarden/admin-token" = lib.mkIf hasAdmin { };
@@ -80,10 +75,17 @@
       };
 
       # ── data ────────
-      axon.persist.state.directories = [
-        "/var/lib/vaultwarden"
-      ]
-      ++ lib.optional (!volumes ? data) backups;
+      axon.persist.state.directories = [ "/var/lib/vaultwarden" ];
+
+      axon.spaces.backups.units = [ "backup-vaultwarden" ];
+
+      # its module's tmpfiles rule may run before the space's mount at boot
+      axon.folders.${backups} = {
+        user = "vaultwarden";
+        group = "vaultwarden";
+        mode = "0770";
+        units = [ "backup-vaultwarden" ];
+      };
 
       # ── registration ────────
       axon.services.vault = {

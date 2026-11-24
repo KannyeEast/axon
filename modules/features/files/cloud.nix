@@ -111,6 +111,7 @@
       axon.spaces.nextcloud = {
         user = "nextcloud";
         group = "nextcloud";
+        mode = "0750";
         units = [
           "nextcloud-cron"
           "nextcloud-setup"

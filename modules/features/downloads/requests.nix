@@ -26,7 +26,7 @@
       missing = lib.filter (secret: !hasSecret secret) (lib.attrValues keys);
       filtered = routes ? jellyfin && hasSecret keys.jellyfin;
     in
-    lib.mkIf (config.axon.volumes ? media) {
+    lib.mkIf (config.axon.onDisk ? media) {
       # ── service ────────
       services.seerr = {
         enable = true;

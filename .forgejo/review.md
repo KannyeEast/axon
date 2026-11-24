@@ -49,8 +49,8 @@ You report findings; you never edit, commit or push.
   - a custom script or wrapper where a module setting, a nixpkgs package or a common add-on does
     the job (Use what exists before building it)
   - comments over the kind's limits, or telling history or reasoning (Comments are short and few)
-  - state a service writes that isn't persisted; a unit writing to a volume without
-    `RequiresMountsFor` (One way per need)
+  - state a service writes that isn't persisted; a unit writing to a space that isn't in its
+    `units` (One way per need)
 - **References left behind** (A change takes its references with it): for anything renamed,
   replaced or removed, search the repository, dotfiles in `home/` and `hosts/*/home` included,
   for its old name, path or id. A leftover is a **should**.

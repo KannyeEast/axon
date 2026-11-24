@@ -183,7 +183,7 @@ in
                         space = mkOption {
                           type = types.nullOr types.str;
                           default = null;
-                          description = "The volume or space in host.toml [limits] whose use its tile shows, against that limit.";
+                          description = "The space (axon.spaces) whose use its tile shows, with its limit where it has one; shown while a data disk holds it.";
                         };
                         instances = mkOption {
                           default = { };

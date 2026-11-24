@@ -1,21 +1,25 @@
 {
   axon.features.downloads = {
-    description = "qBittorrent locked into the VPN and SABnzbd for Usenet; with a media volume, also Seerr and the *arr stack to fill the library";
+    description = "qBittorrent locked into the VPN and SABnzbd for Usenet; with the media space on a data disk, also Seerr and the *arr stack to fill the library";
     classes = [ "server" ];
     requires = [ "vpn" ];
+    spaces.server = [
+      "downloads"
+      "media"
+    ];
     metrics = {
       sabnzbd.port = 9387;
       sonarr = {
         port = 9707;
-        volume = "media";
+        space = "media";
       };
       radarr = {
         port = 9708;
-        volume = "media";
+        space = "media";
       };
       prowlarr = {
         port = 9710;
-        volume = "media";
+        space = "media";
       };
     };
     alerts = [

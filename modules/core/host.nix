@@ -36,9 +36,16 @@ let
         default = "single";
         description = "btrfs data profile. Metadata is kept off parity profiles.";
       };
-      mounts = mkOption {
-        type = types.attrsOf types.str;
-        description = "Subvolume name to mountpoint. Features ask for a volume by this name.";
+      spaces = mkOption {
+        type = types.attrsOf (
+          types.either (types.enum [ true ]) (types.strMatching "[0-9]+[KMGTP]|[0-9]{1,3}%")
+        );
+        example = {
+          media = "7T";
+          immich = "20%";
+          appdata = true;
+        };
+        description = "The spaces it holds, each at /server/<name>, to the most it may hold: a size (powers of 1024), a share of this filesystem, or true for no limit. A space no disk lists lives on the boot disk.";
       };
     };
   };
@@ -157,7 +164,7 @@ in
       sync = mkOption {
         type = types.attrsOf (types.listOf types.str);
         default = { };
-        description = "Folder to the members that share it; one named like a host's volume lives on that volume, else in ~/<folder>.";
+        description = "Folder to the members that share it; in the syncthing space where a data disk holds it, else in ~/<folder>.";
       };
       external = mkOption {
         default = { };
