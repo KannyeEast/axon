@@ -128,18 +128,25 @@ in
                     defaultText = "provider.issuer <name>, null without a provider";
                     description = "The client's OpenID Connect issuer; the provider has one per client.";
                   };
+                  key = mkOption {
+                    type = types.str;
+                    readOnly = true;
+                    default = "${if service != null then service else name}/sso";
+                    defaultText = "<service>/sso, <name>/sso without a service";
+                    description = "The client secret's name in secrets.json.";
+                  };
                   secret = mkOption {
                     type = types.str;
                     readOnly = true;
-                    default = config.sops.secrets."sso/${name}".path;
-                    defaultText = "the path of the sops secret sso/<name>";
+                    default = config.sops.secrets.${client.config.key}.path;
+                    defaultText = "the path of the sops secret <key>";
                     description = "The client secret, from secrets.json; readable by the provider and user.";
                   };
                   placeholder = mkOption {
                     type = types.str;
                     readOnly = true;
-                    default = config.sops.placeholder."sso/${name}";
-                    defaultText = "the sops placeholder of sso/<name>";
+                    default = config.sops.placeholder.${client.config.key};
+                    defaultText = "the sops placeholder of <key>";
                     description = "The client secret's placeholder in a sops template.";
                   };
                   groupClaim = mkOption {

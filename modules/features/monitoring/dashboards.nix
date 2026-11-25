@@ -344,7 +344,7 @@
             # the start page shows panels of the Start page dashboard in frames
             allow_embedding = true;
             admin_user = user.name;
-            admin_password = "$__file{${config.sops.secrets."monitoring/password".path}}";
+            admin_password = "$__file{${config.sops.secrets."grafana/admin-password".path}}";
             secret_key = "$__file{${state}/secret_key}";
           };
           # read-only without its own login; the start page's frames need it
@@ -406,7 +406,7 @@
       '';
 
       # ── secrets ────────
-      sops.secrets."monitoring/password".owner = "grafana";
+      sops.secrets."grafana/admin-password".owner = "grafana";
 
       # ── login ────────
       axon.sso.clients.grafana = {

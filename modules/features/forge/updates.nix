@@ -7,10 +7,10 @@
     let
       inherit (config.axon) cluster hasSecret remotes;
       inherit (config.axon.services.git) route;
-      secret = name: config.sops.secrets."forge/${name}".path;
+      secret = name: config.sops.secrets."git/${name}".path;
       origin = lib.findFirst (remote: remote.origin) null (lib.attrValues remotes);
       own = origin != null && origin.web != null && cluster.domain != null && origin.host == route.host;
-      hasGithub = hasSecret "forge/github-token";
+      hasGithub = hasSecret "git/github-token";
     in
     lib.mkIf own {
       services.renovate = {
@@ -34,8 +34,8 @@
       };
 
       sops.secrets = {
-        "forge/renovate-token" = { };
+        "git/renovate-token" = { };
       }
-      // lib.optionalAttrs hasGithub { "forge/github-token" = { }; };
+      // lib.optionalAttrs hasGithub { "git/github-token" = { }; };
     };
 }

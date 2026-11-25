@@ -94,7 +94,7 @@ modules/features/<area>/
   <job>.nix        one service or one app per file, named for what it does (passwords.nix, not keepassxc.nix)
   _<name>.<ext>    data and scripts its modules read
 hosts/<name>/home/.config/<program>/    the settings its programs read
-hosts/<name>/secrets.json               its secrets, <area>/<name>
+hosts/<name>/secrets.json               its secrets, <owner>/<name>
 hosts/<name>/host.toml                  a table only where the feature owns one
 ```
 
@@ -248,9 +248,10 @@ Only when nothing existing fits (Rules: use what exists). Then:
   `links`, `secrets`, `spaces`).
 - A new field is an option in `axon.schema.<bundle>`, in the file that reads it, with a type, a
   default where one makes sense, and a description.
-- `secrets.json`: every key is `<area>/<name>`, never flat. The area is the service or account
-  the secret belongs to (`user`, `tailscale`, `kanidm`, `sso`, `mail`, `forge`), the name says
-  what it is, in kebab-case. A service's API key is `<its axon.services name>/api-key`.
+- `secrets.json`: every key is `<owner>/<name>`, never flat. The owner is the `axon.services`
+  entry that reads it; a secret of an external account several services use stays under the
+  account (`user`, `tailscale`, `cloudflare`, `mail`, `mullvad`). The name says what it is, in
+  kebab-case: a service's API key is `<owner>/api-key`, its login client's secret `<owner>/sso`.
 
 ## One way per need
 
@@ -267,10 +268,10 @@ use it.
 | An address registered elsewhere (redirects) | `route.url` |
 | Calling it from the same host | `route.internal` |
 | Is the gateway's login in front of it | `route.gated` |
-| A login | `axon.sso.clients.<name>` with `service`, which fills its name, icon and landing; the service logs in there when `axon.sso.provider` isn't null and keeps its own login otherwise; `client.placeholder` puts its secret into a sops template, `client.groupClaim` is its group as the provider's groups claim lists it |
+| A login | `axon.sso.clients.<name>` with `service`, which fills its name, icon and landing; the service logs in there when `axon.sso.provider` isn't null and keeps its own login otherwise; its secret is `client.key`, `<service>/sso`; `client.placeholder` puts it into a sops template, `client.groupClaim` is its group as the provider's groups claim lists it |
 | Mail | `axon.mail`; the service works when it is null. The sender is `<service name>@<domain>` |
 | A secret the file can't do without | declare its `sops.secrets`; evaluation lists what is missing. Every file declares each secret it reads |
-| An extra that switches on with its secret | `config.axon.hasSecret "<area>/<name>"`; without the secret the extra is off, with one warning naming the secret |
+| An extra that switches on with its secret | `config.axon.hasSecret "<owner>/<name>"`; without the secret the extra is off, with one warning naming the secret |
 | A service's API key | `axon.services.<name>.apiKey`, the secret `<name>/api-key`; `dashboard.key` when the start page's widget needs it |
 | A secret into a NixOS service | what its module offers, in this order: a `…File` option, `LoadCredential`, a sops template as environment file |
 | A secret into an own unit or container | `LoadCredential`; for a program that reads its keys only from the environment a sops template as `EnvironmentFile`; for a container a sops template in `environmentFiles`, never `environment` |

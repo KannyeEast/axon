@@ -50,8 +50,8 @@
         };
         provision = {
           enable = true;
-          adminPasswordFile = config.sops.secrets."kanidm/admin-password".path;
-          idmAdminPasswordFile = config.sops.secrets."kanidm/idm-admin-password".path;
+          adminPasswordFile = config.sops.secrets."auth/admin-password".path;
+          idmAdminPasswordFile = config.sops.secrets."auth/idm-admin-password".path;
           groups = lib.genAttrs [ "family" "admins" ] (_: {
             overwriteMembers = false;
           });
@@ -88,12 +88,12 @@
 
       # ── secrets ────────
       sops.secrets = {
-        "kanidm/admin-password".owner = "kanidm";
-        "kanidm/idm-admin-password".owner = "kanidm";
+        "auth/admin-password".owner = "kanidm";
+        "auth/idm-admin-password".owner = "kanidm";
       }
       // lib.mapAttrs' (
-        name: client:
-        lib.nameValuePair "sso/${name}" {
+        _: client:
+        lib.nameValuePair client.key {
           owner = client.user;
           group = "kanidm";
           mode = "0440";

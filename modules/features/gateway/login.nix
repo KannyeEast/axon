@@ -15,8 +15,8 @@
       inherit (config.axon.services.login) route;
       port = 4180;
       secrets = [
-        "sso/proxy"
-        "sso/proxy-cookie"
+        "login/sso"
+        "login/cookie"
       ];
       client = sso.clients.proxy;
       missing = lib.filter (secret: !hasSecret secret) secrets;
@@ -40,7 +40,7 @@
         email.domains = [ "*" ];
         cookie = {
           domain = ".${domain}";
-          secretFile = config.sops.secrets."sso/proxy-cookie".path;
+          secretFile = config.sops.secrets."login/cookie".path;
         };
         reverseProxy = true;
         # a line per gated request, with the full URL: SABnzbd's web UI puts its API key in it
@@ -74,10 +74,11 @@
       );
 
       # ── secrets ────────
-      sops.secrets."sso/proxy-cookie" = lib.mkIf active { };
+      sops.secrets."login/cookie" = lib.mkIf active { };
 
       # ── login ────────
       axon.sso.clients.proxy = lib.mkIf active {
+        service = "login";
         displayName = "Tailnet apps";
         landing = config.axon.services.home.route.url;
         redirects = [ "${route.url}/oauth2/callback" ];
