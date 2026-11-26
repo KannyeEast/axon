@@ -79,16 +79,52 @@
       }
     },
     {
-      "id": "3f9d2e7a-4c8b-4a1e-9f6d-7b2c1a5e8d43",
-      "name": "Changed",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "id": "c2d8e5f1-7a3b-4c9d-8e2f-5b1a6d4c3e97",
+      "name": "SABnzbd status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         660,
         100
       ],
+      "executeOnce": true,
       "parameters": {
-        "jsCode": "// only a change reaches SABnzbd, so a pause by hand stays\nconst full = $input.all().some(i => i.json.labels?.space === 'media' && i.json.labels?.host === $env.AXON_HOST);\nif ($getWorkflowStaticData('global').full === full) return [];\nreturn [{ json: { full, mode: full ? 'pause' : 'resume' } }];"
+        "url": "http://127.0.0.1:8080/api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "mode",
+              "value": "queue"
+            },
+            {
+              "name": "limit",
+              "value": "0"
+            },
+            {
+              "name": "apikey",
+              "value": "={{ $env.USENET_API_KEY }}"
+            },
+            {
+              "name": "output",
+              "value": "json"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "3f9d2e7a-4c8b-4a1e-9f6d-7b2c1a5e8d43",
+      "name": "Decide",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// full always pauses: SABnzbd forgets a pause when it restarts\n// empty again resumes only a pause this workflow made, so a pause by hand stays\nconst full = $('Alertmanager').all().some(i => i.json.labels?.space === 'media' && i.json.labels?.host === $env.AXON_HOST);\nconst paused = $input.first().json.queue?.paused === true;\nconst state = $getWorkflowStaticData('global');\nconst mode = full && !paused ? 'pause' : !full && paused && state.full === true ? 'resume' : null;\nif (!mode) {\n  state.full = full;\n  return [];\n}\nreturn [{ json: { full, mode } }];"
       }
     },
     {
@@ -97,7 +133,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        880,
+        1100,
         100
       ],
       "parameters": {
@@ -128,11 +164,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1100,
+        1320,
         100
       ],
       "parameters": {
-        "jsCode": "// stored once SABnzbd took it, so a failed call is tried again\n$getWorkflowStaticData('global').full = $('Changed').first().json.full;\nreturn [];"
+        "jsCode": "// stored once SABnzbd took it, so a failed call is tried again\n$getWorkflowStaticData('global').full = $('Decide').first().json.full;\nreturn [];"
       }
     }
   ],
@@ -174,14 +210,25 @@
       "main": [
         [
           {
-            "node": "Changed",
+            "node": "SABnzbd status",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Changed": {
+    "SABnzbd status": {
+      "main": [
+        [
+          {
+            "node": "Decide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide": {
       "main": [
         [
           {
