@@ -40,9 +40,9 @@ in
                   type = types.functionTo types.str;
                   description = "Group name to its value in the groups claim.";
                 };
-                unit = mkOption {
-                  type = types.str;
-                  description = "The provider's systemd unit on this host, started once its clients exist; for consumers that reach it while starting.";
+                units = mkOption {
+                  type = types.listOf types.str;
+                  description = "The systemd units on this host that must be up before a client's service starts: the provider, once its clients exist, and what clients reach it through.";
                 };
               };
             }
@@ -128,18 +128,25 @@ in
                     defaultText = "provider.issuer <name>, null without a provider";
                     description = "The client's OpenID Connect issuer; the provider has one per client.";
                   };
+                  key = mkOption {
+                    type = types.str;
+                    readOnly = true;
+                    default = "${if service != null then service else name}/sso";
+                    defaultText = "<service>/sso, <name>/sso without a service";
+                    description = "The client secret's name in secrets.json.";
+                  };
                   secret = mkOption {
                     type = types.str;
                     readOnly = true;
-                    default = config.sops.secrets."sso/${name}".path;
-                    defaultText = "the path of the sops secret sso/<name>";
+                    default = config.sops.secrets.${client.config.key}.path;
+                    defaultText = "the path of the sops secret <key>";
                     description = "The client secret, from secrets.json; readable by the provider and user.";
                   };
                   placeholder = mkOption {
                     type = types.str;
                     readOnly = true;
-                    default = config.sops.placeholder."sso/${name}";
-                    defaultText = "the sops placeholder of sso/<name>";
+                    default = config.sops.placeholder.${client.config.key};
+                    defaultText = "the sops placeholder of <key>";
                     description = "The client secret's placeholder in a sops template.";
                   };
                   groupClaim = mkOption {
@@ -155,5 +162,17 @@ in
           );
         };
       };
+
+      # a service may reach the provider while it starts
+      config.systemd.services = lib.mkIf (provider != null) (
+        lib.mkMerge (
+          lib.mapAttrsToList (
+            _: client:
+            lib.genAttrs services.${client.service}.units (_: {
+              after = provider.units;
+            })
+          ) (lib.filterAttrs (_: client: client.service != null) config.axon.sso.clients)
+        )
+      );
     };
 }

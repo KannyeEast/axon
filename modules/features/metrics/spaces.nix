@@ -1,16 +1,13 @@
-# Use and limit of each volume or space in [limits], from its btrfs qgroup, into a textfile the
-# node exporter serves; a subvolume or qgroup that doesn't exist yet is left out.
+# Use and limit of each space on a data disk, from its btrfs qgroup, into a textfile the node
+# exporter serves; a space without a limit reports its use only, one not made yet nothing.
 { lib, ... }:
 {
   flake.modules.nixos.metrics =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) limits spaces volumes;
       dir = "/run/prometheus-node-exporter-text";
 
-      paths =
-        volumes // lib.mapAttrs (_: space: space.path) (lib.filterAttrs (_: space: space.onVolume) spaces);
-      limited = lib.filterAttrs (name: _: limits ? ${name}) paths;
+      placed = lib.filterAttrs (_: space: space.disk != null) config.axon.spaces;
 
       # --format json: {"qgroup-show": [{"referenced": <bytes>, "max_referenced": <bytes> or "none", …}]}
       lines = pkgs.writeText "space-metrics.jq" ''
@@ -36,18 +33,18 @@
 
           {
           ${lib.concatStrings (
-            lib.mapAttrsToList (name: path: ''
-              report ${name} ${path}
-            '') limited
+            lib.mapAttrsToList (name: space: ''
+              report ${name} ${space.path}
+            '') placed
           )}
           } >${dir}/spaces.prom.tmp
           mv ${dir}/spaces.prom.tmp ${dir}/spaces.prom
         '';
       };
     in
-    lib.mkIf (limited != { }) {
+    lib.mkIf (placed != { }) {
       systemd.services.space-metrics = {
-        description = "Use and limit of the spaces in [limits] for the node exporter";
+        description = "Use and limit of the spaces on data disks for the node exporter";
         serviceConfig = {
           Type = "oneshot";
           ExecStart = lib.getExe collect;

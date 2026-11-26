@@ -31,7 +31,7 @@
         readOnly = true;
         default = name: lib.hasAttrByPath (lib.splitString "/" name) config.axon.secrets;
         defaultText = "whether secrets.json holds the secret";
-        description = "Whether secrets.json holds the secret of this name (area/name), for extras that switch on with their secret.";
+        description = "Whether secrets.json holds the secret of this name (owner/name), for extras that switch on with their secret.";
       };
 
       config = {

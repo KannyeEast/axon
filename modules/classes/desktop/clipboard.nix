@@ -1,4 +1,4 @@
-# cliphist: clipboard history, text and images; KeePassXC marks its copies secret, so they stay out.
+# cliphist: clipboard history, text and images; KeePassXC's copies are marked secret and stay out, Bitwarden's are not.
 # Settings: none.
 # Windows: none; `clipboard-pick` lists the history in fuzzel and pastes the pick. Key: Mod+V.
 {

@@ -20,12 +20,12 @@
         data.host.class == "server" && lib.intersectLists [ "files" "forge" ] data.host.features != [ ]
       ) scraped;
 
-      # the volumes a host's data disks mount, as its axon.volumes
-      mounted = data: lib.concatMapAttrs (_: fs: fs.mounts or { }) (removeAttrs data.disk [ "boot" ]);
-      # the exporters a host runs: its features' metrics, where it mounts their volume
+      # the spaces a host's data disks hold, as its axon.onDisk
+      held = data: lib.concatMapAttrs (_: fs: fs.spaces) (removeAttrs data.disk [ "boot" ]);
+      # the exporters a host runs: its features' metrics, where a data disk holds their space
       runs =
         data:
-        lib.filterAttrs (_: spec: spec.volume == null || mounted data ? ${spec.volume}) (
+        lib.filterAttrs (_: spec: spec.space == null || held data ? ${spec.space}) (
           lib.mergeAttrsList (map (feature: registry.${feature}.metrics) data.host.features)
         );
       # one job per name, a target per host that runs it

@@ -22,7 +22,7 @@
       # recyclarr.yml reads both keys; one unset fails the whole file
       missing = lib.filter (name: !hasSecret (secret name)) names;
     in
-    lib.mkIf (config.axon.volumes ? media) {
+    lib.mkIf (config.axon.onDisk ? media) {
       # ── units ────────
       # services.recyclarr takes its config as Nix and runs with ProtectHome=true, so it can't read
       # the dotfile

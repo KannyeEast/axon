@@ -1,7 +1,7 @@
 # Vaultwarden at vault.<domain>: the family's password manager for the Bitwarden apps.
-# Reach: public, its own login.
+# Reach: tailnet, its own login, not the gateway's.
 # In its UI only: accounts and their vaults, backed up through its nightly copy.
-# By hand: invite the family from the admin page (vaultwarden/admin-token, an argon2 hash).
+# By hand: invite the family from the admin page (vault/admin-token, an argon2 hash).
 { lib, ... }:
 {
   flake.modules.nixos.passwords =
@@ -9,23 +9,21 @@
     let
       inherit (config.axon)
         domain
-        dumps
         hasSecret
         mail
         sso
-        volumes
         ;
       inherit (config.axon.services.vault) route;
       port = 8222;
-      backups = "${dumps}/vaultwarden";
+      backups = "${config.axon.spaces.backups.path}/vaultwarden";
       client = sso.clients.vaultwarden;
-      hasAdmin = hasSecret "vaultwarden/admin-token";
+      hasAdmin = hasSecret "vault/admin-token";
       env =
         lib.optionalAttrs (mail != null) {
           SMTP_USERNAME = mail.login;
           SMTP_PASSWORD = mail.token;
         }
-        // lib.optionalAttrs hasAdmin { ADMIN_TOKEN = config.sops.placeholder."vaultwarden/admin-token"; }
+        // lib.optionalAttrs hasAdmin { ADMIN_TOKEN = config.sops.placeholder."vault/admin-token"; }
         // lib.optionalAttrs (sso.provider != null) { SSO_CLIENT_SECRET = client.placeholder; };
     in
     lib.mkIf (config.axon.host.class == "server") {
@@ -41,7 +39,7 @@
           # cloudflared connects from 127.0.0.1; Cloudflare puts the client's address in this header
           IP_HEADER = "Cf-Connecting-IP";
           # the admin page's saved settings override these; in /run they go on restart, so without
-          # vaultwarden/admin-token the admin page stays off
+          # vault/admin-token the admin page stays off
           CONFIG_FILE = "/run/vaultwarden/config.json";
         }
         // lib.optionalAttrs (mail != null) {
@@ -60,13 +58,10 @@
       };
 
       # ── units ────────
-      systemd.services = {
-        vaultwarden.serviceConfig.RuntimeDirectory = "vaultwarden";
-        backup-vaultwarden.unitConfig.RequiresMountsFor = [ backups ];
-      };
+      systemd.services.vaultwarden.serviceConfig.RuntimeDirectory = "vaultwarden";
 
       # ── secrets ────────
-      sops.secrets."vaultwarden/admin-token" = lib.mkIf hasAdmin { };
+      sops.secrets."vault/admin-token" = lib.mkIf hasAdmin { };
       sops.templates."vaultwarden.env" = lib.mkIf (env != { }) {
         # single quotes keep the value verbatim: the argon2 hash is full of $
         content = lib.concatStrings (lib.mapAttrsToList (key: value: "${key}='${value}'\n") env);
@@ -80,10 +75,17 @@
       };
 
       # ── data ────────
-      axon.persist.state.directories = [
-        "/var/lib/vaultwarden"
-      ]
-      ++ lib.optional (!volumes ? data) backups;
+      axon.persist.state.directories = [ "/var/lib/vaultwarden" ];
+
+      axon.spaces.backups.units = [ "backup-vaultwarden" ];
+
+      # its module's tmpfiles rule may run before the space's mount at boot
+      axon.folders.${backups} = {
+        user = "vaultwarden";
+        group = "vaultwarden";
+        mode = "0770";
+        units = [ "backup-vaultwarden" ];
+      };
 
       # ── registration ────────
       axon.services.vault = {
@@ -93,7 +95,8 @@
         ];
         route = {
           inherit port;
-          public = true;
+          # the Bitwarden apps and extensions can't follow a browser login
+          gate = false;
           health = "/alive";
         };
         dashboard = {

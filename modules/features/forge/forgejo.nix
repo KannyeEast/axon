@@ -64,8 +64,6 @@
       # the login source, made or updated before every start; a failure leaves it as it was. The
       # secret is on the command line while it runs: the command takes it no other way
       systemd.services.forgejo = lib.mkIf (sso.provider != null) {
-        # the client's discovery document only exists once the provider made it
-        after = [ sso.provider.unit ];
         path = [ pkgs.gawk ];
         preStart = lib.mkAfter ''
           login_source() {
@@ -104,6 +102,7 @@
 
       axon.spaces.forgejo = {
         inherit (cfg) user group;
+        mode = "0750";
         units = [ "forgejo" ];
       };
 

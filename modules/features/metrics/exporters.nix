@@ -5,17 +5,28 @@
   flake.modules.nixos.metrics =
     { config, ... }:
     let
-      inherit (config.axon) databases disk host;
+      inherit (config.axon)
+        databases
+        disk
+        host
+        spacePath
+        spaces
+        ;
       inherit (config.axon.registry.metrics) metrics;
       dir = "/run/prometheus-node-exporter-text";
       exporters = config.services.prometheus.exporters;
 
-      # one mountpoint per filesystem; the rest are subvolumes, further mounts or bind mounts
-      dataDisks = lib.attrValues (
-        lib.filterAttrs (label: fs: label != "boot" && fs.mounts or { } != { }) disk
+      # one mountpoint per data disk, its first space's; the other spaces are further mounts of the
+      # same filesystem, or bind mounts from the boot disk
+      firsts = lib.mapAttrsToList (_: fs: spacePath (lib.head (lib.attrNames fs.spaces))) (
+        lib.filterAttrs (label: fs: label != "boot" && fs.spaces != { }) disk
       );
-      repeated = lib.concatMap (fs: lib.tail (lib.attrValues fs.mounts)) dataDisks;
-      nested = map (fs: "${lib.escapeRegex (lib.head (lib.attrValues fs.mounts))}/.+") dataDisks;
+      repeated = lib.subtractLists firsts (
+        lib.mapAttrsToList (_: space: space.path) (
+          lib.filterAttrs (_: space: space.disk != null || space.fallback) spaces
+        )
+      );
+      nested = map (path: "${lib.escapeRegex path}/.+") firsts;
       excluded = lib.concatStringsSep "|" (
         [ "/(dev|proc|run|sys|etc|root|var|nix|home|persist)" ] ++ map lib.escapeRegex repeated ++ nested
       );

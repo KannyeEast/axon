@@ -7,7 +7,7 @@
     { config, ... }:
     let
       inherit (config.axon) hasSecret services;
-      inherit (config.axon.volumes) media;
+      media = config.axon.spaces.media.path;
       # order: after Jellyfin, Seerr and the downloaders; attention: widget values amber above 0
       apps = {
         radarr = {
@@ -51,14 +51,18 @@
       # they insist on a login method: External behind the gateway's login, else Forms, off for
       # local addresses with the tailnet's 100.64.0.0/10 counted local (config.xml only, not the UI)
       settings = name: {
-        server.allowedHosts =
+        server =
           let
-            inherit (config.axon.services.${name}) route;
+            inherit (services.${name}) route;
           in
-          lib.concatStringsSep "," [
-            route.host
-            route.address
-          ];
+          {
+            # their default is every address
+            bindaddress = route.address;
+            allowedHosts = lib.concatStringsSep "," [
+              route.host
+              route.address
+            ];
+          };
         auth = {
           method = if services.${name}.route.gated then "External" else "Forms";
           required = "DisabledForLocalAddresses";
@@ -99,7 +103,7 @@
         key = true;
       };
     in
-    lib.mkIf (config.axon.volumes ? media) {
+    lib.mkIf (config.axon.onDisk ? media) {
       # ── service ────────
       services.radarr = {
         enable = true;
@@ -118,7 +122,11 @@
       services.bazarr = {
         enable = true;
         group = "media";
-        settings = lib.optionalAttrs (hasKey "bazarr") {
+        settings = {
+          # its default is every address
+          general.ip = services.bazarr.route.address;
+        }
+        // lib.optionalAttrs (hasKey "bazarr") {
           auth.apikey._secret = config.sops.secrets.${secret "bazarr"}.path;
         };
       };
@@ -131,7 +139,6 @@
       # ── units ────────
       systemd.services = lib.mkMerge [
         (lib.genAttrs [ "radarr" "sonarr" "bazarr" ] (_: {
-          unitConfig.RequiresMountsFor = [ media ];
           # Bazarr writes subtitles into the folders Radarr and Sonarr make, so what one creates
           # stays group-writable; forced over their modules' 0022
           serviceConfig.UMask = lib.mkForce "0002";
@@ -155,6 +162,12 @@
       );
 
       # ── data ────────
+      axon.spaces.media.units = [
+        "radarr"
+        "sonarr"
+        "bazarr"
+      ];
+
       # the library folders; Bazarr writes subtitles into both, and both apps import from downloads
       axon.folders =
         lib.mapAttrs'

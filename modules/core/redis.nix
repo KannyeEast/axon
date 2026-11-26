@@ -1,5 +1,5 @@
 # Every Redis server a module starts: logs at warning (at notice it logs each snapshot, every few
-# minutes) and keeps its data on the state volume.
+# minutes) and keeps its data in appdata.
 { lib, ... }:
 {
   flake.modules.nixos.core =

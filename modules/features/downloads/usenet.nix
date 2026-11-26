@@ -10,13 +10,13 @@
         hasSecret
         routed
         services
-        volumes
+        spaces
         ;
       inherit (config.axon.services.usenet) route;
       port = 8080;
       state = "/var/lib/sabnzbd";
-      finished = "${volumes.media or state}/downloads";
-      incomplete = "${volumes.scratch or state}/usenet";
+      finished = "${spaces.media.path}/downloads";
+      incomplete = "${spaces.downloads.path}/usenet";
       # without it in secrets.json, SABnzbd keeps the key it made itself
       key = services.usenet.apiKey;
       folders = [
@@ -79,6 +79,9 @@
       };
 
       # ── data ────────
+      axon.spaces.media.units = [ "sabnzbd" ];
+      axon.spaces.downloads.units = [ "sabnzbd" ];
+
       axon.folders = lib.genAttrs folders (_: {
         user = "root";
         group = "media";
@@ -101,10 +104,7 @@
           widget.type = "sabnzbd";
           key = true;
         };
-        backup = {
-          paths = [ state ];
-          exclude = lib.optional (!volumes ? media) finished ++ lib.optional (!volumes ? scratch) incomplete;
-        };
+        backup.paths = [ state ];
       };
     };
 }

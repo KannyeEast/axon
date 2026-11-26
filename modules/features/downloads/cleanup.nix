@@ -35,7 +35,7 @@
       };
       missing = lib.filter (key: !hasSecret key) (lib.attrValues secrets);
     in
-    lib.mkIf (config.axon.volumes ? media) {
+    lib.mkIf (config.axon.onDisk ? media) {
       # ── units ────────
       systemd.services = lib.mkIf (missing == [ ]) {
         decluttarr = {

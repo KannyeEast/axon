@@ -10,7 +10,7 @@ in
       type = types.nullOr types.str;
       default = null;
       example = "cache.example.com-1:AbCd…=";
-      description = "Public key of this host's binary cache; its secret key goes in secrets.json at forge/cache.";
+      description = "Public key of this host's binary cache; its secret key goes in secrets.json at cache/signing-key.";
     };
   };
 
@@ -23,12 +23,12 @@ in
       # ── service ────────
       services.harmonia.cache = {
         enable = true;
-        signKeyPaths = [ config.sops.secrets."forge/cache".path ];
+        signKeyPaths = [ config.sops.secrets."cache/signing-key".path ];
         settings.bind = "127.0.0.1:${toString port}";
       };
 
       # ── secrets ────────
-      sops.secrets."forge/cache" = { };
+      sops.secrets."cache/signing-key" = { };
 
       # ── registration ────────
       axon.services.cache = {

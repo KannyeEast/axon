@@ -9,6 +9,7 @@
     let
       inherit (config.axon)
         domain
+        hasSecret
         mail
         routed
         services
@@ -18,6 +19,8 @@
       port = 8090;
       client = sso.clients.nextcloud;
       data = config.axon.spaces.nextcloud.path;
+      # serverinfo's token, which the start page's widget sends
+      key = services.cloud.apiKey;
     in
     lib.mkIf (config.axon.host.class == "server") {
       # ── service ────────
@@ -79,20 +82,30 @@
       ];
 
       # ── units ────────
-      # updated on every setup run; --unique-uid=0 keeps the short name, so a login lands in the
-      # account of that name; Nextcloud's own second factor is asked only on the password form
-      systemd.services.nextcloud-setup.script = lib.mkIf (sso.provider != null) (
-        lib.mkAfter ''
-          nextcloud-occ user_oidc:provider Kanidm \
-            --clientid=${client.id} \
-            --clientsecret-file=${client.secret} \
-            --discoveryuri=${client.issuer}/.well-known/openid-configuration \
-            --mapping-uid=preferred_username \
-            --unique-uid=0
-        ''
-      );
+      systemd.services.nextcloud-setup = lib.mkMerge [
+        # updated on every setup run; --unique-uid=0 keeps the short name, so a login lands in the
+        # account of that name; Nextcloud's own second factor is asked only on the password form
+        (lib.mkIf (sso.provider != null) {
+          script = lib.mkAfter ''
+            nextcloud-occ user_oidc:provider Kanidm \
+              --clientid=${client.id} \
+              --clientsecret-file=${client.secret} \
+              --discoveryuri=${client.issuer}/.well-known/openid-configuration \
+              --mapping-uid=preferred_username \
+              --unique-uid=0
+          '';
+        })
+        (lib.mkIf (hasSecret key) {
+          serviceConfig.LoadCredential = [ "token:${config.sops.secrets.${key}.path}" ];
+          script = lib.mkAfter ''
+            nextcloud-occ config:app:set serverinfo token --value="$(cat "$CREDENTIALS_DIRECTORY/token")"
+          '';
+        })
+      ];
 
       # ── secrets ────────
+      sops.secrets.${key} = lib.mkIf (hasSecret key) { };
+
       sops.templates."nextcloud.json" = lib.mkIf (mail != null) {
         owner = "nextcloud";
         content = lib.toJSON {
@@ -111,6 +124,7 @@
       axon.spaces.nextcloud = {
         user = "nextcloud";
         group = "nextcloud";
+        mode = "0750";
         units = [
           "nextcloud-cron"
           "nextcloud-setup"

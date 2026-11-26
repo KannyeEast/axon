@@ -1,4 +1,4 @@
-# Jellyfin at jellyfin.<domain>: movies and shows from the media volume.
+# Jellyfin at jellyfin.<domain>: movies and shows from the media space.
 # Reach: public, its own login.
 # In its UI only: libraries, users, encoding, plugins and their settings, backed up with its state.
 { lib, ... }:
@@ -6,7 +6,7 @@
   flake.modules.nixos.media =
     { config, pkgs, ... }:
     let
-      inherit (config.axon) host volumes;
+      inherit (config.axon) host;
     in
     lib.mkIf (host.class == "server") {
       # ── service ────────
@@ -18,8 +18,6 @@
 
       # ── units ────────
       systemd.services.jellyfin = {
-        # the library is on a data disk that may be missing at boot (nofail)
-        unitConfig.RequiresMountsFor = lib.optional (volumes ? media) volumes.media;
         # scheduled tasks and chatty plugins log their routine at info
         serviceConfig.ExecStartPre = [
           # as jellyfin, making its config folder where a new persist mount hid tmpfiles' one
@@ -38,6 +36,13 @@
       };
 
       # ── data ────────
+      # the library, shared with the downloads feature's apps
+      axon.spaces.media = {
+        group = "media";
+        mode = "2775";
+        units = [ "jellyfin" ];
+      };
+
       axon.persist.state.directories =
         map
           (directory: {
