@@ -1,5 +1,5 @@
 # Vaultwarden at vault.<domain>: the family's password manager for the Bitwarden apps.
-# Reach: public, its own login.
+# Reach: tailnet, its own login, not the gateway's.
 # In its UI only: accounts and their vaults, backed up through its nightly copy.
 # By hand: invite the family from the admin page (vault/admin-token, an argon2 hash).
 { lib, ... }:
@@ -95,7 +95,8 @@
         ];
         route = {
           inherit port;
-          public = true;
+          # the Bitwarden apps and extensions can't follow a browser login
+          gate = false;
           health = "/alive";
         };
         dashboard = {
