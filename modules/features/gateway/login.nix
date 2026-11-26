@@ -58,20 +58,11 @@
 
       # ── units ────────
       # it exits when the provider's discovery document isn't there yet, so it retries
-      systemd.services.oauth2-proxy = lib.mkIf active (
-        let
-          units = [
-            "caddy.service"
-            sso.provider.unit
-          ];
-        in
-        {
-          wants = units;
-          after = units;
-          serviceConfig.RestartSec = "10s";
-          unitConfig.StartLimitIntervalSec = 0;
-        }
-      );
+      systemd.services.oauth2-proxy = lib.mkIf active {
+        wants = sso.provider.units;
+        serviceConfig.RestartSec = "10s";
+        unitConfig.StartLimitIntervalSec = 0;
+      };
 
       # ── secrets ────────
       sops.secrets."login/cookie" = lib.mkIf active { };

@@ -268,7 +268,7 @@ use it.
 | An address registered elsewhere (redirects) | `route.url` |
 | Calling it from the same host | `route.internal` |
 | Is the gateway's login in front of it | `route.gated` |
-| A login | `axon.sso.clients.<name>` with `service`, which fills its name, icon and landing; the service logs in there when `axon.sso.provider` isn't null and keeps its own login otherwise; its secret is `client.key`, `<service>/sso`; `client.placeholder` puts it into a sops template, `client.groupClaim` is its group as the provider's groups claim lists it |
+| A login | `axon.sso.clients.<name>` with `service`, which fills its name, icon and landing; the service logs in there when `axon.sso.provider` isn't null and keeps its own login otherwise, and its units start after the provider's; its secret is `client.key`, `<service>/sso`; `client.placeholder` puts it into a sops template, `client.groupClaim` is its group as the provider's groups claim lists it |
 | Mail | `axon.mail`; the service works when it is null. The sender is `<service name>@<domain>` |
 | A secret the file can't do without | declare its `sops.secrets`; evaluation lists what is missing. Every file declares each secret it reads |
 | An extra that switches on with its secret | `config.axon.hasSecret "<owner>/<name>"`; without the secret the extra is off, with one warning naming the secret |

@@ -40,9 +40,9 @@ in
                   type = types.functionTo types.str;
                   description = "Group name to its value in the groups claim.";
                 };
-                unit = mkOption {
-                  type = types.str;
-                  description = "The provider's systemd unit on this host, started once its clients exist; for consumers that reach it while starting.";
+                units = mkOption {
+                  type = types.listOf types.str;
+                  description = "The systemd units on this host that must be up before a client's service starts: the provider, once its clients exist, and what clients reach it through.";
                 };
               };
             }
@@ -162,5 +162,17 @@ in
           );
         };
       };
+
+      # a service may reach the provider while it starts
+      config.systemd.services = lib.mkIf (provider != null) (
+        lib.mkMerge (
+          lib.mapAttrsToList (
+            _: client:
+            lib.genAttrs services.${client.service}.units (_: {
+              after = provider.units;
+            })
+          ) (lib.filterAttrs (_: client: client.service != null) config.axon.sso.clients)
+        )
+      );
     };
 }

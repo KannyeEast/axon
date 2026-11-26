@@ -122,8 +122,11 @@
         issuer = client: "${url}/oauth2/openid/${client}";
         # Kanidm lists groups as <name>@<its domain>
         group = group: "${group}@${host}";
-        # provisioning runs in the unit's start, so clients exist once it's up
-        unit = "kanidm.service";
+        # provisioning runs in Kanidm's start, so clients exist once it's up; they reach it through Caddy
+        units = [
+          "kanidm.service"
+          "caddy.service"
+        ];
       };
 
       # ── registration ────────
