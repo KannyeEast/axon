@@ -1,12 +1,13 @@
 # Contract: axon.databases. The Postgres databases this host's services keep, each created by its
-# service's module. With any listed, the host runs its own Postgres and dumps each nightly to the
-# backups space, which a data disk can hold apart from the database: a dump beside it is lost with it.
+# service's module. With any listed, the host runs its own Postgres in the databases space and dumps
+# each nightly to the backups space, best on another disk: a dump beside the data is lost with it.
 { lib, ... }:
 {
   flake.modules.nixos.core =
     { config, ... }:
     let
       inherit (config.axon) databases;
+      data = "${config.axon.spaces.databases.path}/${config.services.postgresql.package.psqlSchema}";
       dumps = "${config.axon.spaces.backups.path}/postgresql";
       units = map (name: "postgresqlBackup-${name}") databases;
     in
@@ -22,6 +23,7 @@
         # ── settings ────────
         services.postgresql = {
           enable = true;
+          dataDir = data;
           # on by default: two lines for each checkpoint, every few minutes
           settings.log_checkpoints = false;
         };
@@ -38,14 +40,26 @@
         });
 
         # ── data ────────
-        axon.persist.state.directories = [
-          {
-            directory = "/var/lib/postgresql";
-            user = "postgres";
-            group = "postgres";
-            mode = "0750";
-          }
-        ];
+        axon.spaces.databases = {
+          user = "postgres";
+          group = "postgres";
+          mode = "0750";
+          units = [
+            "postgresql"
+            "postgresql-setup"
+          ];
+        };
+
+        # a data directory of its own gets no StateDirectory from its module
+        axon.folders.${data} = {
+          user = "postgres";
+          group = "postgres";
+          mode = "0750";
+          units = [
+            "postgresql"
+            "postgresql-setup"
+          ];
+        };
 
         axon.spaces.backups = { inherit units; };
 

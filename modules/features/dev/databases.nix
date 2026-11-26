@@ -53,6 +53,7 @@
           group = "Infrastructure";
           description = "Postgres, read-only";
           icon = "postgres.svg";
+          space = "databases";
           widget = {
             type = "prometheusmetric";
             metrics = [

@@ -19,16 +19,76 @@
       }
     },
     {
+      "id": "5b0f6a8e-2c1d-4c7a-9a43-1f3e7d2b9c10",
+      "name": "Hourly",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        200
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      }
+    },
+    {
       "id": "d4ffb196-face-41f1-9d42-a2432752b589",
-      "name": "Pause or resume",
+      "name": "Has SABnzbd",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         220,
-        0
+        100
       ],
       "parameters": {
-        "jsCode": "// SpaceFull on this host's media space: firing pauses SABnzbd, resolved resumes it\n// a host without SABnzbd's key has nothing to pause\nif (!$env.USENET_API_KEY) return [];\nreturn ($input.first().json.body.alerts || [])\n  .filter(a => a.labels.alertname === 'SpaceFull' && a.labels.space === 'media' && a.labels.host === $env.AXON_HOST)\n  .map(a => ({ json: { mode: a.status === 'firing' ? 'pause' : 'resume' } }));"
+        "jsCode": "// any alert, and every hour for one that got lost: SpaceFull on this host's media space pauses SABnzbd\n// a host without SABnzbd's key or Alertmanager has nothing to do\nif (!$env.USENET_API_KEY || !$env.ALERTMANAGER_URL) return [];\nreturn [{ json: {} }];"
+      }
+    },
+    {
+      "id": "8e7c3a51-6b2f-4f0e-b1d4-2a9c5e8f7d36",
+      "name": "Alertmanager",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        100
+      ],
+      "alwaysOutputData": true,
+      "parameters": {
+        "url": "={{ $env.ALERTMANAGER_URL }}/api/v2/alerts",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "active",
+              "value": "true"
+            },
+            {
+              "name": "filter",
+              "value": "alertname=\"SpaceFull\""
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "3f9d2e7a-4c8b-4a1e-9f6d-7b2c1a5e8d43",
+      "name": "Changed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// only a change reaches SABnzbd, so a pause by hand stays\nconst full = $input.all().some(i => i.json.labels?.space === 'media' && i.json.labels?.host === $env.AXON_HOST);\nif ($getWorkflowStaticData('global').full === full) return [];\nreturn [{ json: { full, mode: full ? 'pause' : 'resume' } }];"
       }
     },
     {
@@ -37,8 +97,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        440,
-        0
+        880,
+        100
       ],
       "parameters": {
         "url": "http://127.0.0.1:8080/api",
@@ -61,6 +121,19 @@
         },
         "options": {}
       }
+    },
+    {
+      "id": "a7e4b2c9-1d3f-4e8a-b6c5-9f0d2e1a3b74",
+      "name": "Remember",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// stored once SABnzbd took it, so a failed call is tried again\n$getWorkflowStaticData('global').full = $('Changed').first().json.full;\nreturn [];"
+      }
     }
   ],
   "connections": {
@@ -68,18 +141,62 @@
       "main": [
         [
           {
-            "node": "Pause or resume",
+            "node": "Has SABnzbd",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Pause or resume": {
+    "Hourly": {
+      "main": [
+        [
+          {
+            "node": "Has SABnzbd",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has SABnzbd": {
+      "main": [
+        [
+          {
+            "node": "Alertmanager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alertmanager": {
+      "main": [
+        [
+          {
+            "node": "Changed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Changed": {
       "main": [
         [
           {
             "node": "SABnzbd",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SABnzbd": {
+      "main": [
+        [
+          {
+            "node": "Remember",
             "type": "main",
             "index": 0
           }

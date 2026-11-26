@@ -8,6 +8,7 @@
     # only its server side keeps data
     spaces.server = [
       "backups"
+      "databases"
       "immich"
       "nextcloud"
       "paperless"

@@ -4,6 +4,7 @@
     classes = [ "server" ];
     spaces.server = [
       "backups"
+      "databases"
       "forgejo"
     ];
   };

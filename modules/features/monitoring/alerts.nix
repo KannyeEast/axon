@@ -123,7 +123,10 @@
                     "0m"
                     "{{ $labels.unit }} failed"
                   )
-                  (rule "SpaceFull" "axon_space_used_bytes / axon_space_limit_bytes > 0.9" "15m"
+                  # stays firing down to 85%, so it does not flap around 90%
+                  (rule "SpaceFull"
+                    ''axon_space_used_bytes / axon_space_limit_bytes > 0.9 or (axon_space_used_bytes / axon_space_limit_bytes > 0.85 and on(host, space) ALERTS{alertname="SpaceFull",alertstate="firing"})''
+                    "15m"
                     "{{ $labels.space }} {{ $value | humanizePercentage }} full"
                   )
                   {
