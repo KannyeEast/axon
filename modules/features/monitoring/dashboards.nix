@@ -195,10 +195,11 @@
             [ "host" "disk" ]
             [
               { Size = byDisk "node_filesystem_size_bytes"; }
-              { Used = "${byDisk "node_filesystem_size_bytes"} - ${byDisk "node_filesystem_avail_bytes"}"; }
+              # free, as df counts it: btrfs's avail misses the space of a third raid1 disk
+              { Used = "${byDisk "node_filesystem_size_bytes"} - ${byDisk "node_filesystem_free_bytes"}"; }
               {
                 "Used %" =
-                  percentOf "1 - ${byDisk "node_filesystem_avail_bytes"} / ${byDisk "node_filesystem_size_bytes"}";
+                  percentOf "1 - ${byDisk "node_filesystem_free_bytes"} / ${byDisk "node_filesystem_size_bytes"}";
               }
             ]
           // {
