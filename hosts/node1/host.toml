@@ -48,7 +48,7 @@ spaces = { downloads = true }
 
 [disk.kit]
 devices = ["/dev/disk/by-id/ata-Samsung_SSD_860_EVO_500GB_S4CNNF0M701774A"]
-spaces = { appdata = true, syncthing = true }
+spaces = { appdata = true, syncthing = true, databases = "50G" }
 
 [sync]
 id = "7B5WETD-2BBTFMG-OKJBRDP-A5NJ3UC-3A7HECI-IEB6UP4-KZLTLWF-7RVIPQD"
