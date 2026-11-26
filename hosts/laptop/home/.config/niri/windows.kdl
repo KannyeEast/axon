@@ -3,12 +3,6 @@ window-rule {
     clip-to-geometry true
 }
 
-// Keep credentials out of screenshots and screen shares
-window-rule {
-    match app-id=r#"^org\.keepassxc\.KeePassXC$"#
-    block-out-from "screen-capture"
-}
-
 window-rule {
     match app-id=r#"^org\.gnome\.Nautilus$"# title=r#"^(Open|Save)"#
     open-floating true
@@ -25,17 +19,17 @@ window-rule {
     open-floating true
 }
 
-// Password prompts (soteria, the polkit agent) land in front and stay put
+// Password prompts (soteria, the polkit agent; Bitwarden's passkey and unlock popouts) land in
+// front and stay put
 window-rule {
     match app-id=r#"^gay\.vaskel\.soteria$"#
+    match app-id=r#"^zen-beta$"# title=r#"^Extension: \(Bitwarden"#
     open-floating true
     open-focused true
 }
 
-// KeePassXC's prompts (passkeys, browser access, unlock) answer another app's request, so
-// niri wouldn't focus them by itself
+// Keep credentials out of screenshots and screen shares
 window-rule {
-    match app-id=r#"^org\.keepassxc\.KeePassXC$"# title=r#"^(KeePassXC - |Unlock Database - KeePassXC$)"#
-    open-floating true
-    open-focused true
+    match app-id=r#"^zen-beta$"# title=r#"^Extension: \(Bitwarden"#
+    block-out-from "screen-capture"
 }

@@ -9,7 +9,7 @@ in
     options.forge.runner = mkOption {
       type = types.nullOr types.str;
       default = null;
-      description = "UUID of this host's CI runner; its token goes in secrets.json at forge/runner.";
+      description = "UUID of this host's CI runner; its token goes in secrets.json at git/runner-token.";
     };
   };
 
@@ -31,7 +31,7 @@ in
             token = null;
           };
         };
-        secrets.server.connections.forgejo.token_url = config.sops.secrets."forge/runner".path;
+        secrets.server.connections.forgejo.token_url = config.sops.secrets."git/runner-token".path;
         hostPackages = [
           pkgs.bash
           pkgs.claude-code # the pull request reviewer (.forgejo/review.sh)
@@ -58,7 +58,7 @@ in
       };
 
       # ── secrets ────────
-      sops.secrets."forge/runner" = { };
+      sops.secrets."git/runner-token" = { };
 
       # ── data ────────
       axon.persist.state.directories = [

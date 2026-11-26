@@ -10,13 +10,13 @@
         host
         hostsWith
         routes
+        onDisk
         services
-        volumes
         ;
       inherit (config.axon.registry.downloads) metrics;
-      # the exporters whose volume this host mounts, name to port
+      # the exporters whose space a data disk of this host holds, name to port
       ports = lib.mapAttrs (_: job: job.port) (
-        lib.filterAttrs (_: job: job.volume == null || volumes ? ${job.volume}) metrics
+        lib.filterAttrs (_: job: job.space == null || onDisk ? ${job.space}) metrics
       );
       arr = removeAttrs ports [ "sabnzbd" ];
       inherit (ports) sabnzbd;

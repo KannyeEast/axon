@@ -9,10 +9,11 @@
     let
       inherit (config.axon) domain mail sso;
       inherit (config.axon.services.photos) route;
+      inherit (config.axon.spaces) appdata immich;
       port = 2283;
       client = sso.clients.immich;
-      data = config.axon.spaces.immich.path;
-      generated = lib.optionals (config.axon.volumes ? state && config.axon.spaces.immich.onVolume) [
+      data = immich.path;
+      generated = lib.optionals (appdata.disk != null && immich.disk != null) [
         "thumbs"
         "encoded-video"
       ];
@@ -87,7 +88,7 @@
       };
 
       # ── data ────────
-      # thumbnails and videos the timeline loads by the hundred stay on the state volume
+      # thumbnails and videos the timeline loads by the hundred stay in appdata
       fileSystems = lib.listToAttrs (
         map (dir: {
           name = "${data}/${dir}";
@@ -98,8 +99,6 @@
               "bind"
               "nofail"
               "x-systemd.requires-mounts-for=/var/lib/immich/${dir}"
-              "x-systemd.requires=storage-immich.service"
-              "x-systemd.after=storage-immich.service"
             ];
           };
         }) generated
@@ -107,6 +106,7 @@
       axon.spaces.immich = {
         user = "immich";
         group = "immich";
+        mode = "0750";
         units = [ "immich-server" ];
       };
 

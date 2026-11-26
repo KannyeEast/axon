@@ -1,5 +1,4 @@
-// programs from tower's features (browser, passwords)
+// programs from tower's features (browser)
 binds {
     Mod+B hotkey-overlay-title="Browser" { spawn "zen-beta"; }
-    Mod+P hotkey-overlay-title="Passwords" { spawn "keepassxc"; }
 }

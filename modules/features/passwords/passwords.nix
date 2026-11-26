@@ -1,4 +1,4 @@
-# KeePassXC: the password manager and the system secret store (Secret Service).
+# KeePassXC: password manager and secret store (Secret Service) where no server runs Vaultwarden.
 # Settings: .config/keepassxc/keepassxc.ini.
 # Windows: org.keepassxc.KeePassXC. Key: Mod+P.
 { lib, ... }:
@@ -6,9 +6,11 @@
   flake.modules.nixos.passwords =
     { config, pkgs, ... }:
     let
+      vault =
+        lib.filterAttrs (_: data: data.host.class == "server") (config.axon.hostsWith "passwords") != { };
       start = "${lib.getExe pkgs.keepassxc} --minimized";
     in
-    lib.mkIf (config.axon.host.class == "desktop") {
+    lib.mkIf (config.axon.host.class == "desktop" && !vault) {
       # ── program ────────
       environment.systemPackages = [ pkgs.keepassxc ];
 

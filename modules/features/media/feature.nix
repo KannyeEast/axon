@@ -5,5 +5,7 @@
       "desktop"
       "server"
     ];
+    # only its server side keeps data
+    spaces.server = [ "media" ];
   };
 }

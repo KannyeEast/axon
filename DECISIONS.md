@@ -15,7 +15,6 @@ To change one, change it here in the same commit, with the new reason.
 | Services run native first; a container only where the native path fails or upstream ships only an image, its reason in its own row (Docker: rootful on servers for those services, rootless for the sandbox on every host with `dev`) | NixOS modules bring the user, state, hardening and database setup a container needs as glue; on unstable they lag upstream little. No account joins the docker group, which is root by another name, and published ports bind 127.0.0.1 only, as Docker's rules pass the firewall |
 | No Watchtower or Portainer: container images change only through Renovate's pull requests | every image is pinned to a digest, so what runs is what the repository says, reviewed like any other change |
 | JetBrains IDEs trust every project (`idea.trust.all.projects`) | chosen by the owner; there is no per-path setting |
-| The KeeShare key in `hosts/tower/home/.config/keepassxc/keepassxc.ini` | KeeShare is unused; KeePassXC generates the key itself |
 | DeArrow's `licenseKey` in `hosts/<name>/home/.config/zen/default/declared/storage-sync/deArrow@ajay.app.json` | it is the extension's free key, not a secret |
 | Hardcoded domain in dotfiles (Zen's pins and space routes, in each desktop's `hosts/<name>/home`), machine names only inside `hosts/<name>/` | dotfiles are the owner's files for their own cluster, not part of the framework, so the cluster's domain may appear in them; only the modules stay generic |
 | Kanidm (gateway/accounts.nix) is the one login for every service that has a login; there is no other identity provider | one account and one passkey per person for everything |
@@ -51,19 +50,19 @@ To change one, change it here in the same commit, with the new reason.
 
 | Decision | Why |
 |---|---|
-| Kanidm, Jellyfin, Immich, Nextcloud and Vaultwarden are public through the Cloudflare tunnel | family devices have no Tailscale; the risk under Cloudflare's terms (video streaming) is accepted |
+| Kanidm, Jellyfin, Immich and Nextcloud are public through the Cloudflare tunnel; Vaultwarden is not, it holds every password | family devices have no Tailscale; the risk under Cloudflare's terms (video streaming) is accepted |
 | Home Assistant (family/hub.nix) runs as root in its container, against the rule of one user per container | the official image's process supervisor needs root; the NixOS module would run it as a user but can't install HACS, which the household cards come from |
 | Home Assistant (family/hub.nix) has no Kanidm login (axon.sso), only its own accounts with TOTP | the only add-on (hass-oidc-auth) can't log in inside the Companion app (a code entered in the browser instead), its button fails on HA 2026.10+ (issue #446), and roles follow Kanidm only at first login |
 | DNS records for public routes are made by hand at Cloudflare | not managed from this repo; a new public route needs its tunnel record (`cloudflared tunnel route dns`), a tailnet-only one none |
-| Vaultwarden's admin page exists only while `secrets.json` holds `vaultwarden/admin-token` (passwords/vault.nix) | it is needed only to invite the family; off otherwise, so the public route has no admin login to attack |
+| Vaultwarden's admin page exists only while `secrets.json` holds `vault/admin-token` (passwords/vault.nix) | it is needed only to invite the family; off otherwise, so the route has no admin login to attack |
 | Radarr's and Sonarr's quality profiles and custom formats are a dotfile for Recyclarr (downloads/profiles.nix); indexers, download clients and root folders stay in the UIs | profiles are choices worth keeping in git; the rest holds credentials or rarely changes |
 | qBittorrent's hardlinks into the library fail (it writes 0644) | btrfs shares the data anyway, so no space is lost |
 | One service server per cluster for now: the gateway (gateway/proxy.nix) and Kanidm (gateway/accounts.nix) take only their own host's services; another server's routed services get no route or login, and a warning says so (server/headless.nix) | there is no contract yet for services on other hosts |
-| Glue between services (an event or a schedule calling their APIs) is an n8n workflow in `hosts/<name>/home/.config/n8n/workflows`, such as Scope tags; systemd keeps always-on servers and proxies (scope-filter), what alerting depends on (unit-mail), and host-local probes and metrics (vpn-check, space-metrics, gpu-metrics) | one place to see, run and debug the glue, with its failures mailed through the Alerts workflow; what must work when n8n is down, or reads the host itself, stays in systemd |
+| Glue between services (an event or a schedule calling their APIs) is an n8n workflow in `hosts/<name>/home/.config/n8n/workflows`, such as Scope tags; systemd keeps always-on servers and proxies (scope-filter), what alerting depends on (alert-mail), and host-local probes and metrics (vpn-check, space-metrics, gpu-metrics) | one place to see, run and debug the glue, with its failures mailed through the Alerts workflow; what must work when n8n is down, or reads the host itself, stays in systemd |
 | Nextcloud is file storage only | no calendar, contacts or other apps |
 | One relay login (mail feature, `mail/login`) sends every service's mail, each from `<its axon.services name>@<cluster domain>` | a relay accepts any sender on a domain it verified, so one secret serves all; the sender names the service, and no personal address is used |
 | Postgres and SQLite are the only databases, no MySQL or MariaDB. Postgres (axon.databases) where many users or processes write at once, the app requires it, or the data is long-lived and important: Immich, Nextcloud, Paperless, Forgejo. SQLite where one process writes little and it is the app's default: the arr apps, Seerr, Bazarr, Grafana, Vaultwarden, n8n, Home Assistant, and Jellyfin and Kanidm, which support nothing else | two engines to run, back up and know; Postgres takes concurrent writers and dumps while running, SQLite needs no server where the load is light |
-| A tile's space use comes from its btrfs qgroup (metrics/spaces.nix), not from the app's own widget | apps show the whole volume's size, as btrfs limits don't change what statfs reports |
+| A tile's space use comes from its btrfs qgroup (metrics/spaces.nix), not from the app's own widget | apps show the whole disk's size, as btrfs limits don't change what statfs reports |
 | Avahi only comes with printing | nothing else needs it since the `.local` names went |
 
 ## Backups and monitoring
@@ -72,6 +71,7 @@ To change one, change it here in the same commit, with the new reason.
 |---|---|
 | No backup targets in any `secrets.json`; the backup feature only warns | waiting for a second server or a hosting service |
 | No watchdog outside the cluster | the server stands next to its owner; a future second server would watch node1 |
+| Grafana's start dashboard (monitoring/dashboards.nix) and the Alloy config (metrics/logs.nix) are built in Nix, not `_files` | half of each depends on the cluster (disks, Postgres, the unit-to-service map); Nix helpers read better than an exported dashboard |
 
 ## Desktop
 
@@ -80,5 +80,6 @@ To change one, change it here in the same commit, with the new reason.
 | fuzzel and mako only get colours, nothing more, and waybar runs its stock config (no dotfile) | a shell of its own (separate repo) will replace them |
 | tower has no swap (`swap = 0`), so it can't hibernate, though the desktop class would resume from swap | chosen; it stays on or shuts down |
 | Plain numbered niri workspaces, none bound to a purpose | the owner finds fixed workspaces restrictive |
+| Desktops get the Bitwarden extension and gnome-keyring when a server in the cluster lists `passwords`, KeePassXC otherwise (passwords/client.nix, passwords/passwords.nix); no Bitwarden desktop app | one vault the server syncs to every device, without a synced database file's conflicts; KeePassXC where nothing serves one; the owner wants only the extension |
 | Zen's cookie allow list (browser/policies.nix), its extensions (browser/extensions.nix) and mods (browser/mods.nix) stay in Nix, though they are personal choices | Zen takes cookie exceptions and force-installed extensions only as enterprise policy, which Nix writes into its package; the zen-browser flake installs mods only from a Nix option |
 | `kanshi` is installed on every desktop, though tower doesn't use it | for laptops and other hosts whose displays change; tower's fixed layout is in niri's own output config |

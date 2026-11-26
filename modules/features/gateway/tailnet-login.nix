@@ -12,7 +12,7 @@
         sso
         ;
       port = 8099;
-      secret = "sso/tailscale";
+      secret = "tailscale/sso";
       active = sso.provider != null && gateway.tunnel != null && hasSecret secret;
       # the address is echoed back, so only plain ones are answered
       address = "^acct:[A-Za-z0-9._+-]+@${lib.replaceStrings [ "." ] [ "[.]" ] domain}$";

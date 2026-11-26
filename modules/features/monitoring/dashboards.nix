@@ -8,6 +8,7 @@
       inherit (config.axon)
         hostsWith
         services
+        spacePath
         sso
         user
         ;
@@ -128,7 +129,7 @@
         name:
         let
           data = scraped.${name};
-          mounted = lib.filterAttrs (label: disk: label != "boot" && (disk.mounts or { }) != { }) data.disk;
+          mounted = lib.filterAttrs (label: disk: label != "boot" && disk.spaces != { }) data.disk;
         in
         [
           {
@@ -140,7 +141,8 @@
         ++ lib.mapAttrsToList (label: disk: {
           host = name;
           inherit label;
-          mountpoint = lib.head (lib.attrValues disk.mounts);
+          # the one mountpoint metrics/exporters.nix reports for the disk
+          mountpoint = spacePath (lib.head (lib.attrNames disk.spaces));
         }) mounted
       ) (lib.attrNames scraped);
       byDisk =
@@ -193,10 +195,11 @@
             [ "host" "disk" ]
             [
               { Size = byDisk "node_filesystem_size_bytes"; }
-              { Used = "${byDisk "node_filesystem_size_bytes"} - ${byDisk "node_filesystem_avail_bytes"}"; }
+              # free, as df counts it: btrfs's avail misses the space of a third raid1 disk
+              { Used = "${byDisk "node_filesystem_size_bytes"} - ${byDisk "node_filesystem_free_bytes"}"; }
               {
                 "Used %" =
-                  percentOf "1 - ${byDisk "node_filesystem_avail_bytes"} / ${byDisk "node_filesystem_size_bytes"}";
+                  percentOf "1 - ${byDisk "node_filesystem_free_bytes"} / ${byDisk "node_filesystem_size_bytes"}";
               }
             ]
           // {
@@ -342,7 +345,7 @@
             # the start page shows panels of the Start page dashboard in frames
             allow_embedding = true;
             admin_user = user.name;
-            admin_password = "$__file{${config.sops.secrets."monitoring/password".path}}";
+            admin_password = "$__file{${config.sops.secrets."grafana/admin-password".path}}";
             secret_key = "$__file{${state}/secret_key}";
           };
           # read-only without its own login; the start page's frames need it
@@ -404,7 +407,7 @@
       '';
 
       # ── secrets ────────
-      sops.secrets."monitoring/password".owner = "grafana";
+      sops.secrets."grafana/admin-password".owner = "grafana";
 
       # ── login ────────
       axon.sso.clients.grafana = {

@@ -94,7 +94,7 @@ modules/features/<area>/
   <job>.nix        one service or one app per file, named for what it does (passwords.nix, not keepassxc.nix)
   _<name>.<ext>    data and scripts its modules read
 hosts/<name>/home/.config/<program>/    the settings its programs read
-hosts/<name>/secrets.json               its secrets, <area>/<name>
+hosts/<name>/secrets.json               its secrets, <owner>/<name>
 hosts/<name>/host.toml                  a table only where the feature owns one
 ```
 
@@ -121,7 +121,7 @@ in
       port = 1234;                  # then constants: ports, paths
       …                             # then what is derived from them
     in
-    lib.mkIf <gate> {               # one gate for the whole file: the class, or the volume or contract it can't run without
+    lib.mkIf <gate> {               # one gate for the whole file: the class, or the space or contract it can't run without
       <slots>
     };
 
@@ -160,8 +160,9 @@ One vocabulary for all kinds, always in this order:
 ### Kinds
 
 **Registry entry** (`feature.nix`, `class.nix`). No header, no function, one attribute set:
-`description`, `classes`, and `requires` where the feature has a hard need; `metrics` and `alerts`
-where it runs exporters or has alert rules. Data only, no functions: install.sh reads it as JSON.
+`description`, `classes`, and `requires` where the feature has a hard need; `spaces.<class>`
+where its modules register any on that class; `metrics` and `alerts` where it runs exporters or
+has alert rules. Data only, no functions: install.sh reads it as JSON.
 
 **Core contract** (`modules/core/<contract>.nix`, named after the contract).
 Slots: `contract`, `settings`, `units`, `data`, `checks`.
@@ -241,15 +242,16 @@ Only when nothing existing fits (Rules: use what exists). Then:
 ### host.toml, cluster.toml, secrets.json
 
 - `host.toml`: core's tables first, in the order `[host]`, `[user]`, `[locale]`, `[hardware]`,
-  `[disk.*]`, `[limits]`; then each feature's table, in the order of the features. `features` is
+  `[disk.*]`; then each feature's table, in the order of the features. `features` is
   alphabetical. A field equal to its schema default is left out.
 - A table becomes `config.axon.<table>`, so its name must not be a core option's (`mail`,
-  `links`, `secrets`, `volumes`).
+  `links`, `secrets`, `spaces`).
 - A new field is an option in `axon.schema.<bundle>`, in the file that reads it, with a type, a
   default where one makes sense, and a description.
-- `secrets.json`: every key is `<area>/<name>`, never flat. The area is the service or account
-  the secret belongs to (`user`, `tailscale`, `kanidm`, `sso`, `mail`, `forge`), the name says
-  what it is, in kebab-case. A service's API key is `<its axon.services name>/api-key`.
+- `secrets.json`: every key is `<owner>/<name>`, never flat. The owner is the `axon.services`
+  entry that reads it; a secret of an external account several services use stays under the
+  account (`user`, `tailscale`, `cloudflare`, `mail`, `mullvad`). The name says what it is, in
+  kebab-case: a service's API key is `<owner>/api-key`, its login client's secret `<owner>/sso`.
 
 ## One way per need
 
@@ -266,26 +268,26 @@ use it.
 | An address registered elsewhere (redirects) | `route.url` |
 | Calling it from the same host | `route.internal` |
 | Is the gateway's login in front of it | `route.gated` |
-| A login | `axon.sso.clients.<name>` with `service`, which fills its name, icon and landing; the service logs in there when `axon.sso.provider` isn't null and keeps its own login otherwise; `client.placeholder` puts its secret into a sops template, `client.groupClaim` is its group as the provider's groups claim lists it |
+| A login | `axon.sso.clients.<name>` with `service`, which fills its name, icon and landing; the service logs in there when `axon.sso.provider` isn't null and keeps its own login otherwise, and its units start after the provider's; its secret is `client.key`, `<service>/sso`; `client.placeholder` puts it into a sops template, `client.groupClaim` is its group as the provider's groups claim lists it |
 | Mail | `axon.mail`; the service works when it is null. The sender is `<service name>@<domain>` |
 | A secret the file can't do without | declare its `sops.secrets`; evaluation lists what is missing. Every file declares each secret it reads |
-| An extra that switches on with its secret | `config.axon.hasSecret "<area>/<name>"`; without the secret the extra is off, with one warning naming the secret |
+| An extra that switches on with its secret | `config.axon.hasSecret "<owner>/<name>"`; without the secret the extra is off, with one warning naming the secret |
 | A service's API key | `axon.services.<name>.apiKey`, the secret `<name>/api-key`; `dashboard.key` when the start page's widget needs it |
 | A secret into a NixOS service | what its module offers, in this order: a `…File` option, `LoadCredential`, a sops template as environment file |
 | A secret into an own unit or container | `LoadCredential`; for a program that reads its keys only from the environment a sops template as `EnvironmentFile`; for a container a sops template in `environmentFiles`, never `environment` |
 | A Postgres database | `axon.databases` and the module's own `createLocally` |
 | State, a static user with `StateDirectory` | the persist entry is the plain path. A mode only through `StateDirectoryMode`, and only where it differs from upstream |
 | State, `DynamicUser` | persist `/var/lib/private/<name>` |
-| A static user where the module gives none (a container that keeps data, a service taken off `DynamicUser`) | its own system user with a fixed id from 400 up, declared next to it; NixOS refuses a duplicate id |
+| A static user where the module gives none (a container that keeps data) | its own system user with a fixed id from 400 up, declared next to it; NixOS refuses a duplicate id |
 | State, a subfolder upstream creates with tmpfiles | its own persist entry |
-| Which persist list | a service's state: `axon.persist.state.directories` (the state volume where a host has one); the system's own: `axon.persist.directories` (the boot disk). In the file that creates the state |
-| User data (files, photos, documents) | its own `axon.spaces` entry, with `units` naming every unit that uses it |
-| Writing to a volume | `RequiresMountsFor` on the unit: data disks mount with `nofail`, and without it the unit writes to root. A folder there the service needs: an `axon.folders` entry, with `units` naming every unit that uses it |
+| Which persist list | a service's state: `axon.persist.state.directories` (the appdata space where a data disk holds it); the system's own: `axon.persist.directories` (the boot disk). In the file that creates the state |
+| User data (files, photos, documents) | an `axon.spaces` entry named after its service, or after the feature when several services share it, or after the core contract that brings it, and listed in the feature's registry `spaces.<class>` for each class that registers it. One registrant sets `user`, `group` and `mode`; every file adds `units` naming each unit that uses it |
+| Writing to a space | its `units`, which wait for its mount and for its tmpfiles rules, which core runs again once it is mounted: data disks mount with `nofail`, and without it the unit writes to root. A folder there the service needs: an `axon.folders` entry, with `units` naming every unit that uses it |
 | Backup | `backup.paths` for what can't be rebuilt, `exclude` for what can; a database through its dump or export, never its live files |
-| A dump or export a backup reads | `"${config.axon.dumps}/<name>"` |
+| A dump or export a backup reads | `"${config.axon.spaces.backups.path}/<name>"`, its units in the `backups` space's `units` and its folder an `axon.folders` entry |
 | The start page | a `dashboard` entry: name, group, icon, a widget where Homepage has one, and the `space` its tile shows |
 | Logs | every unit of the file in the service's `units`; a program that prints no level gets a log-format or log-level setting; entries spanning lines set `logStart` |
-| Being scraped | the feature's `metrics` in its registry entry (job name to `port`, and the `volume` it needs); the exporter reads its port from `config.axon.registry.<feature>.metrics` |
+| Being scraped | the feature's `metrics` in its registry entry (job name to `port`, and the `space` a data disk must hold); the exporter reads its port from `config.axon.registry.<feature>.metrics` |
 | Its alert rules | the feature's `alerts` in its registry entry, plain Prometheus rules |
 | Traffic that must not leave in the open | `axon.vpn.confined` |
 | A container | only where DECISIONS gives its reason. `virtualisation.oci-containers`, the image on one `image = "<registry>/<name>:<tag>@sha256:<digest>"` line, ports on `127.0.0.1`, every host path it writes persisted |
@@ -304,12 +306,13 @@ use it.
   Features read contracts, not each other's options or names. Producers set a contract
   unconditionally; consumers handle an empty set or null.
 - **Contracts are declared in core**: `axon.services` (routes, backup paths), `axon.persist`,
-  `axon.volumes`, `axon.spaces` (a service's own subvolume, capped by `[limits]`), `axon.folders`
+  `axon.spaces` (a service's data at /server/<name>: a subvolume on the data disk that lists it,
+  capped there, else on the boot disk), `axon.folders`
   (folders services need, made once their disk is mounted), `axon.mail`,
   `axon.sso` (single sign-on), `axon.vpn`, `axon.overlay`, `axon.browser`, `axon.links` (admin
   links on the start page), `axon.databases` (Postgres databases, dumped nightly). Derived values
   core exposes: `axon.domain`, `axon.routed`, `axon.gated`, `axon.routes`, `axon.secrets`, `axon.hasSecret`,
-  `axon.dumps`, `axon.hostsWith`, `axon.dotfiles`, `axon.remotes`, `axon.home`, `axon.repo`,
+  `axon.onDisk`, `axon.spacePath`, `axon.hostsWith`, `axon.dotfiles`, `axon.remotes`, `axon.home`, `axon.repo`,
   `axon.laptop`, `axon.nvidia`.
 - **Only what changes something.** Don't restate an upstream default (read the module's source),
   and don't add an option nothing sets, a helper with one caller or a package nothing runs. The

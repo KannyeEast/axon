@@ -1,4 +1,4 @@
-// mako starts by itself on the first notification; KeePassXC and the polkit agent are services.
+// mako starts by itself on the first notification; the polkit agent is a service.
 spawn-at-startup "waybar"
 spawn-sh-at-startup "swaybg -i ~/Pictures/Wallpapers/48FBjzC.jpeg -m fill"
 // lock after 15 minutes, monitors off after 20; video players and browsers playing video hold it off

@@ -7,7 +7,7 @@
     let
       port = 3100;
       data = config.axon.spaces.loki.path;
-      # on the state volume: Loki stops taking logs once the WAL's disk is 90% full
+      # in appdata: Loki stops taking logs once the WAL's disk is 90% full
       wal = "/var/lib/loki-wal";
 
       # the ruler reads <dir>/<tenant>/*.yaml; without auth the tenant is "fake"
@@ -81,6 +81,7 @@
       # ── data ────────
       axon.spaces.loki = {
         inherit (config.services.loki) user group;
+        mode = "0750";
         units = [ "loki" ];
       };
 
