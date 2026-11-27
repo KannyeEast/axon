@@ -51,7 +51,7 @@
         # it, not the session command, connects to the server
         path = [ pkgs.openssh ];
         serviceConfig = {
-          ExecStart = "${lib.getExe pkgs.mutagen} daemon run";
+          ExecStart = "${lib.getExe' pkgs.mutagen "mutagen"} daemon run";
           Restart = "on-failure";
         };
       };
