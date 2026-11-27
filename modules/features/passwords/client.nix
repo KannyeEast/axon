@@ -9,38 +9,49 @@
       bitwarden = "{446900e4-71c2-419f-a6a7-df9c091e268b}";
       vault =
         lib.filterAttrs (_: data: data.host.class == "server") (config.axon.hostsWith "passwords") != { };
-      float = pkgs.writeShellApplication {
-        name = "bitwarden-float";
+      popouts = pkgs.writeShellApplication {
+        name = "bitwarden-popouts";
         runtimeInputs = [
           config.programs.niri.package
           pkgs.jq
         ];
         text = ''
-          declare -A floated
+          declare -A settled
           niri msg --json event-stream \
-            | jq --unbuffered -r '.WindowOpenedOrChanged.window? // empty
-                | select(.app_id == "zen-beta" and (.title | test("^Extension: \\(Bitwarden")) and (.is_floating | not))
-                | .id' \
-            | while read -r id; do
-                # once per window, so one tiled by hand stays tiled
-                [[ -n ''${floated[$id]:-} ]] && continue
-                floated[$id]=1
-                niri msg action move-window-to-floating --id "$id"
+            | jq --unbuffered -r '
+                (.WindowsChanged.windows[]? | ["known", .id] | @tsv),
+                (.WindowOpenedOrChanged.window? // empty | select(.app_id == "zen-beta")
+                  | ["zen", .id, .is_floating, .title] | @tsv)' \
+            | while IFS=$'\t' read -r kind id floating title; do
+                # windows open before this ran, or settled once, are left as they are
+                if [[ $kind == known ]]; then settled[$id]=1; continue; fi
+                [[ -n ''${settled[$id]:-} ]] && continue
+                if [[ $title == "Zen Browser" ]]; then
+                  # untitled yet: only the first window, never a popout, is placed at once
+                  zen=$(niri msg --json windows | jq '[.[] | select(.app_id == "zen-beta")] | length')
+                  [[ $zen == 1 ]] || continue
+                elif [[ $title =~ ^Extension:\ \(|^Picture-in-Picture$ ]]; then
+                  [[ $floating == true ]] || niri msg action move-window-to-floating --id "$id"
+                  settled[$id]=1
+                  continue
+                fi
+                [[ $floating == true ]] && niri msg action move-window-to-tiling --id "$id"
+                settled[$id]=1
               done
         '';
       };
     in
     lib.mkIf (config.axon.host.class == "desktop" && vault) {
       # ── session ────────
-      # Zen titles the extension's popouts only after they open, past niri's open-floating rules
-      # (niri FAQ); nirius has no rules, so this floats them on the title change
-      systemd.user.services.bitwarden-float = {
-        description = "Floats Bitwarden's popouts";
+      # Zen titles its windows only after they open, past niri's open-floating rules (niri FAQ), and
+      # nirius has no rules: windows.kdl floats every new one, this tiles the browser windows again
+      systemd.user.services.bitwarden-popouts = {
+        description = "Keeps Bitwarden's popouts floating";
         wantedBy = [ "graphical-session.target" ];
         partOf = [ "graphical-session.target" ];
         after = [ "graphical-session.target" ];
         serviceConfig = {
-          ExecStart = lib.getExe float;
+          ExecStart = lib.getExe popouts;
           Restart = "on-failure";
         };
       };
