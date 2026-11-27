@@ -1,6 +1,6 @@
 [host]
 class = "desktop"
-features = ["browser", "deck", "dev", "files", "media", "metrics", "passwords", "printing", "sync", "terminal", "vpn"]
+features = ["browser", "deck", "dev", "files", "media", "metrics", "passwords", "printing", "terminal", "vpn"]
 state = "26.11" # written once at install, never changed
 key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGdeeUjLnG85gfMOv8aVEf7Y/Wr5EBCfPTbwsuHLlfFD root@tower"
 
@@ -17,5 +17,3 @@ keyboard = "eu"
 devices = ["/dev/disk/by-id/nvme-eui.00000000000000000026b768703e1015"]
 swap = 0
 
-[sync]
-id = "J2GKKBZ-FFSH7ZQ-PQDFCQQ-4ODQ6HP-O2Y6NVU-SJDKVHM-TXJMPBQ-WMRFBAZ"

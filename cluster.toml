@@ -5,14 +5,6 @@ domain = "vexelvault.com"
 tower = ["node1", "laptop"]
 laptop = ["node1", "tower"]
 
-# folders, and the members that keep them in sync with each other
-[sync]
-vault = ["tower", "node1", "phone", "laptop"]
-
-# members that take part in relations but are not built from this repository
-[external.phone]
-sync = "FEHJ4VH-KTUCWO7-FLWTHY4-KNLHYMZ-ABVK3EP-RRD54NG-6PSKTPB-SWIWSQW"
-
 # where this repository lives: every host's checkout gets these remotes; origin is the one pulled from and pushed to
 [repo]
 origin = "forgejo"

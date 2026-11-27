@@ -9,12 +9,10 @@
   "grants": [
     // desktops: everything on servers and on each other
     {"src": ["tag:desktop"], "dst": ["tag:server", "tag:desktop"], "ip": ["*"]},
-    // servers on desktops: Prometheus (node, smartctl) and Syncthing, no SSH
-    {"src": ["tag:server"], "dst": ["tag:desktop"], "ip": ["tcp:9100", "tcp:9633", "tcp:22000", "udp:22000"]},
-    // phones and other untagged devices: web, DNS and Syncthing
-    {"src": ["autogroup:member"], "dst": ["tag:server"], "ip": ["tcp:80", "tcp:443", "tcp:53", "udp:53", "tcp:22000", "udp:22000"]},
-    {"src": ["autogroup:member"], "dst": ["tag:desktop"], "ip": ["tcp:22000", "udp:22000"]},
-    {"src": ["tag:server", "tag:desktop"], "dst": ["autogroup:member"], "ip": ["tcp:22000", "udp:22000"]},
+    // servers on desktops: Prometheus (node, smartctl), no SSH
+    {"src": ["tag:server"], "dst": ["tag:desktop"], "ip": ["tcp:9100", "tcp:9633"]},
+    // phones and other untagged devices: web and DNS
+    {"src": ["autogroup:member"], "dst": ["tag:server"], "ip": ["tcp:80", "tcp:443", "tcp:53", "udp:53"]},
   ],
 
   "tests": [

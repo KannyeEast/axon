@@ -19,13 +19,18 @@ window-rule {
     open-floating true
 }
 
-// Password prompts (soteria, the polkit agent; Bitwarden's passkey and unlock popouts) land in
-// front and stay put
+// Password prompts (soteria, the polkit agent) land in front and stay put
 window-rule {
     match app-id=r#"^gay\.vaskel\.soteria$"#
-    match app-id=r#"^zen-beta$"# title=r#"^Extension: \(Bitwarden"#
     open-floating true
     open-focused true
+}
+
+// Zen's windows all open untitled, so its Bitwarden popouts can only float from the start;
+// passwords/client.nix tiles the browser windows again
+window-rule {
+    match app-id=r#"^zen-beta$"# title=r#"^Zen Browser$"#
+    open-floating true
 }
 
 // Keep credentials out of screenshots and screen shares

@@ -14,7 +14,6 @@ features = [
     "metrics", 
     "monitoring", 
     "passwords", 
-    "sync", 
     "terminal", 
     "vpn"
 ]
@@ -48,10 +47,7 @@ spaces = { downloads = true }
 
 [disk.kit]
 devices = ["/dev/disk/by-id/ata-Samsung_SSD_860_EVO_500GB_S4CNNF0M701774A"]
-spaces = { appdata = true, syncthing = true, databases = "50G" }
-
-[sync]
-id = "7B5WETD-2BBTFMG-OKJBRDP-A5NJ3UC-3A7HECI-IEB6UP4-KZLTLWF-7RVIPQD"
+spaces = { appdata = true, databases = "50G" }
 
 [forge]
 runner = "58da1312-e547-400f-810e-519cb3cb67d6"
