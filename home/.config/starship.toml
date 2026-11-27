@@ -5,12 +5,16 @@
 command_timeout = 1000
 
 format = """
-$os$username$hostname$directory$git_branch$git_status$git_state$nix_shell
+${env_var.SSH_CONNECTION}$os$username$hostname$directory$git_branch$git_status$git_state$nix_shell
 $character"""
 
 right_format = "$cmd_duration"
 
 # ── context line ────────
+# SSH sets it, so a remote shell is told apart from a local one at a glance
+[env_var.SSH_CONNECTION]
+format = "[ SSH ](bold inverted red) "
+
 [os]
 disabled = false
 format = "[$symbol]($style) [∙](bright-black) "
@@ -26,9 +30,8 @@ format = "[$user]($style) "
 
 [hostname]
 ssh_only = false
-format = "[$ssh_symbol$hostname]($style) "
+format = "[$hostname]($style) "
 style = "bold green"
-ssh_symbol = "󰇧 "
 
 [directory]
 style = "bold blue"
