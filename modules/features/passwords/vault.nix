@@ -51,6 +51,8 @@
           SSO_ENABLED = true;
           SSO_AUTHORITY = client.issuer;
           SSO_CLIENT_ID = client.id;
+          # the master password alone is one factor; Kanidm's login brings the second
+          SSO_ONLY = true;
           # its default lets the provider make accounts, past SIGNUPS_ALLOWED
           SSO_SIGNUPS_ALLOWED = false;
         };
